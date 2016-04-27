@@ -1,0 +1,13 @@
+{
+	"name": "pinguinio/puffin-atlantic-bootstrap",
+    "description": "Atlantic Puffin CMS.",
+    "license": "MIT",
+	"require": {
+	  "pinguinio/puffin-framework": "1.0.*",
+	  "pinguinio/puffin-feather": "1.0.*"
+	},
+	"config": {
+		"vendor-dir": "vendor"
+	},
+	"minimum-stability":"alpha"
+}

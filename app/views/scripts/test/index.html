@@ -1,0 +1,43 @@
+<style>.fail{background-color:#ffcc00;}</style>
+
+<h1>TEST RESULTS</h1>
+
+{{#test_results}}
+	<table cellpadding="5" cellspacing="0" width="500" border="1">
+		<thead>
+			<tr>
+				<td>Test</td>
+				<td>{{class}}</td>
+			</tr>
+			<tr>
+				<td>Runtime</td>
+				<td>{{total_runtime}}</td>
+			</tr>
+			<tr>
+				<td>Successes</td>
+				<td>{{successes}}</td>
+			</tr>
+			<tr>
+				<td>Failures</td>
+				<td>{{failures}}</td>
+			</tr>
+			<tr>
+				<td>Results</td>
+				<td></td>
+			</tr>
+		</thead>
+		<tbody>
+			{{#results}}
+				{{#status=pass}}
+					<tr>
+				{{/status=pass}}
+				{{#status=fail}}
+					<tr class="fail">
+				{{/status=fail}}
+					<td>{{name}}</td><td>{{status}}</td>
+				</tr>
+			{{/results}}
+		</tbody>
+	</table>
+	<br />
+{{/test_results}}
