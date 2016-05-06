@@ -11,6 +11,7 @@ function clog( $input ){ echo debug::clog($input); }
 function redirect( $location = false ){ url::redirect($location); }
 
 #Plugins
+plugin::register('forceauth');
 plugin::register('layout');
 plugin::register('bootstrap');
 plugin::register('jquery');
