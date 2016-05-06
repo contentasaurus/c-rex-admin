@@ -1,10 +1,10 @@
 {
 	"name": "pinguinio/puffin-atlantic-admin-bootstrap",
-    "description": "Atlantic Puffin CMS.",
-    "license": "MIT",
+	"description": "Atlantic Puffin CMS Admin.",
+	"license": "MIT",
 	"require": {
-	  "pinguinio/puffin-framework": "1.0.*",
-	  "pinguinio/puffin-feather": "1.0.*"
+		"pinguinio/puffin-framework": "1.0.*",
+		"pinguinio/puffin-feather": "1.0.*"
 	},
 	"config": {
 		"vendor-dir": "vendor"
