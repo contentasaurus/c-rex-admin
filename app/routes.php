@@ -2,25 +2,30 @@
 
 namespace puffin;
 
-$app->controller('authentication')
+$app->controller('index')
+	->any('/', 'index');
+
+$app->controller('auth')
 	->get( '/auth/', 'index' )
 	->get( '/auth/index', 'index' )
 	->get( '/auth/login/', 'login' )
 	->post( '/auth/login/', 'process_login' )
 	->get( '/auth/logout/', 'logout' )
-	->get( '/auth/reset/', 'reset' );
-	->post( '/auth/reset/', 'process_reset' );
+	->get( '/auth/change-password/', 'change_password' );
+	->post( '/auth/change-password/', 'process_change_password' );
+	->get( '/auth/password-reset/', 'password_reset' );
+	->post( '/auth/password-reset/', 'process_password_reset' );
 
-$app->controller('admin/styleguide')
-	->get( '/admin/styleguide/', 'index' );
-
-$app->controller('admin/dashboard')
-	->get( '/admin/dashboard/', 'index' );
-
-$app->controller('admin/content')
-	->get( '/admin/content/pages', 'pages' )
-	->get( '/admin/content/posts', 'posts' )
-	->get( '/admin/content/events', 'events' );
+// $app->controller('admin/styleguide')
+// 	->get( '/admin/styleguide/', 'index' );
+//
+// $app->controller('admin/dashboard')
+// 	->get( '/admin/dashboard/', 'index' );
+//
+// $app->controller('admin/content')
+// 	->get( '/admin/content/pages', 'pages' )
+// 	->get( '/admin/content/posts', 'posts' )
+// 	->get( '/admin/content/events', 'events' );
 
 
 /*
