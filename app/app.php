@@ -12,12 +12,6 @@ function redirect( $location = false ){ url::redirect($location); }
 
 #Plugins
 plugin::register('forceauth');
-plugin::register('layout');
-plugin::register('bootstrap');
-plugin::register('jquery');
-plugin::register('fontawesome');
-plugin::register('googlefont');
-plugin::register('freelancer');
 
 #Routes
 include_once 'routes.php';
