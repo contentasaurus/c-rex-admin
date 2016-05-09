@@ -31,6 +31,13 @@ require VENDOR_PATH . '/autoload.php';
 
 ############################################
 
+define('DB_NAME', 'MyDB');
+define('DB_USER', 'MyUser');
+define('DB_PASSWORD', 'MyPassword');
+define('DB_ADDRESS', '127.0.0.1');
+
+############################################
+
 session::start();
 autoload::init();
 view::init('php');

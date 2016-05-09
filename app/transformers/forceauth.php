@@ -1,9 +1,10 @@
 <?php
+namespace puffin\transformer;
 
 use \puffin\controller as controller;
 use \puffin\url as url;
 
-class forceauth extends  puffin\controller\plugin
+class forceauth extends \puffin\controller\plugin
 {
 	public function __init()
 	{

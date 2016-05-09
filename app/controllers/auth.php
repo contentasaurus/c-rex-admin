@@ -3,12 +3,12 @@
 use puffin\view as view;
 use puffin\url as url;
 use puffin\message as message;
+use puffin\password as password;
 
-class auth extends puffin\controller\action
+class auth_controller extends puffin\controller\action
 {
 	protected function init()
 	{
-		$this->user = new user();
 	}
 
 	public function index()
@@ -23,17 +23,18 @@ class auth extends puffin\controller\action
 
 	public function process_login()
 	{
-		$user = $this->user->login( $this->post('email'), $this->post('password') );
+		$this->user = new user();
+		$user = $this->user->login( $this->post->param('email'), $this->post->param('password') );
 
 		if( !empty($user) )
 		{
 			$_SESSION['user'] = $user;
 
-			if( $user['force_password_reset'] == 1 )
-			{
-				$_SESSION['FORCED_RESET'] = 1;
-				url::redirect('/auth/change-password/');
-			}
+			// if( $user['force_password_reset'] == 1 )
+			// {
+			// 	$_SESSION['FORCED_RESET'] = 1;
+			// 	url::redirect('/auth/change-password/');
+			// }
 
 			url::redirect('/');
 		}

@@ -6,7 +6,7 @@ class layout extends  puffin\controller\plugin
 {
 	public function __init()
 	{
-		view::title('Puffin Framework');
+		view::title('Atlantic CMS Admin');
 		view::layout('master');
 	}
 	public function __before_call()

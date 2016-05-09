@@ -1,6 +1,7 @@
 <?php
 
 use \puffin\model\pdo as pdo;
+use \puffin\password as password;
 
 class user extends pdo
 {
@@ -9,26 +10,27 @@ class user extends pdo
 
 	protected $table = 'users';
 
-	public function login( $email, $password )
+	public function login( $email, $user_password )
 	{
 		$password = new password();
 
-		$record = $this->select_row(
-			"select id, password from users where email = :email",
-			[ ':email' => $email ]
-		);
+		$sql = "select id, password from users where email = :email";
+		$params = [ ':email' => $email ];
+		$record = $this->select_row( $sql, $params );
 
 		if( empty($record) )
 		{
 			return self::FAILURE_EMAIL_INVALID;
 		}
 
-		$is_valid = $password->is_valid( $password, $record['password'] );
+		$is_valid = $password->is_valid( $user_password, $record['password'] );
 
-		if( $is_valid )
+		if( $is_valid > 0 )
 		{
 			$authenticated_record = $this->read( $record['id'] );
 			unset( $authenticated_record['password'] );
+			unset( $authenticated_record['additional'] );
+			$authenticated_record = array_merge( $authenticated_record, $this->get_additional( $record['id'] ) );
 			return $authenticated_record;
 		}
 		else
@@ -38,9 +40,18 @@ class user extends pdo
 
 	}
 
-	public function change_password( $email, $password, $confirm_password )
+	public function get_additional( $user_id )
 	{
-		if( (!empty($password) && !empty($confirm_password)) && ($password == $confirm_password) )
+		$sql = "select column_json(additional) as additional from users where id = :id";
+		$params = [ ':id' => $user_id ];
+		$additional = $this->select_one( $sql, $params );
+		$array = json_decode( $additional, $assoc = true );
+		return $array;
+	}
+
+	public function change_password( $email, $user_password, $confirm_password )
+	{
+		if( (!empty($user_password) && !empty($confirm_password)) && ($user_password == $confirm_password) )
 		{
 			$user = $this->get_by_email( $email );
 
@@ -49,7 +60,7 @@ class user extends pdo
 			if( !empty($user) )
 			{
 				return $this->update( $user['id'], [
-					'password' => $password->make( $password )
+					'password' => $password->make( $user_password )
 				]);
 			}
 		}
@@ -96,4 +107,67 @@ class user extends pdo
 	{
 	}
 
+	public function refresh()
+	{
+		if( !empty($_SESSION['user']) )
+		{
+			$user = $this->read( $_SESSION['user']['id'] );
+			if( !empty($user) )
+			{
+				unset($user['password']);
+				unset( $user['additional'] );
+				$user = array_merge( $user, $this->get_additional( $user['id'] ) );
+				$_SESSION['user'] = $user;
+				return 1;
+			}
+			else
+			{
+				unset( $_SESSION['user'] );
+				return 0;
+			}
+		}
+		else
+		{
+			return -1;
+		}
+	}
+
+	################
+
+	protected function _check_role()
+	{
+		$success = $this->refresh();
+
+		if( $success > 0 )
+		{
+			$roles = new role();
+			$role = $roles->read( $_SESSION['user']['role_id'] );
+			return $role['access_level'];
+		}
+		else
+		{
+			return -1;
+		}
+
+	}
+
+	public function is_owner()
+	{
+		return $this->_check_role() == 255;
+	}
+
+	public function is_editor()
+	{
+		return $this->_check_role() >= 128;
+	}
+
+	public function is_author()
+	{
+		return $this->_check_role() >= 64;
+	}
+
+	public function is_disabled()
+	{
+		return $this->_check_role() <= 0;
+	}
 }

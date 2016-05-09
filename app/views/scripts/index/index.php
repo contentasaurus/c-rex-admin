@@ -1,21 +1,32 @@
-<!-- Navigation -->
-<?= $this->partial('php/navbar', []) ?>
-
-<!-- Header -->
-<?= $this->partial('php/header', []) ?>
-
-<!-- About Section -->
-<?= $this->partial('php/gettingstarted', []) ?>
-
-<!-- About Section -->
-<?= $this->partial('php/about', []) ?>
-
-<!-- Footer -->
-<?= $this->partial('php/footer', []) ?>
-
-<!-- Scroll to Top Button (Only visible on small and extra-small screen sizes) -->
-<div class="scroll-top page-scroll visible-xs visible-sm">
-    <a class="btn btn-primary" href="#page-top">
-        <i class="fa fa-chevron-up"></i>
-    </a>
+<div>
+	<a href="/auth/logout">Logout</a>
 </div>
+
+<div>
+	You are logged in as:
+</div>
+
+<table>
+	<?php foreach( $_SESSION['user'] as $k => $v ): ?>
+		<tr align="left">
+			<th><?= $k ?></th>
+			<td><?= $v ?></td>
+		</tr>
+	<?php endforeach; ?>
+	<tr>
+		<th align="left">Is_Owner</th>
+		<td><?= $this->is_owner ? 'true' : 'false' ?></td>
+	</tr>
+	<tr>
+		<th align="left">Is_Editor</th>
+		<td><?= $this->is_editor ? 'true' : 'false' ?></td>
+	</tr>
+	<tr>
+		<th align="left">Is_Author</th>
+		<td><?= $this->is_author ? 'true' : 'false' ?></td>
+	</tr>
+	<tr>
+		<th align="left">Is_disabled</th>
+		<td><?= $this->is_disabled ? 'true' : 'false' ?></td>
+	</tr>
+</table>
