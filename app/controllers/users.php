@@ -1,170 +1,112 @@
 <?php
 
-  namespace App\Http\Controllers\Admin;
+use puffin\view as view;
+use puffin\url as url;
+use puffin\message as message;
+use puffin\password as password;
+use puffin\controller as controller;
 
-  use App\Models\Admin\User;
+class users_controller extends puffin\controller\action
+{
+	public function __init()
+	{
+		$this->user = new user();
+		$this->role = new role();
+	}
 
-  class UsersController extends BaseController {
+	public function __before_call()
+	{
+		if( controller::$action != 'profile' )
+		{
+			if( !$this->user->is_editor( $_SESSION['user']['id'] ) )
+			{
+				url::redirect('/users/no-access');
+			}
+		}
+	}
 
-      public function __construct() {
-          $this->middleware('auth.admin');
-      }
+	public function no_access()
+	{
 
-      public function index() {
-          $data['users'] = User::all();
-          $data['total'] = User::count();
+	}
 
-          return \View::make('admin/pages/users/list', $data);
-      }
+	public function index()
+	{
+		view::add_param( 'users', $this->user->read() );
+	}
 
-      public function create() {
-          $data['users'] = User::all();
+	public function profile(  $id = false  )
+	{
+		if( empty($id) )
+		{
+			$id = $_SESSION['user']['id'];
+		}
 
-          return \View::make('admin.pages.users.create', $data);
-      }
+		view::add_param( 'user', $this->user->read( $id ) );
+	}
 
-      public function edit($id = null) {
-          if (is_null($id))
-          {
-              return \Redirect::route('admin.users.index');
-          }
+	public function create()
+	{
+		view::add_param( 'roles', $this->role->read() );
+	}
 
-          $data['user'] = User::find($id);
+	public function do_create()
+	{
+		$required = ['role_id', 'first_name', 'last_name', 'email', 'password'];
+		$password = new password();
+		$params = $this->post->params();
 
-          return \View::make('admin.pages.users.edit', $data);
-      }
+		if( $params['password'] == $params['confirm_password'] )
+		{
+			$params['password'] = $password->make( $params['password'] );
+			 unset($params['confirm_password']);
+		}
 
-      public function store() {
-          if (\Request::ajax()) {
-            $user = new User;
+		#clean the array
+		$params = array_filter( $params );
 
-            if (count($_FILES)) {
-      				$files = $this->processImages($_POST, $_FILES);
+		$match = true;
+		foreach( $required as $r )
+		{
+			if( !in_array($r, array_keys($params) ) )
+			{
+				$match = false;
+				break;
+			}
+		}
 
-              if (count($files['newfiles'])) {
-                if (isset($files['postArray']['photo'])) {
-                  $_POST['photo'] = $files['postArray']['photo'];
-                }
+		if( $match )
+		{
+			$this->user->create( $params );
+		}
+		else
+		{
+			#TODO remove this!
+			var_dump($match);
+			debug( $params ); exit;
+		}
 
-              } else {
-                unset($_FILES);
-                foreach($files['unset'] as $objectKey) {
-                  if (isset($user->{$objectKey})) {
-                    $user->unset($objectKey);
-                  }
-                }
-              }
-            } else {
-              unset($_FILES);
-            }
+		url::redirect('/users');
 
-            unset($_POST['_token']);
+	}
 
-            $keys = array_keys($_POST);
+	public function update( $id )
+	{
 
-            foreach ($keys as $key) {
-                if ($key == 'password') {
-                    $user->{$key} = \Hash::make($_POST[$key]);
-                } else {
-                    $user->{$key} = $_POST[$key];
-                }
-            }
+	}
 
-            $existingUser = User::where('email', \Input::get('email'))->first();
+	public function do_update( $id )
+	{
 
-            if (count($existingUser)) {
-                return \Response::json(['error' => 'Email address is already in use!']);
-            }
+	}
 
-            $user->save();
+	public function delete( $id )
+	{
 
-            if (isset($_FILES)) {
-      				return \Response::json(['id' => $user['_id'], 'files' => $files['newfiles']]);
-      			} else {
-      				return \Response::json(['id' => $user['_id']]);
-      			}
+	}
 
-        } else {
-            return \Redirect::route('admin.users.index');
-        }
-      }
+	public function do_delete( $id )
+	{
 
-      public function update($id = null)
-      {
-          if (\Request::ajax()) {
-            $user = User::find($id);
-
-            if (count($_FILES)) {
-      				$files = $this->processImages($_POST, $_FILES);
-
-              if (count($files['newfiles'])) {
-                if (isset($files['postArray']['photo'])) {
-                  $_POST['photo'] = $files['postArray']['photo'];
-                }
-
-              } else {
-                unset($_FILES);
-                foreach($files['unset'] as $objectKey) {
-                  if (isset($user->{$objectKey})) {
-                    $user->unset($objectKey);
-                  }
-                }
-              }
-            } else {
-              unset($_FILES);
-            }
-
-            unset($_POST['_token']);
-            unset($_POST['_method']);
-
-            if (empty($_POST['password'])) {
-                unset($_POST['password']);
-            }
-
-            $keys = array_keys($_POST);
-
-            foreach ($keys as $key) {
-                if ($key == 'password') {
-                    $user->{$key} = \Hash::make($_POST[$key]);
-                } else {
-                    $user->{$key} = $_POST[$key];
-                }
-            }
-
-            $existingUser = User::where('email', \Input::get('email'))->first();
-
-            if (count($existingUser) && $id != $existingUser->id) {
-                return \Response::json(['error' => 'Email address is already in use!']);
-            }
-
-            $user->save();
-
-            if (isset($_FILES)) {
-      				return \Response::json(['id' => $user['_id'], 'files' => $files['newfiles']]);
-      			} else {
-      				return \Response::json(['id' => $user['_id']]);
-      			}
-
-        } else {
-            return \Redirect::route('admin.users.index');
-        }
-      }
-
-      public function destroy($id = null) {
-          if (is_null($id))
-          {
-              return \Response::json(['msg' => 'Fail!']);
-          }
-
-          $user = User::find($id);
-
-          if ($user->email != "it-registrations@paradowski.com") {
-            User::destroy($id);
-          } else {
-            return \Response::json(['msg' => 'Fail!']);
-          }
-
-          return \Response::json(['msg' => 'success']);
-      }
-
-  }
+	}
+}

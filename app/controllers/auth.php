@@ -7,8 +7,14 @@ use puffin\password as password;
 
 class auth_controller extends puffin\controller\action
 {
-	protected function init()
+	public function __init()
 	{
+		$this->user = new user();
+	}
+
+	public function __before_call()
+	{
+		view::layout('login');
 	}
 
 	public function index()
@@ -23,7 +29,6 @@ class auth_controller extends puffin\controller\action
 
 	public function process_login()
 	{
-		$this->user = new user();
 		$user = $this->user->login( $this->post->param('email'), $this->post->param('password') );
 
 		if( !empty($user) )

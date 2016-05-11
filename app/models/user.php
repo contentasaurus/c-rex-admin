@@ -8,7 +8,9 @@ class user extends pdo
 	const FAILURE = 0;
 	const FAILURE_EMAIL_INVALID = -1;
 
+	protected $connection = 'default';
 	protected $table = 'users';
+	protected $dynamic_columns = ['additional'];
 
 	public function login( $email, $user_password )
 	{
@@ -107,41 +109,16 @@ class user extends pdo
 	{
 	}
 
-	public function refresh()
-	{
-		if( !empty($_SESSION['user']) )
-		{
-			$user = $this->read( $_SESSION['user']['id'] );
-			if( !empty($user) )
-			{
-				unset($user['password']);
-				unset( $user['additional'] );
-				$user = array_merge( $user, $this->get_additional( $user['id'] ) );
-				$_SESSION['user'] = $user;
-				return 1;
-			}
-			else
-			{
-				unset( $_SESSION['user'] );
-				return 0;
-			}
-		}
-		else
-		{
-			return -1;
-		}
-	}
-
 	################
 
-	protected function _check_role()
+	protected function _check_role( $id )
 	{
-		$success = $this->refresh();
+		$user = $this->read( $id );
 
-		if( $success > 0 )
+		if( !empty($user['role_id']) )
 		{
 			$roles = new role();
-			$role = $roles->read( $_SESSION['user']['role_id'] );
+			$role = $roles->read( $user['role_id'] );
 			return $role['access_level'];
 		}
 		else
@@ -151,23 +128,23 @@ class user extends pdo
 
 	}
 
-	public function is_owner()
+	public function is_owner( $id )
 	{
-		return $this->_check_role() == 255;
+		return $this->_check_role( $id ) == 255;
 	}
 
-	public function is_editor()
+	public function is_editor( $id )
 	{
-		return $this->_check_role() >= 128;
+		return $this->_check_role( $id ) >= 128;
 	}
 
-	public function is_author()
+	public function is_author( $id )
 	{
-		return $this->_check_role() >= 64;
+		return $this->_check_role( $id ) >= 64;
 	}
 
-	public function is_disabled()
+	public function is_disabled( $id )
 	{
-		return $this->_check_role() <= 0;
+		return $this->_check_role( $id ) <= 0;
 	}
 }

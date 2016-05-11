@@ -16,6 +16,17 @@ $app->controller('auth')
 	->get( '/auth/password-reset/', 'password_reset' )
 	->post( '/auth/password-reset/', 'process_password_reset' );
 
+$app->controller('users')
+	->any('/users/no-access/', 'no_access')
+	->get('/users', 'index')
+	->get('/users/profile/{id:i}?', 'profile')
+	->get('/users/create', 'create')
+	->post('/users/create', 'do_create')
+	->get('/users/update/{id:i}', 'update')
+	->post('/users/update/{id:i}', 'do_update')
+	->get('/users/delete/{id:i}', 'delete')
+	->post('/users/delete/{id:i}', 'do_delete');
+
 // $app->controller('admin/styleguide')
 // 	->get( '/admin/styleguide/', 'index' );
 //

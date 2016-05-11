@@ -1,12 +1,6 @@
-<div>
-	<a href="/auth/logout">Logout</a>
-</div>
+<h1><span class="icon-dashboard"></span> Dashboard</h1>
 
-<div>
-	You are logged in as:
-</div>
-
-<table>
+<table class="table table-striped table-bordered">
 	<?php foreach( $_SESSION['user'] as $k => $v ): ?>
 		<tr align="left">
 			<th><?= $k ?></th>

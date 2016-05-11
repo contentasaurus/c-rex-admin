@@ -9,12 +9,8 @@
 		<?php echo $this->CSS ?>
 		<?php echo $this->JS ?>
 	</head>
-	<body id="body">
-		<?php echo $this->partial('header') ?>
-		<?php echo $this->partial('sidenav') ?>
-		<section id="content">
-			<?php echo $this->CONTENTS ?>
-		</section>
+	<body id="body" class="login">
+		<?php echo $this->CONTENTS ?>
 		<?php echo $this->NONBLOCKING_JS ?>
 	</body>
 </html>
