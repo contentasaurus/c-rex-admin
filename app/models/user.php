@@ -32,7 +32,7 @@ class user extends pdo
 			$authenticated_record = $this->read( $record['id'] );
 			unset( $authenticated_record['password'] );
 			unset( $authenticated_record['additional'] );
-			$authenticated_record = array_merge( $authenticated_record, $this->get_additional( $record['id'] ) );
+			$authenticated_record['additional'] = json_decode( $authenticated_record['additional'], $assoc = true );
 			return $authenticated_record;
 		}
 		else
@@ -40,15 +40,6 @@ class user extends pdo
 			return $is_valid; #error codes defined in \puffin\password
 		}
 
-	}
-
-	public function get_additional( $user_id )
-	{
-		$sql = "select column_json(additional) as additional from users where id = :id";
-		$params = [ ':id' => $user_id ];
-		$additional = $this->select_one( $sql, $params );
-		$array = json_decode( $additional, $assoc = true );
-		return $array;
 	}
 
 	public function change_password( $email, $user_password, $confirm_password )

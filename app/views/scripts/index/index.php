@@ -1,26 +1,29 @@
-<h1><span class="icon-dashboard"></span> Dashboard</h1>
+<div class="col-md-8">
 
-<table class="table table-striped table-bordered">
-	<?php foreach( $_SESSION['user'] as $k => $v ): ?>
-		<tr align="left">
-			<th><?= $k ?></th>
-			<td><?= $v ?></td>
-		</tr>
-	<?php endforeach; ?>
-	<tr>
-		<th align="left">Is_Owner</th>
-		<td><?= $this->is_owner ? 'true' : 'false' ?></td>
-	</tr>
-	<tr>
-		<th align="left">Is_Editor</th>
-		<td><?= $this->is_editor ? 'true' : 'false' ?></td>
-	</tr>
-	<tr>
-		<th align="left">Is_Author</th>
-		<td><?= $this->is_author ? 'true' : 'false' ?></td>
-	</tr>
-	<tr>
-		<th align="left">Is_disabled</th>
-		<td><?= $this->is_disabled ? 'true' : 'false' ?></td>
-	</tr>
-</table>
+	<h1>Hi there.</h1>
+
+	<h3>
+		At some point content jumped the damn fence and wandered off in new
+		directions.
+	</h3>
+
+	<h3>
+		CMSes are amazing tools. But they're just tools. They don't create ideas
+		any more than a shovel, by itself, creates ditches.
+	</h3>
+
+	<h3>
+		If you want an interesting website you have to actually BE interesting. No
+		wordpress plugin can make up the the lack of depth, of substance&mdash; OF SOUL.
+	</h3>
+
+	<h3>
+		Content is king. The old institutions of management are creaking in
+		their dusty foundations. We aren't the revolution. We're the revolution
+		that comes AFTER the revolution.
+	</h3>
+
+	<h3>
+		Now, go create.
+	</h3>
+</div>

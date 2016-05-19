@@ -92,21 +92,45 @@ class users_controller extends puffin\controller\action
 
 	public function update( $id )
 	{
-
+		view::add_param( 'roles', $this->role->read() );
+		view::add_param( 'user', $this->user->read( $id ) );
 	}
 
 	public function do_update( $id )
 	{
-
+		$params = $this->put->params();
+		$this->user->update( $params['id'], $params );
 	}
 
-	public function delete( $id )
+	public function disable( $id )
 	{
-
+		view::add_param( 'user', $this->user->read( $id ) );
 	}
 
-	public function do_delete( $id )
+	public function do_disable( $id )
 	{
+		$params = $this->post->params();
+		if( $id == $params['id'] )
+		{
+			$this->user->update( $params['id'], ['is_active' => 0] );
+		}
+		url::redirect('/users');
+		exit;
+	}
 
+	public function enable( $id )
+	{
+		view::add_param( 'user', $this->user->read( $id ) );
+	}
+
+	public function do_enable( $id )
+	{
+		$params = $this->post->params();
+		if( $id == $params['id'] )
+		{
+			$this->user->update( $params['id'], ['is_active' => 1] );
+		}
+		url::redirect('/users');
+		exit;
 	}
 }

@@ -1,10 +1,12 @@
-<h1><span class="icon-people"></span> Create User</h1>
-
+<ol class="breadcrumb">
+  <li><a href="/users">Users</a></li>
+  <li class="active">Create User</li>
+</ol>
 <div class="container-fluid">
 	<div class="col-lg-10">
 		<section class="panel panel-default">
 			<header class="panel-heading">
-				Please complete the form. To go back to the previous page, hit Cancel.
+				<h3 class="panel-title">Create User</h3>
 			</header>
 			<form method="POST" action="/users/create" accept-charset="UTF-8" data-form-ajax="">
 				<div class="panel-body">
@@ -16,11 +18,6 @@
 							<option value="<?= $role['id'] ?>"><?= $role['name'] ?></option>
 							<?php endforeach; ?>
 						</select>
-					</div>
-
-					<div class="form-group">
-						<label for="photo">Photo</label>
-						<input name="photo" type="file" id="photo">
 					</div>
 
 					<div class="form-group">
@@ -38,7 +35,7 @@
 					<div class="form-group">
 						<input placeholder="Email" class="form-control required" name="email" type="text">
 					</div>
-
+					<br />
 					<div class="form-group">
 						<input placeholder="Password" class="form-control required" name="password" type="password" value="">
 					</div>
@@ -51,8 +48,8 @@
 
 				<footer class="panel-footer">
 					<div class="pull-right">
-						<a class="btn" href="/users">Cancel</a>
-						<button class="btn btn-primary" type="submit">Add</button>
+						<a class="btn btn-default" href="/users">Cancel</a>
+						<button class="btn btn-primary" type="submit">Create</button>
 					</div>
 				</footer>
 

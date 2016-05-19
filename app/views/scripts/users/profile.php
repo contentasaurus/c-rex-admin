@@ -1,6 +1,10 @@
-<h1><span class="icon-account-circle"></span> Profile</h1>
+<?php use \puffin\transformer; ?>
+<h1><span class="material-icons md-48">face</span> Profile</h1>
 
 <table class="table table-striped table-bordered">
+	<?php unset($this->user['password']) ?>
+	<?php $this->user['role'] = transformer::role2str($this->user['role_id']) ?>
+	<?php unset($this->user['role_id']) ?>
 	<?php foreach( $this->user as $k => $v ): ?>
 		<?php if( $k == 'additional' ): ?>
 			<tr align="left">
