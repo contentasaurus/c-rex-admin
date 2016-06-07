@@ -5,7 +5,7 @@
 		<li>
 			<a href="/" <?php if( controller::$controller == 'index' ): ?>class="active"<?php endif; ?>>
 				<!-- <span class="material-icons">home</span><br/>Welcome -->
-				<img class="image-thumbnail" src="/img/atl-puff.svg" width="56" />
+				<img class="image-thumbnail" src="/theme/img/atl-puff.svg" width="56" />
 			</a>
 		</li>
 		<li>

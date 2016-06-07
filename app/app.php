@@ -20,11 +20,10 @@ dsn::set('default', [
 ]);
 
 #Plugins
+plugin::register('bower');
 plugin::register('theme');
 plugin::register('forceauth');
-plugin::register('bootstrap');
 plugin::register('fonts');
-plugin::register('jquery');
 plugin::register('layout');
 
 #Routes

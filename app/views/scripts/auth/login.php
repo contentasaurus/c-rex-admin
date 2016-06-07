@@ -2,7 +2,7 @@
 
 	<div class="col-md-4 col-center">
 		<div id="logo" align="center">
-			<img src="/img/atl-puff.svg" width="150" />
+			<img src="/theme/img/atl-puff.svg" width="150" />
 		</div>
 		<div class="panel panel-default">
 			<div class="panel-heading"><span class="icon-lock"> Login</span></div>
@@ -21,7 +21,7 @@
 						message
 					</div>
 				<?php endif; ?>
-				
+
 				<form id="login-form" method="post">
 					<div class="form-group">
 						<input class="form-control" type="text" name="email" placeholder="Email Address" value="" />

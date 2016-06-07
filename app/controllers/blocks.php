@@ -4,24 +4,23 @@ use \puffin\model as model;
 use \puffin\view as view;
 use \puffin\url as url;
 
-class media_controller extends puffin\controller\action
+class blocks_controller extends puffin\controller\action
 {
 	public function __construct(){}
 
 	public function __init()
 	{
-		$this->media = new dam_media();
-		$this->tag = new dam_tag();
+		$this->block = new block();
 	}
 
 	public function index()
 	{
-		view::add_param( 'media', $this->media->read() );
+		view::add_param( 'blocks', $this->block->read() );
 	}
 
 	public function create()
 	{
-		view::add_param( 'tags', $this->tag->read() );
+		#nada soul
 	}
 
 	public function do_create()

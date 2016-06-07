@@ -1,0 +1,25 @@
+{
+  "name": "public",
+  "authors": [
+    "Joshua Byington <jbyington@paradowski.com>"
+  ],
+  "description": "",
+  "main": "",
+  "license": "MIT",
+  "homepage": "",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "ace-builds": "^1.2.3",
+    "bootstrap": "^3.3.6",
+    "chosen": "^1.5.1",
+    "handlebars": "^4.0.5",
+    "jquery-ui": "^1.11.4",
+    "medium-editor-insert-plugin": "^2.3.2"
+  }
+}

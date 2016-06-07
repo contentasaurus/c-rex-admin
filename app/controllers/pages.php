@@ -1,123 +1,116 @@
 <?php
 
-  namespace App\Http\Controllers\Admin;
+use \puffin\model as model;
+use \puffin\view as view;
+use \puffin\url as url;
 
-  use App\Models\Admin\Page;
+class pages_controller extends puffin\controller\action
+{
+	public function __construct(){}
 
-  class PagesController extends BaseController {
+	public function __before_call()
+	{
+		$this->page = new page();
+		$this->page_log = new page_log();
+		$this->page_status = new page_status();
+		$this->page_type = new page_type();
+		$this->page_history = new page_history();
+	}
 
-  	public function index() {
-  		$pages = Page::where('type', '=', 'page')->get();
-  		$total = Page::where('type', '=', 'page')->count();
+	public function index()
+	{
+		view::add_param( 'pages', $this->page->read() );
+	}
 
-  		return \View::make('admin/pages/pages/list', compact('pages', 'total'));
-  	}
+	public function create()
+	{
+		view::add_param( 'page_statuses', $this->page_status->read() );
+		view::add_param( 'page_types', $this->page_type->read() );
+	}
 
-  	public function create() {
-  		$pages = Page::where('type', '=', 'page')->get(['title', 'permalink']);
+	public function do_create()
+	{
+		$required = ['page_name','author_user_id','permalink','page_type_id','page_status_id'];
 
-  		$data['parents'] = ['' => 'Select a Parent Page'];
+		$params = $this->post->params( $unsanitized = true );
 
-  		foreach($pages as $page) {
-  			$data['parents'][$page->permalink] = $page->title;
-  		}
+		#clean the array
+		$params = array_filter( $params );
 
-      $data['users'] = $this->getUserList();
-
-  		return \View::make('admin/pages/pages/create', $data);
-  	}
-
-    public function edit($id = null) {
-  		$pages = Page::where('type', '=', 'page')->get(['title', 'permalink']);
-
-  		$data['parents'] = ['' => 'Select a Parent Page'];
-
-  		foreach($pages as $page) {
-  			$data['parents'][$page->permalink] = $page->title;
-  		}
-
-  		$data['page'] = Page::find($id);
-      $data['users'] = $this->getUserList();
-
-  		return \View::make('admin/pages/pages/edit', $data);
-  	}
-
-  	public function store() {
-  		if (\Request::ajax()) {
-
-  			unset($_POST['_token']);
-
-        	$permalink = strtolower(preg_replace(['/[^A-Za-z0-9\- ]/', '/[^A-Za-z0-9\-]/', '/-+/'], ['', '-', '-'], rtrim($_POST['title'])));
-
-        	if (!empty($_POST['parent_page'])) {
-				$permalink = $_POST['parent_page'].'/'.$permalink;
-			} else {
-				unset($_POST['parent_page']);
+		$match = true;
+		foreach( $required as $r )
+		{
+			if( !in_array($r, array_keys($params) ) )
+			{
+				$match = false;
+				break;
 			}
+		}
 
-  			$keys = array_keys($_POST);
+		if( $match )
+		{
+			$result = $this->page->create( $params );
+		}
+		else
+		{
+			#TODO remove this!
+			var_dump($match);
+			debug( $params ); exit;
+		}
 
-  			$page = new Page;
+		url::redirect('/pages');
 
-	        foreach ($keys as $key) {
-	          $page->{$key} = is_array($_POST[$key]) && is_int(key($_POST[$key])) ? array_values($_POST[$key]) : $_POST[$key];
-	        }
+	}
 
-  			$page->permalink = $permalink;
-  			$page->save();
+	public function update( $id )
+	{
+		$page = $this->page->read($id);
 
-  			return \Response::json([
-	          'id' => $page['_id'],
-	          'permalink' => $page['permalink'],
-	          'type' => 'Page',
-	          'preview' => true
-	        ]);
-  		} else {
-  			return \Redirect::route('admin.dashboard.index');
-  		}
-  	}
+		view::add_param( 'page', $page );
+		view::add_param( 'page_logs', $this->page_log->read() );
+		view::add_param( 'page_statuses', $this->page_status->read() );
+		view::add_param( 'page_history', $this->page_history->read() );
+		view::add_param( 'page_types', $this->page_type->read() );
+	}
 
-  	public function update($id = null) {
+	public function do_update( $id )
+	{
+		$params = $this->post->params( $unsanitized = true );
 
-  		if (\Request::ajax()) {
+		if( $params['id'] == $id )
+		{
+			$this->page->update( $id, $params );
+		}
+		else
+		{
+			#message about can't update
+		}
 
-  			unset($_POST['_token']);
-  			unset($_POST['_method']);
+		url::redirect('/pages');
+	}
 
-        	$permalink = strtolower(preg_replace(['/[^A-Za-z0-9\- ]/', '/[^A-Za-z0-9\-]/', '/-+/'], ['', '-', '-'], rtrim($_POST['title'])));
 
-        	if (!empty($_POST['parent_page'])) {
-				$permalink = $_POST['parent_page'].'/'.$permalink;
-			} else {
-				unset($_POST['parent_page']);
-			}
+	public function delete( $id )
+	{
+		$page = $this->page->read($id);
 
-  			$keys = array_keys($_POST);
+		view::add_param( 'page', $page );
+	}
 
-  			$page = Page::find($id);
+	public function do_delete( $id )
+	{
+		$params = $this->post->params();
 
-	        foreach ($keys as $key) {
-	          $page->{$key} = is_array($_POST[$key]) && is_int(key($_POST[$key])) ? array_values($_POST[$key]) : $_POST[$key];
-	        }
+		if( $params['id'] == $id )
+		{
+			$this->page->delete( $id, $params );
+		}
+		else
+		{
+			#message about can't delete
+		}
 
-	        $page->permalink = $permalink;
-			$page->save();
+		url::redirect('/pages');
+	}
 
-	        return \Response::json([
-	          'id' => $page['_id'],
-	          'permalink' => $page['permalink'],
-	          'type' => 'Page',
-	          'preview' => true
-	        ]);
-
-  		} else {
-  			return \Redirect::route('admin.dashboard.index');
-  		}
-
-  	}
-
-  	public function destroy($id = null) {
-  		Page::destroy($id);
-  	}
-
-  }
+}

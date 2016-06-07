@@ -31,10 +31,10 @@ require VENDOR_PATH . '/autoload.php';
 
 ############################################
 
-define('DB_NAME', 'MyDB');
-define('DB_USER', 'MyUser');
-define('DB_PASSWORD', 'MyPassword');
-define('DB_ADDRESS', '127.0.0.1');
+define('DB_NAME', 'atlantic');
+define('DB_USER', 'root');
+define('DB_PASSWORD', '*T3mp3st!');
+define('DB_ADDRESS', '45.55.40.232');
 
 ############################################
 
