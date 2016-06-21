@@ -1,23 +1,22 @@
 <ol class="breadcrumb">
   <li><a href="/media">Media</a></li>
-  <li class="active">Add Image</li>
+  <li class="active">Add Image(s)</li>
 </ol>
 <div class="container-fluid">
 	<div class="col-lg-10">
-		<form method="POST" accept-charset="UTF-8" data-form-ajax="">
+		<form method="POST" accept-charset="UTF-8" enctype="multipart/form-data">
 			<section class="panel panel-default">
 				<header class="panel-heading">
 					<h3 class="panel-title">Upload Image(s)</h3>
 				</header>
-				<form method="POST" accept-charset="UTF-8" data-form-ajax="">
-					<div class="panel-body">
-						<div class="form-group">
-							<div class="input-group col-xs-12">
-								<label>Select File(s)</label>
-								<input multiple class="form-control required" name="files[]" id="files" type="file" />
-							</div>
+				<div class="panel-body">
+					<div class="form-group">
+						<div class="input-group col-xs-12">
+							<label>Select File(s)</label>
+							<input multiple class="form-control required" name="files[]" id="files" type="file" />
 						</div>
 					</div>
+				</div>
 			</section>
 
 			<section class="panel panel-default">
@@ -36,7 +35,7 @@
 						<?php for( $i=0; $i<3;$i++ ): ?>
 							<div class="form-group">
 								<div class="input-group">
-									<input type="text" class="form-control" placeholder="http://example.com/my-file.png" name="files[]">
+									<input type="text" class="form-control" placeholder="http://example.com/my-file.png" name="links[]">
 									<span class="input-group-btn">
 										<button class="btn btn-danger remove_uri" type="button"><i class="fa fa-times" aria-hidden="true"></i></button>
 									</span>
@@ -82,7 +81,7 @@
 		$('#add_uri').on("click",function(){
 			let template = '<div class="form-group">'
 				+ '<div class="input-group">'
-				+	'<input type="text" class="form-control" placeholder="http://example.com/my-file.png" name="files[]">'
+				+	'<input type="text" class="form-control" placeholder="http://example.com/my-file.png" name="links[]">'
 				+	'<span class="input-group-btn"><button class="btn btn-danger remove_uri" type="button"><i class="fa fa-times" aria-hidden="true"></i></button></span>'
 				+ '</div>'
 			+ '</div>';

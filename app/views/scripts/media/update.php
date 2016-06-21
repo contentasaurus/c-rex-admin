@@ -1,28 +1,69 @@
 <ol class="breadcrumb">
-  <li><a href="/blocks">Blocks</a></li>
-  <li class="active">Update Block</li>
+  <li><a href="/media">Media</a></li>
+  <li class="active">Update Image</li>
 </ol>
 <div class="container-fluid">
 	<div class="col-lg-10">
 		<section class="panel panel-default">
 			<header class="panel-heading">
-				<h3 class="panel-title">Update Block</h3>
+				<h3 class="panel-title">Update Image</h3>
 			</header>
 			<form method="POST" accept-charset="UTF-8" data-form-ajax="">
 				<div class="panel-body">
 
-					<input name="id" type="hidden" value="<?= $this->block['id'] ?>">
+					<img class="thumbnail" src="<?= $this->media['thumbnail_path'] ?>" >
+					<table class="table table-bordered table-striped">
+						<tbody>
+							<tr>
+								<th>ID</th>
+								<td><?= $this->media['id'] ?></td>
+							</tr>
+							<tr>
+								<th>MIME Type</th>
+								<td><?= $this->media['mimetype'] ?></td>
+							</tr>
+							<tr>
+								<th>Remote URI</th>
+								<td><?= $this->media['remote_uri'] ?></td>
+							</tr>
+							<tr>
+								<th>Local Path</th>
+								<td><?= $this->media['local_path'] ?></td>
+							</tr>
+							<tr>
+								<th>Thumbnail Path</th>
+								<td><?= $this->media['thumbnail_path'] ?></td>
+							</tr>
+							<tr>
+								<th>File Size</th>
+								<td><?= $this->media['size'] ?></td>
+							</tr>
+							<tr>
+								<th>Height</th>
+								<td><?= $this->media['height'] ?></td>
+							</tr>
+							<tr>
+								<th>Width</th>
+								<td><?= $this->media['width'] ?></td>
+							</tr>
+							<tr>
+								<th>Views</th>
+								<td><?= $this->media['views'] ?></td>
+							</tr>
+						</tbody>
+					</table>
+
+					<input name="media_id" type="hidden" value="<?= $this->media['id'] ?>">
 
 					<div class="form-group">
-						<input placeholder="Name" class="form-control required" name="name" type="text" value="<?= $this->block['name'] ?>">
+						<label>Tag(s)</label>
+						<select multiple class="form-control required chosen-select" name="tags[]">
+							<?php foreach( $this->tags as $tag ): ?>
+								<option <?php if(in_array( $tag['id'], $this->media_tags )): ?>selected="selected"<?php endif; ?> value="<?= $tag['id'] ?>"><?= $tag['tagname'] ?></option>
+							<?php endforeach; ?>
+						<select>
 					</div>
-					<div class="form-group">
-						<textarea placeholder="Description" class="form-control" name="description"><?= $this->block['description'] ?></textarea>
-					</div>
-					<div class="form-group">
-						<div id="editor" class="form-control"><?= htmlentities($this->block['content']) ?></div>
-						<input type="hidden" name="content" id="content">
-					</div>
+
 
 				</div>
 
@@ -39,4 +80,9 @@
 	</div>
 </div>
 
-<?php echo $this->partial('blocks/ace') ?>
+
+<script>
+	$(function(){
+		$(".chosen-select").chosen();
+	});
+</script>

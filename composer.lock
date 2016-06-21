@@ -4,8 +4,8 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#composer-lock-the-lock-file",
         "This file is @generated automatically"
     ],
-    "hash": "32f124a33a67475c5be1111baf524198",
-    "content-hash": "d6cfdaa174f2d2c9f785539935724293",
+    "hash": "6046ebf3e7b7d70ae81060a22450f5d5",
+    "content-hash": "d37641545fba4448e549fd3c5480e459",
     "packages": [
         {
             "name": "mustache/mustache",
@@ -52,6 +52,66 @@
                 "templating"
             ],
             "time": "2016-02-27 19:22:46"
+        },
+        {
+            "name": "phpmailer/phpmailer",
+            "version": "v5.2.15",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/PHPMailer/PHPMailer.git",
+                "reference": "d0186171b28af4f06ac2ad8a84a8f3d6cbc3ba6c"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/PHPMailer/PHPMailer/zipball/d0186171b28af4f06ac2ad8a84a8f3d6cbc3ba6c",
+                "reference": "d0186171b28af4f06ac2ad8a84a8f3d6cbc3ba6c",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=5.0.0"
+            },
+            "require-dev": {
+                "phpdocumentor/phpdocumentor": "*",
+                "phpunit/phpunit": "4.7.*"
+            },
+            "suggest": {
+                "league/oauth2-google": "Needed for Google XOAUTH2 authentication"
+            },
+            "type": "library",
+            "autoload": {
+                "classmap": [
+                    "class.phpmailer.php",
+                    "class.phpmaileroauth.php",
+                    "class.phpmaileroauthgoogle.php",
+                    "class.smtp.php",
+                    "class.pop3.php",
+                    "extras/EasyPeasyICS.php",
+                    "extras/ntlm_sasl_client.php"
+                ]
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "LGPL-2.1"
+            ],
+            "authors": [
+                {
+                    "name": "Jim Jagielski",
+                    "email": "jimjag@gmail.com"
+                },
+                {
+                    "name": "Marcus Bointon",
+                    "email": "phpmailer@synchromedia.co.uk"
+                },
+                {
+                    "name": "Andy Prevost",
+                    "email": "codeworxtech@users.sourceforge.net"
+                },
+                {
+                    "name": "Brent R. Matzelle"
+                }
+            ],
+            "description": "PHPMailer is a full-featured email creation and transfer class for PHP",
+            "time": "2016-05-10 18:39:36"
         },
         {
             "name": "phroute/phroute",
@@ -122,16 +182,16 @@
         },
         {
             "name": "pinguinio/puffin-framework",
-            "version": "1.0.0-beta11",
+            "version": "1.0.0-beta13",
             "source": {
                 "type": "git",
                 "url": "https://bitbucket.org/pinguinio/puffin-framework.git",
-                "reference": "6ff78dc4c4a006783ff640e8b3940668e7af6082"
+                "reference": "5500f4d723c11222a13703b4d5085aab48b13659"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://bitbucket.org/pinguinio/puffin-framework/get/6ff78dc4c4a006783ff640e8b3940668e7af6082.zip",
-                "reference": "6ff78dc4c4a006783ff640e8b3940668e7af6082",
+                "url": "https://bitbucket.org/pinguinio/puffin-framework/get/5500f4d723c11222a13703b4d5085aab48b13659.zip",
+                "reference": "5500f4d723c11222a13703b4d5085aab48b13659",
                 "shasum": ""
             },
             "require": {
@@ -149,7 +209,7 @@
                 "MIT"
             ],
             "description": "A nice MVC framework utilizing mustache",
-            "time": "2016-05-06 03:52:24"
+            "time": "2016-05-11 05:56:11"
         }
     ],
     "packages-dev": [],

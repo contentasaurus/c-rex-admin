@@ -531,7 +531,7 @@ body {
   #content .remove {
     cursor: pointer; }
 
-.container-fluid {
+/*.container-fluid {
   padding: 0;
   margin-top: 10px;
   clear: both; }
@@ -970,7 +970,7 @@ body {
         border: 1px solid #fff;
         border-radius: 50%;
         color: #fff;
-        /* Better Font Rendering =========== */
+        /* Better Font Rendering =========== *
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale; }
       .productions #media-gallery .media-field .video:after {
@@ -1049,7 +1049,7 @@ body {
         border: 1px solid #fff;
         border-radius: 50%;
         color: #fff;
-        /* Better Font Rendering =========== */
+        /* Better Font Rendering =========== *
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale; }
       .events #media-gallery .media-field .video:after {
@@ -1059,6 +1059,10 @@ body {
         font-weight: bold;
         position: absolute;
         top: 15px;
-        left: 45px; }
+        left: 45px; }*/
 
 /*# sourceMappingURL=admin.css.map */
+
+/*.panel-heading,
+.panel-footer {
+  overflow: auto; }*/

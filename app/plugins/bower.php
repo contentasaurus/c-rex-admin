@@ -13,6 +13,9 @@ class bower extends  puffin\controller\plugin
 		view::add_js("$BOWERDIR/jquery-ui/jquery-ui.min.js", $nonblocking = false);
 		view::add_js("$BOWERDIR/jquery-sortable/source/js/jquery-sortable-min.js", $nonblocking = true);
 
+		#clipboard
+		view::add_js("$BOWERDIR/clipboard/dist/clipboard.min.js", $nonblocking = true);
+
 		#chosen
 		view::add_js("$BOWERDIR/chosen/chosen.jquery.js", $nonblocking = false);
 		view::add_css("$BOWERDIR/chosen/chosen.css");

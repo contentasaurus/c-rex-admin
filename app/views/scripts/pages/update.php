@@ -32,11 +32,13 @@
 
 			<section id="section_page_content" class="panel panel-primary">
 				<header class="panel-heading">
-					<div class="pull-left">
-						<h3 class="panel-title">Page Content</h3>
-					</div>
-					<div class="pull-right">
-						<a id="content_fullscreen_toggle" href="#" class="panel-title"><span class="material-icons">fullscreen</span></a>
+					<div class="row">
+						<div class="col-sm-2 pull-left">
+							<h3 class="panel-title">Page Content</h3>
+						</div>
+						<div class="col-sm-2 pull-right">
+							<a id="content_fullscreen_toggle" href="#" class="panel-title"><span class="material-icons">fullscreen</span></a>
+						</div>
 					</div>
 				</header>
 				<div class="panel-body">

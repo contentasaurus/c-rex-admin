@@ -20,6 +20,7 @@
     "chosen": "^1.5.1",
     "handlebars": "^4.0.5",
     "jquery-ui": "^1.11.4",
-    "medium-editor-insert-plugin": "^2.3.2"
+    "medium-editor-insert-plugin": "^2.3.2",
+    "clipboard": "^1.5.12"
   }
 }

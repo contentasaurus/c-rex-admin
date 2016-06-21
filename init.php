@@ -18,8 +18,12 @@ define('PARTIAL_PATH', VIEW_PATH.'/partials');
 define('LAYOUT_PATH', VIEW_PATH.'/layouts');
 define('SCRIPT_PATH', VIEW_PATH.'/scripts');
 define('PUBLIC_PATH', SERVER_ROOT.'/public');
+define('UPLOAD_PATH', PUBLIC_PATH.'/uploads');
 define('VENDOR_PATH', SERVER_ROOT.'/vendor');
 define('SYSTEM_PATH', VENDOR_PATH.'/puffin');
+
+define('DAM_UPLOADS_URI', '/uploads/dam');
+define('DAM_THUMBNAIL_URI', '/uploads/dam/thumbnails');
 
 define('MUSTACHE_EXT', '.html');
 
