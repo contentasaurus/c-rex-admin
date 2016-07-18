@@ -14,16 +14,37 @@
 			</a>
 		</li>
 		<li>
-			<a href="/blocks" <?php if( controller::$controller == 'blocks' ): ?>class="active"<?php endif; ?>>
-				<span class="material-icons">view_quilt</span><br/>Blocks
+			<a <?php if( in_array(controller::$controller, ['components','data','articles','layouts']) ): ?>class="active"<?php endif; ?>>
+				<span class="material-icons">view_quilt</span><br/>Content
 			</a>
+			<ul>
+				<li>
+					<a href="/articles" <?php if( controller::$controller == 'articles' ): ?>class="list-group-item-info"<?php endif; ?>>
+						Articles
+					</a>
+				</li>
+				<li>
+					<a href="/components" <?php if( controller::$controller == 'components' ): ?>class="list-group-item-info"<?php endif; ?>>
+						Components
+					</a>
+				</li>
+				<li>
+					<a href="/data" <?php if( controller::$controller == 'data' ): ?>class="list-group-item-info"<?php endif; ?>>
+						Data
+					</a>
+				</li>
+				<li>
+					<a href="/layouts" <?php if( controller::$controller == 'layouts' ): ?>class="list-group-item-info"<?php endif; ?>>
+						Layouts
+					</a>
+				</li>
+				<li>
+					<a href="/scripts" <?php if( controller::$controller == 'scripts' ): ?>class="list-group-item-info"<?php endif; ?>>
+						Scripts
+					</a>
+				</li>
+			</ul>
 		</li>
-		<li>
-			<a href="/collections" <?php if( controller::$controller == 'collections' ): ?>class="active"<?php endif; ?>>
-				<span class="material-icons">view_list</span><br/>Collections
-			</a>
-		</li>
-
 		<li>
 			<a href="/pages" <?php if( controller::$controller == 'pages' ): ?>class="active"<?php endif; ?>>
 				<span class="material-icons">pages</span><br/>Pages

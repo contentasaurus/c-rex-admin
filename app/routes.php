@@ -2,11 +2,14 @@
 
 namespace puffin;
 
-include APP_PATH. '/routes/index.php';
-include APP_PATH. '/routes/auth.php';
-include APP_PATH. '/routes/collections.php';
-include APP_PATH. '/routes/blocks.php';
-include APP_PATH. '/routes/pages.php';
-include APP_PATH. '/routes/users.php';
-include APP_PATH. '/routes/media.php';
-include APP_PATH. '/routes/img.php';
+use \puffin\directory as directory;
+
+
+$___routes = new directory();
+
+$___includes = $___routes->rscan( APP_PATH . '/routes' );
+
+foreach($___includes as $include)
+{
+	include $include['full_path'];
+}

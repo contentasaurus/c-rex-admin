@@ -14,9 +14,8 @@
 				<tr>
 					<th>Action</th>
 					<th>Name</th>
-					<th>Type</th>
-					<th>Status</th>
 					<th>Permalink</th>
+					<th>Status</th>
 					<th>Create Date</th>
 					<th>Last Updated</th>
 				</tr>
@@ -27,11 +26,11 @@
 						<td>
 							<a href="/pages/update/<?= $page['id'] ?>" class="btn btn-sm"><span class="material-icons md-18">create</span></a>
 							<a href="/pages/delete/<?= $page['id'] ?>" class="btn btn-sm"><span class="material-icons md-18 danger">cancel</span></a>
+							<a href="/pages/copy/<?= $page['id'] ?>" class="btn btn-sm"><span class="material-icons md-18">content_copy</span></a>
 						</td>
 						<td><?= $page['page_name'] ?></td>
-						<td><?= $page['page_type_id'] ?></td>
-						<td><?= $page['page_status_id'] ?></td>
 						<td><?= $page['permalink'] ?></td>
+						<td><?= $page['page_status_id'] ?></td>
 						<td><?= $page['created_at'] ?></td>
 						<td><?= ($page['updated_at'] != '0000-00-00 00:00:00') ? $page['updated_at'] : '--' ?></td>
 					</tr>

@@ -14,14 +14,26 @@
 					<input name="author_user_id" type="hidden" value="<?= $_SESSION['user']['id'] ?>">
 
 					<div class="form-group">
-						<select class="form-control required" name="page_type_id">
-							<?php foreach( $this->page_types as $page_type ): ?>
-								<option value="<?= $page_type['id'] ?>"><?= $page_type['name'] ?></option>
+						<label>Page Title</label>
+						<input placeholder="Name" class="input-lg form-control required" name="page_name" type="text">
+					</div>
+
+					<div class="form-group">
+						<label>Permalink</label>
+						<input placeholder="/my-permalink" class="form-control required" name="permalink" type="text">
+					</div>
+
+					<div class="form-group">
+						<label>Page Layout</label>
+						<select class="form-control required" name="page_layout_id">
+							<?php foreach( $this->page_layouts as $layout ): ?>
+								<option value="<?= $layout['id'] ?>"><?= $layout['name'] ?></option>
 							<?php endforeach; ?>
 						</select>
 					</div>
 
 					<div class="form-group">
+						<label>Page Status</label>
 						<select class="form-control required" name="page_status_id">
 							<?php foreach( $this->page_statuses as $page_status ): ?>
 								<option value="<?= $page_status['id'] ?>"><?= $page_status['name'] ?></option>
@@ -29,26 +41,11 @@
 						</select>
 					</div>
 
-					<div class="form-group">
-						<input placeholder="Name" class="form-control required" name="page_name" type="text">
-					</div>
-
-					<div class="form-group">
-						<input placeholder="/my-permalink" class="form-control required" name="permalink" type="text">
-					</div>
-
-					<div class="form-group">
-						<div id="editor" class="form-control"></div>
-						<input type="hidden" name="page_content" id="page_content">
-					</div>
-
 				</div>
 
 				<footer class="panel-footer">
-					<div class="pull-right">
-						<a class="btn btn-default" href="/pages">Cancel</a>
-						<button class="btn btn-primary" type="submit">Create</button>
-					</div>
+					<button class="btn btn-primary" type="submit">Next</button>
+					<a class="btn btn-default" href="/pages">Cancel</a>
 				</footer>
 
 			</form>
