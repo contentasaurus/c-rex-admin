@@ -9,7 +9,7 @@
 		editor.setShowPrintMargin(false);
 
 		$('form').on('submit', function(ev){
-			$('input#data').val(editor.getValue());
+			$('input#content').val(editor.getValue());
 		});
 	});
 

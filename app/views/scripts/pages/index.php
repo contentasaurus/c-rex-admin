@@ -1,41 +1,57 @@
 <?php use puffin\transformer; ?>
 
-<h1><a href="/pages/create" class="btn btn-circle btn-add"><span class="material-icons">add_circle</span> Create Page</a></h1>
+<ol class="breadcrumb">
+	<li class="breadcrumb-item active"><a href="/pages">Pages</a></li>
+</ol>
 
-<div class="container-fluid">
-
-	<section class="panel panel-default">
-		<header class="panel-heading">
-			<h3 class="panel-title"><?= count($this->pages) ?> Page(s)</h3>
-		</header>
-
+<div class="card">
+	<div class="card-header">
+		<ul class="nav card-header-pills">
+			<li class="nav-item">
+				<a class="nav-item pull-xs-left btn btn-link disabled"><?= count($this->pages) ?> Page(s)</a>
+				<a class="nav-item pull-xs-right btn btn-secondary" href="/pages/create"><i class="fa fa-plus"></i> Add Page</a>
+			</li>
+		</ul>
+	</div>
+	<div class="table-responsive">
 		<table class="table table-striped table-hover">
 			<thead>
 				<tr>
-					<th>Action</th>
+					<th width="100"><br /></th>
 					<th>Name</th>
 					<th>Permalink</th>
 					<th>Status</th>
 					<th>Create Date</th>
 					<th>Last Updated</th>
+					<th width="50"><br /></th>
 				</tr>
 			</thead>
 			<tbody>
 				<?php foreach( $this->pages as $page ): ?>
 					<tr>
 						<td>
-							<a href="/pages/update/<?= $page['id'] ?>" class="btn btn-sm"><span class="material-icons md-18">create</span></a>
-							<a href="/pages/delete/<?= $page['id'] ?>" class="btn btn-sm"><span class="material-icons md-18 danger">cancel</span></a>
-							<a href="/pages/copy/<?= $page['id'] ?>" class="btn btn-sm"><span class="material-icons md-18">content_copy</span></a>
+							<div class="btn-group" role="group" aria-label="Basic example">
+								<a href="/pages/update/<?= $page['id'] ?>" class="btn btn-sm btn-secondary">
+									<i class="fa fa-pencil"></i>
+								</a>
+								<a href="/pages/copy/<?= $page['id'] ?>" class="btn btn-sm btn-secondary">
+									<i class="fa fa-copy"></i>
+								</a>
+							</div>
 						</td>
 						<td><?= $page['page_name'] ?></td>
 						<td><?= $page['permalink'] ?></td>
-						<td><?= $page['page_status_id'] ?></td>
+						<td><?= $page['page_status'] ?></td>
 						<td><?= $page['created_at'] ?></td>
 						<td><?= ($page['updated_at'] != '0000-00-00 00:00:00') ? $page['updated_at'] : '--' ?></td>
+						<td>
+							<a href="/pages/delete/<?= $page['id'] ?>" class="btn btn-sm btn-danger">
+								<i class="fa fa-times"></i>
+							</a>
+						</td>
 					</tr>
 				<?php endforeach; ?>
 			</tbody>
 		</table>
-	</section>
+	</div>
 </div>

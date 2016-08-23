@@ -10,8 +10,11 @@ class pages_controller extends puffin\controller\action
 
 	public function __before_call()
 	{
+		$this->datatype = new datatype();
+
 		$this->page = new page();
 		$this->page_log = new page_log();
+		$this->page_data = new page_data();
 		$this->page_status = new page_status();
 		$this->page_history = new page_history();
 		$this->page_layouts = new page_layout();
@@ -68,9 +71,6 @@ class pages_controller extends puffin\controller\action
 		$page = $this->page->read($id);
 
 		view::add_param( 'page', $page );
-		view::add_param( 'page_logs', $this->page_log->read() );
-		view::add_param( 'page_statuses', $this->page_status->read() );
-		view::add_param( 'page_history', $this->page_history->read_by_page_id($id) );
 		view::add_param( 'page_layouts', $this->page_layouts->read() );
 	}
 
@@ -97,6 +97,133 @@ class pages_controller extends puffin\controller\action
 
 		url::redirect('/pages');
 	}
+
+	public function update_status( $id )
+	{
+		$page = $this->page->read($id);
+
+		view::add_param( 'page', $page );
+		view::add_param( 'page_logs', $this->page_log->read_by_page_id($id) );
+		view::add_param( 'page_statuses', $this->page_status->read() );
+	}
+
+	public function do_update_status( $id )
+	{
+		$params = $this->post->params();
+
+		$orignal_record = $this->page->read($id);
+
+		#page status history
+		$record = [
+			'page_id' => $id,
+			'prev_page_status_id' => $orignal_record['page_status_id'],
+			'new_page_status_id' => $params['page_status_id'],
+			'user_id' => $_SESSION['user']['id'],
+			'comment' => $params['comment']
+		];
+
+		$this->page_log->create($record);
+
+		$updates = [
+			'page_status_id' => $params['page_status_id']
+		];
+
+		$this->page->update( $id, $updates );
+
+		url::redirect("/pages/update/$id/status");
+	}
+
+	public function update_history( $id )
+	{
+		$page = $this->page->read($id);
+
+		view::add_param( 'page', $page );
+		view::add_param( 'page_history', $this->page_history->read_by_page_id($id) );
+	}
+
+
+	public function update_data( $id )
+	{
+		$page = $this->page->read($id);
+
+		view::add_param( 'page', $page );
+		view::add_param( 'datatypes', $this->datatype->read() );
+		view::add_param( 'page_data', $this->page_data->read_by_page_id( $id ) );
+	}
+
+	public function do_update_data( $id )
+	{
+		$params = $this->post->params( $unsanitized = true );
+
+		$result = $this->page_data->create( $params );
+
+		url::redirect($_SERVER['HTTP_REFERER']);
+	}
+
+
+	public function update_data_update( $id, $data_id )
+	{
+		$page = $this->page->read( $id );
+
+		$page_data = $this->page_data->read( $data_id );
+		$page_data['content'] = json_decode($page_data['content'], $assoc = true);
+
+		$datatype = $this->datatype->read( $page_data['datatype_id'] );
+		$datatype['content'] = json_decode($datatype['content'], $assoc = true);
+
+		view::add_param( 'page', $page);
+		view::add_param( 'page_data', $page_data );
+		view::add_param( 'datatype', $datatype );
+	}
+
+	public function do_update_data_update( $id, $data_id )
+	{
+		$params = $this->post->params( $unsanitized = true );
+
+		$datatype = $this->datatype->read( $params['datatype_id'] );
+		$datatype['content'] = json_decode($datatype['content'], $assoc = true);
+
+		$repeaters = [];
+		foreach( $datatype['content'] as $field => $attributes )
+		{
+			if( $attributes['type'] == 'repeater' )
+			{
+				$repeaters []= $field;
+			}
+		}
+
+		unset($params['datatype_id']);
+
+		#clean up the repeaters' mess
+		$new_content = [];
+		foreach( $params['content'] as $key => $values )
+		{
+			if( in_array($key, $repeaters) )
+			{
+				foreach( $params['content'][$key] as $k => $value )
+				{
+					foreach( $value as $index => $v )
+					{
+						$new_content[$key][$index][$k] = $v;
+					}
+				}
+			}
+			else
+			{
+				$new_content[$key] = $values;
+			}
+		}
+
+		$params['content'] = $new_content;
+
+		$params['content'] = json_encode($params['content']);
+
+		$result = $this->page_data->update( $data_id, $params );
+
+		url::redirect($_SERVER['HTTP_REFERER']);
+	}
+
+
 
 
 	public function delete( $id )

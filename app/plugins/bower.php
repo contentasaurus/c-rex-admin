@@ -23,6 +23,10 @@ class bower extends  puffin\controller\plugin
 		#handlebars
 		view::add_js("$BOWERDIR/handlebars/handlebars.min.js", $nonblocking = false);
 
+		#tether
+		view::add_css("$BOWERDIR/tether/dist/css/tether.min.css");
+		view::add_js("$BOWERDIR/tether/dist/js/tether.min.js", $nonblocking = true);
+
 		#bootstrap
 		view::add_css("$BOWERDIR/bootstrap/dist/css/bootstrap.min.css");
 		view::add_js("$BOWERDIR/bootstrap/dist/js/bootstrap.min.js", $nonblocking = true);

@@ -1,46 +1,69 @@
 <?php use puffin\transformer; ?>
 
-<h1><a href="/users/create" class="btn btn-circle btn-add"><span class="material-icons">add_circle</span> Create User</a></h1>
+<ol class="breadcrumb">
+	<li class="breadcrumb-item active"><a href="/users">Users</a></li>
+</ol>
 
-<div class="container-fluid">
-
-	<section class="panel panel-default">
-		<header class="panel-heading">
-			<h3 class="panel-title"><?= count($this->users) ?> User(s)</h3>
-		</header>
-
+<div class="card">
+	<div class="card-header">
+		<ul class="nav card-header-pills">
+			<li class="nav-item">
+				<a class="nav-item pull-xs-left btn btn-link disabled"><?= count($this->users) ?> users(s)</a>
+				<a class="nav-item pull-xs-right btn btn-secondary" href="/users/create"><i class="fa fa-plus"></i> Add User</a>
+			</li>
+		</ul>
+	</div>
+	<div class="table-responsive">
 		<table class="table table-striped table-hover">
 			<thead>
 				<tr>
-					<th>Action</th>
+					<th width="100"><br /></th>
 					<th>Name</th>
 					<th>Role</th>
 					<th>Email</th>
 					<th>Create Date</th>
 					<th>Last Updated</th>
+					<th width="50"><br /></th>
 				</tr>
 			</thead>
 			<tbody>
 				<?php foreach( $this->users as $user ): ?>
 					<tr <?php if( !$user['is_active'] ): ?> class="text-muted" <?php endif; ?>>
 						<td>
-							<a href="/users/update/<?= $user['id'] ?>" class="btn btn-sm"><span class="material-icons md-18">create</span></a>
-							<?php if( $user['id'] != $_SESSION['user']['id'] ): ?>
-								<?php if( $user['is_active'] ): ?>
-									<a href="/users/disable/<?= $user['id'] ?>" class="btn btn-sm"><span class="material-icons md-18 danger">cancel</span></a>
-								<?php else: ?>
-									<a href="/users/enable/<?= $user['id'] ?>" class="btn btn-sm"><span class="material-icons md-18 success">highlight_off</span></a>
-								<?php endif; ?>
-							<?php endif; ?>
+							<div class="btn-group">
+								<a href="/users/update/<?= $user['id'] ?>" class="btn btn-sm btn-secondary">
+									<i class="fa fa-pencil"></i>
+								</a>
+								<a href="/users/reset/<?= $user['id'] ?>" class="btn btn-sm btn-secondary">
+									<i class="fa fa-key"></i>
+								</a>
+							</div>
 						</td>
 						<td><?= $user['first_name'] ?> <?= $user['last_name'] ?></td>
 						<td><?= transformer::role2str($user['role_id']) ?></td>
 						<td><?= $user['email'] ?></td>
 						<td><?= $user['created_at'] ?></td>
 						<td><?= ($user['updated_at'] != '0000-00-00 00:00:00') ? $user['updated_at'] : '--' ?></td>
+						<td>
+							<?php if( $user['id'] != $_SESSION['user']['id'] ): ?>
+								<?php if( $user['is_active'] ): ?>
+									<a href="/users/disable/<?= $user['id'] ?>" class="btn btn-sm btn-success">
+										On
+									</a>
+								<?php else: ?>
+									<a href="/users/enable/<?= $user['id'] ?>" class="btn btn-sm btn-danger">
+										Off
+									</a>
+								<?php endif; ?>
+							<?php else: ?>
+								<a class="btn btn-sm btn-info disable">
+									You
+								</a>
+							<?php endif; ?>
+						</td>
 					</tr>
 				<?php endforeach; ?>
 			</tbody>
 		</table>
-	</section>
+	</div>
 </div>

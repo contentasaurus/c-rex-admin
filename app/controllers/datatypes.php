@@ -4,18 +4,18 @@ use \puffin\model as model;
 use \puffin\view as view;
 use \puffin\url as url;
 
-class data_controller extends puffin\controller\action
+class datatypes_controller extends puffin\controller\action
 {
 	public function __construct(){}
 
 	public function __init()
 	{
-		$this->data = new data();
+		$this->datatype = new datatype();
 	}
 
 	public function index()
 	{
-		view::add_param( 'data', $this->data->read() );
+		view::add_param( 'datatypes', $this->datatype->read() );
 	}
 
 	public function create()
@@ -44,7 +44,7 @@ class data_controller extends puffin\controller\action
 
 		if( $match )
 		{
-			$result = $this->data->create( $params );
+			$result = $this->datatype->create( $params );
 		}
 		else
 		{
@@ -53,15 +53,15 @@ class data_controller extends puffin\controller\action
 			debug( $params ); exit;
 		}
 
-		url::redirect("/data/update/$result");
+		url::redirect("/datatypes/update/$result");
 
 	}
 
 	public function update( $id )
 	{
-		$data = $this->data->read($id);
+		$datatype = $this->datatype->read($id);
 
-		view::add_param( 'data', $data );
+		view::add_param( 'datatype', $datatype );
 	}
 
 	public function do_update( $id )
@@ -70,21 +70,21 @@ class data_controller extends puffin\controller\action
 
 		if( $params['id'] == $id )
 		{
-			$this->data->update( $id, $params );
+			$this->datatype->update( $id, $params );
 		}
 		else
 		{
 			#message about can't update
 		}
 
-		url::redirect('/data');
+		url::redirect($_SERVER['HTTP_REFERER']);
 	}
 
 
 	public function delete( $id )
 	{
-		$data = $this->data->read($id);
-		view::add_param( 'data', $data );
+		$datatype = $this->datatype->read($id);
+		view::add_param( 'datatype', $datatype );
 	}
 
 	public function do_delete( $id )
@@ -93,13 +93,13 @@ class data_controller extends puffin\controller\action
 
 		if( $params['id'] == $id )
 		{
-			$this->data->delete( $id, $params );
+			$this->datatype->delete( $id, $params );
 		}
 		else
 		{
 			#message about can't delete
 		}
 
-		url::redirect('/data');
+		url::redirect('/datatypes');
 	}
 }

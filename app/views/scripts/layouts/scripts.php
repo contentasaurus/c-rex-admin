@@ -4,75 +4,72 @@
 ?>
 
 <ol class="breadcrumb">
-	<li><a href="/layouts">Layouts</a></li>
-	<li class="active">Update Layout</li>
+	<li class="breadcrumb-item"><a href="/layouts">Layouts</a></li>
+	<li  class="breadcrumb-item active">Update Layout</li>
 </ol>
 
-<div class="container-fluid">
-	<div class="col-lg-10">
-
-		<ul class="nav nav-tabs">
-			<li role="presentation"><a href="/layouts/update/<?= $this->layout['id'] ?>">Content</a></li>
-			<li role="presentation" class="active"><a href="#">Scripts</a></li>
+<div class="card">
+	<div class="card-header">
+		<ul class="nav nav-tabs card-header-tabs pull-xs-left">
+			<li class="nav-item">
+				<a class="nav-link" href="/layouts/update/<?= $this->layout['id'] ?>">Contents</a>
+			</li>
+			<li class="nav-item">
+				<a class="nav-link active" href="/layouts/update/<?= $this->layout['id'] ?>/scripts">Scripts</a>
+			</li>
 		</ul>
-		<br />
-		<!-- Tab panes -->
-		<form method="POST" accept-charset="UTF-8" data-form-ajax="" class="form-inline">
+	</div>
+	<div class="card-block">
+		<form method="POST" accept-charset="UTF-8" data-form-ajax="">
 			<input type="hidden" name="page_layout_id" value="<?= $this->layout['id'] ?>">
 			<input type="hidden" name="action" value="script_add">
 
-			<div class="panel panel-default">
-				<div class="panel-body">
-					<label for="add_script_select">Script(s)</label>
-					<div class="form-group">
-						<select id="add_script_select" name="page_script_ids[]" multiple="multiple" class="form-control">
-							<?php foreach($this->scripts as $group => $scripts): ?>
-								<optgroup label="<?= $group ?>">
-									<?php foreach( $scripts as $script ): ?>
-										<option <?php if( in_array($script['id'], $this->layout_script_ids )): ?>disabled="disabled"<?php endif; ?> value="<?= $script['id'] ?>"><?= $script['name'] ?></option>
-									<?php endforeach; ?>
-								</optgroup>
+			<label for="add_script_select">Add Script(s)</label>
+			<div class="form-group">
+				<select id="add_script_select" name="page_script_ids[]" multiple="multiple" class="form-control">
+					<?php foreach($this->scripts as $group => $scripts): ?>
+						<optgroup label="<?= $group ?>">
+							<?php foreach( $scripts as $script ): ?>
+								<option <?php if( in_array($script['id'], $this->layout_script_ids )): ?>disabled="disabled"<?php endif; ?> value="<?= $script['id'] ?>"><?= $script['name'] ?></option>
 							<?php endforeach; ?>
-						</select>
-					</div>
-					<div class="form-group">
-						<button class="btn btn-primary btn-sm" type="submit"><i class="fa fa-plus" aria-hidden="true"></i> Add</button>
-					</div>
-				</div>
+						</optgroup>
+					<?php endforeach; ?>
+				</select>
+			</div>
+			<div class="form-group">
+				<button class="btn btn-primary" type="submit">Add</button>
 			</div>
 		</form>
-		<form method="POST" accept-charset="UTF-8" data-form-ajax="">
-			<input type="hidden" name="page_layout_id" value="<?= $this->layout['id'] ?>">
-			<input type="hidden" name="action" value="script_order">
+	</div>
+</div>
 
-			<?php foreach($this->layout_scripts as $group => $scripts): ?>
-				<section id="section-<?= transformer::safeslug($group, $to_lowercase = true) ?>" class="panel panel-default <?php if( empty($scripts) ): ?>hidden<?php endif; ?>">
-					<header class="panel-heading">
-						<h3 class="panel-title"><?= $group ?></h3>
-					</header>
-					<div class="panel-body">
-						<ul class="sortable list-group">
-							<?php foreach( $scripts as $script ): ?>
-								<li class="list-group-item">
-									<input type="hidden" name="script[<?= $script['script_type_id'] ?>][]" value="<?= $script['script_id'] ?>" />
-									<div class="pull-left">
-										<i class="fa fa-sort fa-fw" aria-hidden="true"></i> <?= $script['name'] ?>
-									</div>
-									<button type="button" class="remove-script-action btn btn-danger btn-xs pull-right"><i class="fa fa-remove fa-fw" aria-hidden="true"></i></button>
-								</li>
-							<?php endforeach; ?>
-						</ul>
-					</div>
-				</section>
-			<?php endforeach; ?>
-			<nav class="navbar navbar-default">
-				<div class="container-fluid">
-					<div class="navbar-header">
-						<button type="submit" class="btn btn-primary navbar-btn">Save</button>
-						<a class="btn btn-default navbar-btn" href="/layouts">Cancel</a>
-					</div>
+<form method="POST" accept-charset="UTF-8" data-form-ajax="">
+	<input type="hidden" name="page_layout_id" value="<?= $this->layout['id'] ?>">
+	<input type="hidden" name="action" value="script_order">
+		<?php foreach($this->layout_scripts as $group => $scripts): ?>
+			<div id="section-<?= transformer::safeslug($group, $to_lowercase = true) ?>" class="card <?php if( empty($scripts) ): ?>hidden<?php endif; ?>">
+				<div class="card-block">
+					<div class="card-title"><?= $group ?></div>
+					<ul class="sortable list-group list-group-flush">
+						<?php foreach( $scripts as $script ): ?>
+							<li class="list-group-item clearfix list-group-item-action" style="cursor:move">
+								<input type="hidden" name="script[<?= $script['script_type_id'] ?>][]" value="<?= $script['script_id'] ?>" />
+								<div class="pull-xs-left">
+									<i class="fa fa-sort fa-fw" aria-hidden="true"></i> <?= $script['name'] ?>
+								</div>
+								<button type="button" class="remove-script-action btn btn-outline-danger btn-sm pull-xs-right">
+									<i class="fa fa-remove" aria-hidden="true"></i>
+								</button>
+							</li>
+						<?php endforeach; ?>
+					</ul>
 				</div>
-			</nav>
+			</div>
+			<?php endforeach; ?>
+			<div class="form-group">
+				<button type="submit" class="btn btn-primary">Save</button>
+				<a class="btn btn-secondary" href="/layouts">Cancel</a>
+			</div>
 		</form>
 	</div>
 </div>

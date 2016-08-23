@@ -3,10 +3,11 @@
   "authors": [
     "Joshua Byington <jbyington@paradowski.com>"
   ],
-  "description": "",
+  "description": "Bower dependencies for Atlantic CMS Admin",
   "main": "",
   "license": "MIT",
   "homepage": "",
+  "private": true,
   "ignore": [
     "**/.*",
     "node_modules",
@@ -16,11 +17,11 @@
   ],
   "dependencies": {
     "ace-builds": "^1.2.3",
-    "bootstrap": "^3.3.6",
+    "bootstrap": "v4.0.0-alpha.3",
     "chosen": "^1.5.1",
+    "clipboard": "^1.5.12",
     "handlebars": "^4.0.5",
     "jquery-ui": "^1.11.4",
-    "medium-editor-insert-plugin": "^2.3.2",
-    "clipboard": "^1.5.12"
+    "medium-editor-insert-plugin": "^2.3.2"
   }
 }

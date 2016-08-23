@@ -4,18 +4,22 @@
 ?>
 
 <ol class="breadcrumb">
-	<li><a href="/layouts">Layouts</a></li>
-	<li class="active">Update Layout</li>
+	<li class="breadcrumb-item"><a href="/layouts">Layouts</a></li>
+	<li  class="breadcrumb-item active">Update Layout</li>
 </ol>
 
-<div class="container-fluid">
-	<div class="col-lg-10">
-
-		<ul class="nav nav-tabs">
-			<li role="presentation" class="active"><a href="#">Content</a></li>
-			<li role="presentation"><a href="/layouts/update/<?= $this->layout['id'] ?>/scripts">Scripts</a></li>
+<div class="card">
+	<div class="card-header">
+		<ul class="nav nav-tabs card-header-tabs pull-xs-left">
+			<li class="nav-item">
+				<a class="nav-link active" href="/layouts/update/<?= $this->layout['id'] ?>">Contents</a>
+			</li>
+			<li class="nav-item">
+				<a class="nav-link" href="/layouts/update/<?= $this->layout['id'] ?>/scripts">Scripts</a>
+			</li>
 		</ul>
-		<br />
+	</div>
+	<div class="card-block">
 		<form method="POST" accept-charset="UTF-8" data-form-ajax="">
 			<input type="hidden" name="id" value="<?= $this->layout['id'] ?>">
 
@@ -28,17 +32,16 @@
 				<textarea placeholder="Description" rows="4" class="form-control" name="description"><?= $this->layout['description'] ?></textarea>
 			</div>
 
-			<div id="editor" class="form-control"><?= htmlentities($this->layout['content']) ?></div>
-			<input type="hidden" name="content" id="content">
-			<br />
-			<nav class="navbar navbar-default">
-				<div class="container-fluid">
-					<div class="navbar-header">
-						<button type="submit" class="btn btn-primary navbar-btn">Save</button>
-						<a class="btn btn-default navbar-btn" href="/layouts">Cancel</a>
-					</div>
-				</div>
-			</nav>
+			<div class="form-group">
+				<label>Content</label>
+				<div id="editor" class="form-control"><?= htmlentities($this->layout['content']) ?></div>
+				<input type="hidden" name="content" id="content">
+			</div>
+
+			<div class="form-group">
+				<button type="submit" class="btn btn-primary">Save</button>
+				<a class="btn btn-secondary" href="/layouts">Cancel</a>
+			</div>
 		</form>
 	</div>
 </div>

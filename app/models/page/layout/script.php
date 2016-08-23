@@ -41,6 +41,7 @@ class page_layout_script extends pdo
 						ps.id AS script_id,
 						ps.script_type_id,
 						ps.name,
+						trim(ps.html) as html,
 						psl.load_order
 
 					FROM page_layout_scripts psl

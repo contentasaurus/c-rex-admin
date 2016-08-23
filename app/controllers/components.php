@@ -53,7 +53,7 @@ class components_controller extends puffin\controller\action
 			debug( $params ); exit;
 		}
 
-		url::redirect('/components');
+		url::redirect("/components/update/$result");
 
 	}
 
@@ -62,6 +62,16 @@ class components_controller extends puffin\controller\action
 		$component = $this->component->read($id);
 
 		view::add_param( 'component', $component );
+	}
+
+	public function update_css( $id )
+	{
+		$this->update($id);
+	}
+
+	public function update_javascript( $id )
+	{
+		$this->update($id);
 	}
 
 	public function do_update( $id )
@@ -77,9 +87,18 @@ class components_controller extends puffin\controller\action
 			#message about can't update
 		}
 
-		url::redirect('/components');
+		url::redirect($_SERVER['HTTP_REFERER']);
 	}
 
+	public function do_update_css( $id )
+	{
+		$this->do_update($id);
+	}
+
+	public function do_update_javascript( $id )
+	{
+		$this->do_update($id);
+	}
 
 	public function delete( $id )
 	{

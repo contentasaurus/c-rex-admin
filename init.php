@@ -17,6 +17,7 @@ define('VIEW_PATH', APP_PATH.'/views');
 define('PARTIAL_PATH', VIEW_PATH.'/partials');
 define('LAYOUT_PATH', VIEW_PATH.'/layouts');
 define('SCRIPT_PATH', VIEW_PATH.'/scripts');
+define('BUILD_PATH', SERVER_ROOT.'/builds');
 define('PUBLIC_PATH', SERVER_ROOT.'/public');
 define('UPLOAD_PATH', PUBLIC_PATH.'/uploads');
 define('VENDOR_PATH', SERVER_ROOT.'/vendor');
@@ -35,10 +36,10 @@ require VENDOR_PATH . '/autoload.php';
 
 ############################################
 
-define('DB_NAME', 'My_DB_Name');
-define('DB_USER', 'My_DB_User');
-define('DB_PASSWORD', 'My_DB_Password');
-define('DB_ADDRESS', '127.0.0.1');
+define('DB_NAME', 'atlantic');
+define('DB_USER', 'root');
+define('DB_PASSWORD', '*T3mp3st!');
+define('DB_ADDRESS', '45.55.40.232');
 
 ############################################
 
