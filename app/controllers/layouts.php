@@ -68,7 +68,7 @@ class layouts_controller extends puffin\controller\action
 	{
 		$params = $this->post->params( $unsanitized = true );
 		$this->page_layout->update( $id, $params );
-		url::redirect('/layouts');
+		url::redirect($_SERVER['HTTP_REFERER']);
 	}
 
 	public function scripts( $id )

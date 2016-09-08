@@ -1,24 +1,17 @@
-<ol class="breadcrumb">
-	<li class="breadcrumb-item"><a href="/pages">Pages</a></li>
-	<li class="breadcrumb-item active">Update Page</li>
-</ol>
+<?= $this->partial('breadcrumb', [ 'crumbs' => [
+	[ 'name'=> 'Pages', 'url' => '/pages' ],
+	[ 'name'=> 'Update Page', 'active' => 'true' ],
+]]); ?>
 
 <div class="card">
 	<div class="card-header">
-		<ul class="nav nav-tabs card-header-tabs pull-xs-left">
-			<li class="nav-item">
-				<a class="nav-link" href="/pages/update/<?= $this->page['id'] ?>">Contents</a>
-			</li>
-			<li class="nav-item">
-				<a class="nav-link" href="/pages/update/<?= $this->page['id'] ?>/data">Data</a>
-			</li>
-			<li class="nav-item">
-				<a class="nav-link" href="/pages/update/<?= $this->page['id'] ?>/status">Status</a>
-			</li>
-			<li class="nav-item">
-				<a class="nav-link active" href="/pages/update/<?= $this->page['id'] ?>/history">History</a>
-			</li>
-		</ul>
+		<?= $this->partial('tabs', [ 'classes' => 'card-header-tabs pull-xs-left', 'tabs' => [
+			[ 'name'=> 'Contents', 'url' => "/pages/update/{$this->page['id']}" ],
+			[ 'name'=> 'Versions', 'url' => "/pages/update/{$this->page['id']}/versions" ],
+			[ 'name'=> 'Data', 'url' => "/pages/update/{$this->page['id']}/data" ],
+			[ 'name'=> 'Status', 'url' => "/pages/update/{$this->page['id']}/status" ],
+			[ 'name'=> 'History', 'active' => 'active', 'url' => "/pages/update/{$this->page['id']}/history" ]
+		]]); ?>
 	</div>
 	<?php if( !empty($this->page_history) ): ?>
 		<table class="table table-striped table-bordered">

@@ -23,7 +23,7 @@
 					<th>Status</th>
 					<th>Create Date</th>
 					<th>Last Updated</th>
-					<th width="50"><br /></th>
+					<th width="100"><br /></th>
 				</tr>
 			</thead>
 			<tbody>
@@ -45,6 +45,11 @@
 						<td><?= $page['created_at'] ?></td>
 						<td><?= ($page['updated_at'] != '0000-00-00 00:00:00') ? $page['updated_at'] : '--' ?></td>
 						<td>
+							<?php if( $page['is_publishable'] ): ?>
+								<a href="/pages/unpublish/<?= $page['id'] ?>" class="btn btn-sm btn-success">On</a>
+							<?php else: ?>
+								<a href="/pages/publish/<?= $page['id'] ?>" class="btn btn-sm btn-secondary">Off</a>
+							<?php endif; ?>
 							<a href="/pages/delete/<?= $page['id'] ?>" class="btn btn-sm btn-danger">
 								<i class="fa fa-times"></i>
 							</a>

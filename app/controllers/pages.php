@@ -18,6 +18,7 @@ class pages_controller extends puffin\controller\action
 		$this->page_status = new page_status();
 		$this->page_history = new page_history();
 		$this->page_layouts = new page_layout();
+		$this->page_versions = new page_version();
 	}
 
 	public function index()
@@ -98,6 +99,30 @@ class pages_controller extends puffin\controller\action
 		url::redirect('/pages');
 	}
 
+	public function publish( $id )
+	{
+		$update = [
+			'is_publishable' => 1
+		];
+
+		$this->page->update( $id, $update );
+
+		url::redirect( $_SERVER['HTTP_REFERER'] );
+	}
+
+	public function unpublish( $id )
+	{
+		$update = [
+			'is_publishable' => 0
+		];
+
+		$this->page->update( $id, $update );
+
+		url::redirect( $_SERVER['HTTP_REFERER'] );
+	}
+
+
+
 	public function update_status( $id )
 	{
 		$page = $this->page->read($id);
@@ -131,6 +156,51 @@ class pages_controller extends puffin\controller\action
 		$this->page->update( $id, $updates );
 
 		url::redirect("/pages/update/$id/status");
+	}
+
+	public function update_version( $id )
+	{
+		$page = $this->page->read($id);
+
+		view::add_param( 'page', $page );
+		view::add_param( 'page_versions', $this->page_versions->read_by_page_id($id) );
+	}
+
+	public function do_update_version( $id )
+	{
+		$page = $this->page->read($id);
+
+		$create = [
+			'page_id' => $page['id'],
+			'author_user_id' => $_SESSION['user']['id'],
+			'page_status_id' => $page['page_status_id'],
+			'page_layout_id' => $page['page_layout_id'],
+			'page_name' => $page['page_name'],
+			'page_content' => $page['page_content']
+		];
+
+		$this->page_versions->create($create);
+
+		url::redirect("/pages/update/$id/versions");
+	}
+
+	public function update_version_update( $id, $version_id )
+	{
+		view::add_param( 'page', $this->page->read($id) );
+		view::add_param( 'page_layouts', $this->page_layouts->read() );
+		view::add_param( 'page_version', $this->page_versions->read($version_id) );
+	}
+
+	public function update_version_promote( $id, $version_id )
+	{
+		view::add_param( 'page', $this->page->read($id) );
+		view::add_param( 'page_version', $this->page_versions->read($version_id) );
+	}
+
+	public function update_version_delete( $id, $version_id )
+	{
+		view::add_param( 'page', $this->page->read($id) );
+		view::add_param( 'page_version', $this->page_versions->read($version_id) );
 	}
 
 	public function update_history( $id )
