@@ -4,18 +4,17 @@
 	<ul>
 		<li>
 			<a href="/" <?php if( controller::$controller == 'index' ): ?>class="active"<?php endif; ?>>
-				<!-- <span class="material-icons">home</span><br/>Welcome -->
 				<img class="image-thumbnail" src="/theme/img/atl-puff.svg" width="56" />
 			</a>
 		</li>
 		<li>
 			<a href="/media" <?php if( controller::$controller == 'media' ): ?>class="active"<?php endif; ?>>
-				<span class="material-icons">image</span><br/>Media
+				<i class="fa fa-picture-o fa-2x"></i><br/>Media
 			</a>
 		</li>
 		<li>
 			<a <?php if( in_array(controller::$controller, ['components','datatypes','layouts']) ): ?>class="active"<?php endif; ?>>
-				<span class="material-icons">view_quilt</span><br/>Content
+				<i class="fa fa-cube fa-2x"></i><br/>Content
 			</a>
 			<ul>
 				<li>
@@ -42,27 +41,27 @@
 		</li>
 		<li>
 			<a href="/pages" <?php if( controller::$controller == 'pages' ): ?>class="active"<?php endif; ?>>
-				<span class="material-icons">pages</span><br/>Pages
+				<i class="fa fa-sitemap fa-2x"></i><br/>Pages
 			</a>
 		</li>
 		<li>
-			<a href="/build" <?php if( controller::$controller == 'build' ): ?>class="active"<?php endif; ?>>
-				<span class="material-icons">public</span><br/>Build
+			<a href="/deploy" <?php if( controller::$controller == 'deploy' ): ?>class="active"<?php endif; ?>>
+				<i class="fa fa-database fa-2x"></i><br/>Deploy
 			</a>
 		</li>
 		<li>
 			<a href="/users" <?php if( controller::$controller == 'users' && controller::$action != 'profile' ): ?>class="active"<?php endif; ?>>
-				<span class="material-icons">people</span><br/>Users
+				<i class="fa fa-users fa-2x"></i><br/>Users
 			</a>
 		</li>
 		<li>
 			<a href="/users/profile" <?php if( controller::$controller == 'users' && controller::$action == 'profile' ): ?>class="active"<?php endif; ?>>
-				<span class="material-icons">face</span><br/>My Profile
+				<i class="fa fa-user fa-2x"></i><br/>Profile
 			</a>
 		</li>
 		<li>
 			<a href="/auth/logout">
-				<span class="material-icons">exit_to_app</span><br/>Logout
+				<i class="fa fa-sign-out fa-2x"></i><br/>Logout
 			</a>
 		</li>
 	</ul>

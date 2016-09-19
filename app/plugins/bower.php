@@ -8,10 +8,16 @@ class bower extends  puffin\controller\plugin
 	{
 		$BOWERDIR = '/bower_components';
 
+		#d3
+		view::add_js("$BOWERDIR/d3/d3.min.js", $nonblocking = false);
+
 		#jQuery
 		view::add_js("$BOWERDIR/jquery/dist/jquery.min.js", $nonblocking = false);
 		view::add_js("$BOWERDIR/jquery-ui/jquery-ui.min.js", $nonblocking = false);
 		view::add_js("$BOWERDIR/jquery-sortable/source/js/jquery-sortable-min.js", $nonblocking = true);
+		view::add_js("$BOWERDIR/jquery-treetable/jquery.treetable.js", $nonblocking = false);
+		view::add_css("$BOWERDIR/jquery-treetable/css/jquery.treetable.css");
+		//view::add_css("$BOWERDIR/jquery-treetable/css/jquery.treetable.theme.default.css");
 
 		#clipboard
 		view::add_js("$BOWERDIR/clipboard/dist/clipboard.min.js", $nonblocking = true);
@@ -32,12 +38,12 @@ class bower extends  puffin\controller\plugin
 		view::add_js("$BOWERDIR/bootstrap/dist/js/bootstrap.min.js", $nonblocking = true);
 
 		#medium editor
-		view::add_css("$BOWERDIR/medium-editor/dist/css/medium-editor.min.css");
-		view::add_css("$BOWERDIR/medium-editor/dist/css/themes/default.min.css");
-		view::add_js("$BOWERDIR/medium-editor/dist/js/medium-editor.min.js", $nonblocking = true);
-		view::add_css("$BOWERDIR/medium-editor-insert-plugin/dist/css/medium-editor-insert-plugin.min.css");
-		view::add_css("$BOWERDIR/medium-editor-insert-plugin/dist/css/medium-editor-insert-plugin-frontend.min.css");
-		view::add_js("$BOWERDIR/medium-editor-insert-plugin/dist/js/medium-editor-insert-plugin.min.js", $nonblocking = true);
+		// view::add_css("$BOWERDIR/medium-editor/dist/css/medium-editor.min.css");
+		// view::add_css("$BOWERDIR/medium-editor/dist/css/themes/default.min.css");
+		// view::add_js("$BOWERDIR/medium-editor/dist/js/medium-editor.min.js", $nonblocking = true);
+		// view::add_css("$BOWERDIR/medium-editor-insert-plugin/dist/css/medium-editor-insert-plugin.min.css");
+		// view::add_css("$BOWERDIR/medium-editor-insert-plugin/dist/css/medium-editor-insert-plugin-frontend.min.css");
+		// view::add_js("$BOWERDIR/medium-editor-insert-plugin/dist/js/medium-editor-insert-plugin.min.js", $nonblocking = true);
 
 		#ace
 		view::add_js("$BOWERDIR/ace-builds/src-min-noconflict/ace.js", $nonblocking = true);

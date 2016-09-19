@@ -1,8 +1,8 @@
-<ol class="breadcrumb">
-	<li class="breadcrumb-item"><a href="/pages">Pages</a></li>
-	<li class="breadcrumb-item"><a href="/pages/update/<?= $this->page['id'] ?>/data">Data</a></li>
-	<li class="breadcrumb-item active">Update Data</li>
-</ol>
+<?= $this->partial('breadcrumb', [ 'crumbs' => [
+	[ 'name'=> 'Pages', 'url' => '/pages' ],
+	[ 'name'=> 'Data', 'url' => "/pages/update/{$this->page['id']}/data" ],
+	[ 'name'=> 'Update Data', 'active' => 'true' ],
+]]); ?>
 
 <form method="POST" accept-charset="UTF-8" datatypes-form-ajax="">
 	<div class="card">

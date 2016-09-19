@@ -1,7 +1,7 @@
-<ol class="breadcrumb">
-	<li class="breadcrumb-item"><a href="/pages">Pages</a></li>
-	<li class="breadcrumb-item active">Create Page</li>
-</ol>
+<?= $this->partial('breadcrumb', [ 'crumbs' => [
+	[ 'name'=> 'Pages', 'url' => '/pages' ],
+	[ 'name'=> 'Create Page', 'active' => 'true' ],
+]]); ?>
 
 <div class="card">
 	<div class="card-header">
@@ -12,31 +12,13 @@
 			<input name="author_user_id" type="hidden" value="<?= $_SESSION['user']['id'] ?>">
 
 			<div class="form-group">
-				<label>Page Title</label>
-				<input placeholder="Name" class="input-lg form-control required" name="page_name" type="text">
-			</div>
-
-			<div class="form-group">
-				<label>Permalink</label>
+				<label class="col-form-label">Permalink</label>
 				<input placeholder="/my-permalink" class="form-control required" name="permalink" type="text">
 			</div>
 
 			<div class="form-group">
-				<label>Page Layout</label>
-				<select class="form-control required" name="page_layout_id">
-					<?php foreach( $this->page_layouts as $layout ): ?>
-						<option value="<?= $layout['id'] ?>"><?= $layout['name'] ?></option>
-					<?php endforeach; ?>
-				</select>
-			</div>
-
-			<div class="form-group">
-				<label>Page Status</label>
-				<select class="form-control required" name="page_status_id">
-					<?php foreach( $this->page_statuses as $page_status ): ?>
-						<option value="<?= $page_status['id'] ?>"><?= $page_status['name'] ?></option>
-					<?php endforeach; ?>
-				</select>
+				<label class="col-form-label">Name</label>
+				<input placeholder="Friendly name for your page" class="input-lg form-control required" name="name" type="text">
 			</div>
 
 			<div class="form-group">

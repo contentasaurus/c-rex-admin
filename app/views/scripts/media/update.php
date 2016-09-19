@@ -1,17 +1,19 @@
-<ol class="breadcrumb">
-  <li><a href="/media">Media</a></li>
-  <li class="active">Update Image</li>
-</ol>
-<div class="container-fluid">
-	<div class="col-lg-10">
-		<section class="panel panel-default">
-			<header class="panel-heading">
-				<h3 class="panel-title">Update Image</h3>
-			</header>
-			<form method="POST" accept-charset="UTF-8" data-form-ajax="">
-				<div class="panel-body">
+<?= $this->partial('breadcrumb', [ 'crumbs' => [
+	[ 'name'=> 'Media', 'url' => '/media' ],
+	[ 'name'=> 'Update Tags', 'active' => 'true' ],
+]]); ?>
 
+<div class="card">
+	<div class="card-header">
+		Image Details
+	</div>
+	<table class="table">
+		<tbody>
+			<tr>
+				<td width="210">
 					<img class="thumbnail" src="<?= $this->media['thumbnail_path'] ?>" >
+				</td>
+				<td>
 					<table class="table table-bordered table-striped">
 						<tbody>
 							<tr>
@@ -52,34 +54,36 @@
 							</tr>
 						</tbody>
 					</table>
-
-					<input name="media_id" type="hidden" value="<?= $this->media['id'] ?>">
-
-					<div class="form-group">
-						<label>Tag(s)</label>
-						<select multiple class="form-control required chosen-select" name="tags[]">
-							<?php foreach( $this->tags as $tag ): ?>
-								<option <?php if(in_array( $tag['id'], $this->media_tags )): ?>selected="selected"<?php endif; ?> value="<?= $tag['id'] ?>"><?= $tag['tagname'] ?></option>
-							<?php endforeach; ?>
-						<select>
-					</div>
-
-
-				</div>
-
-				<footer class="panel-footer">
-					<div class="pull-right">
-						<a class="btn btn-default" href="/blocks">Cancel</a>
-						<button class="btn btn-primary" type="submit">Update</button>
-					</div>
-				</footer>
-
-			</form>
-
-		</section>
-	</div>
+				</td>
+			</tr>
+		</tbody>
+	</table>
 </div>
 
+<div class="card">
+	<div class="card-header">
+		Image Tags
+	</div>
+	<div class="card-block">
+		<form method="POST" accept-charset="UTF-8" data-form-ajax="">
+
+			<input name="media_id" type="hidden" value="<?= $this->media['id'] ?>">
+
+			<div class="form-group">
+				<label>Tag(s)</label>
+				<select multiple class="form-control required chosen-select" name="tags[]">
+					<?php foreach( $this->tags as $tag ): ?>
+						<option <?php if(in_array( $tag['id'], $this->media_tags )): ?>selected="selected"<?php endif; ?> value="<?= $tag['id'] ?>"><?= $tag['tagname'] ?></option>
+					<?php endforeach; ?>
+				<select>
+			</div>
+			<div class="form-group">
+				<button class="btn btn-primary" type="submit">Update</button>
+				<a class="btn btn-secondary" href="/media">Cancel</a>
+			</div>
+		</form>
+	</div>
+</div>
 
 <script>
 	$(function(){

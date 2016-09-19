@@ -20,8 +20,6 @@ class datasource_test extends pdo
 			':schema' => $schema
 		];
 
-		debug($sql); exit;
-
 		return $this->select( $sql, $params );
 	}
 

@@ -23,7 +23,10 @@ class pages_controller extends puffin\controller\action
 
 	public function index()
 	{
+		$pages = $this->page->read();
+
 		view::add_param( 'pages', $this->page->read() );
+		view::add_param( 'treetable', $this->page->get_permalink_dictionary() );
 	}
 
 	public function create()
@@ -34,9 +37,16 @@ class pages_controller extends puffin\controller\action
 
 	public function do_create()
 	{
-		$required = ['page_name','author_user_id','permalink','page_status_id'];
+		$required = ['name','author_user_id','permalink'];
 
-		$params = $this->post->params( $unsanitized = true );
+		$params = $this->post->params( $unsanitized = false );
+
+		$quick_add = false;
+		if( isset($params['quick_add']) )
+		{
+			$quick_add = true;
+			unset($params['quick_add']);
+		}
 
 		#clean the array
 		$params = array_filter( $params );
@@ -54,6 +64,10 @@ class pages_controller extends puffin\controller\action
 		if( $match )
 		{
 			$result = $this->page->create( $params );
+			if( $quick_add )
+			{
+				url::redirect($_SERVER['HTTP_REFERER']);
+			}
 			url::redirect("/pages/update/$result");
 		}
 		else
@@ -72,7 +86,7 @@ class pages_controller extends puffin\controller\action
 		$page = $this->page->read($id);
 
 		view::add_param( 'page', $page );
-		view::add_param( 'page_layouts', $this->page_layouts->read() );
+		view::add_param( 'page_versions', $this->page_versions->read_by_page_id($id) );
 	}
 
 	public function do_update( $id )
@@ -99,10 +113,10 @@ class pages_controller extends puffin\controller\action
 		url::redirect('/pages');
 	}
 
-	public function publish( $id )
+	public function set_publish( $id, $state )
 	{
 		$update = [
-			'is_publishable' => 1
+			'is_publishable' => $state
 		];
 
 		$this->page->update( $id, $update );
@@ -110,109 +124,103 @@ class pages_controller extends puffin\controller\action
 		url::redirect( $_SERVER['HTTP_REFERER'] );
 	}
 
-	public function unpublish( $id )
-	{
-		$update = [
-			'is_publishable' => 0
-		];
-
-		$this->page->update( $id, $update );
-
-		url::redirect( $_SERVER['HTTP_REFERER'] );
-	}
-
-
-
-	public function update_status( $id )
+	public function delete( $id )
 	{
 		$page = $this->page->read($id);
 
 		view::add_param( 'page', $page );
-		view::add_param( 'page_logs', $this->page_log->read_by_page_id($id) );
-		view::add_param( 'page_statuses', $this->page_status->read() );
 	}
 
-	public function do_update_status( $id )
+	public function do_delete( $id )
 	{
 		$params = $this->post->params();
 
-		$orignal_record = $this->page->read($id);
+		if( $params['id'] == $id )
+		{
+			$this->page->delete( $id, $params );
+		}
+		else
+		{
+			#message about can't delete
+		}
 
-		#page status history
-		$record = [
-			'page_id' => $id,
-			'prev_page_status_id' => $orignal_record['page_status_id'],
-			'new_page_status_id' => $params['page_status_id'],
-			'user_id' => $_SESSION['user']['id'],
-			'comment' => $params['comment']
-		];
-
-		$this->page_log->create($record);
-
-		$updates = [
-			'page_status_id' => $params['page_status_id']
-		];
-
-		$this->page->update( $id, $updates );
-
-		url::redirect("/pages/update/$id/status");
+		url::redirect('/pages');
 	}
 
-	public function update_version( $id )
+	##################################################
+
+	public function do_version_create( $id )
 	{
-		$page = $this->page->read($id);
-
-		view::add_param( 'page', $page );
-		view::add_param( 'page_versions', $this->page_versions->read_by_page_id($id) );
-	}
-
-	public function do_update_version( $id )
-	{
-		$page = $this->page->read($id);
-
 		$create = [
-			'page_id' => $page['id'],
+			'page_id' => $id,
 			'author_user_id' => $_SESSION['user']['id'],
-			'page_status_id' => $page['page_status_id'],
-			'page_layout_id' => $page['page_layout_id'],
-			'page_name' => $page['page_name'],
-			'page_content' => $page['page_content']
+			'page_layout_id' => NULL,
+			'title' => 'New Page Version',
+			'comments' => 'New Page Version',
+			'contents' => ''
 		];
 
 		$this->page_versions->create($create);
 
-		url::redirect("/pages/update/$id/versions");
+		url::redirect($_SERVER['HTTP_REFERER']);
 	}
 
-	public function update_version_update( $id, $version_id )
+	public function version_update( $id, $version_id )
 	{
 		view::add_param( 'page', $this->page->read($id) );
 		view::add_param( 'page_layouts', $this->page_layouts->read() );
 		view::add_param( 'page_version', $this->page_versions->read($version_id) );
 	}
 
-	public function update_version_promote( $id, $version_id )
+	public function do_version_update( $id, $version_id )
 	{
-		view::add_param( 'page', $this->page->read($id) );
-		view::add_param( 'page_version', $this->page_versions->read($version_id) );
+		$params = $this->post->params( $unsanitized = true );
+
+		$result = $this->page_versions->update( $version_id, $params );
+
+		url::redirect($_SERVER['HTTP_REFERER']);
 	}
 
-	public function update_version_delete( $id, $version_id )
+	public function do_version_copy( $id )
 	{
-		view::add_param( 'page', $this->page->read($id) );
-		view::add_param( 'page_version', $this->page_versions->read($version_id) );
+		$version = $this->page_versions->read( $id );
+
+		$create = [
+			'page_id' => $version['page_id'],
+			'author_user_id' => $_SESSION['user']['id'],
+			'page_layout_id' => $version['page_layout_id'],
+			'title' => $version['title'],
+			'comments' => $version['comments'],
+			'contents' => $version['contents']
+		];
+
+		$this->page_versions->create($create);
+
+		url::redirect($_SERVER['HTTP_REFERER']);
 	}
 
-	public function update_history( $id )
+	public function do_version_delete( $id, $version_id )
 	{
-		$page = $this->page->read($id);
+		$result = $this->page_versions->delete( $version_id );
+		url::redirect($_SERVER['HTTP_REFERER']);
+	}
 
-		view::add_param( 'page', $page );
-		view::add_param( 'page_history', $this->page_history->read_by_page_id($id) );
+	public function version_set_publish( $id, $version_id, $state )
+	{
+		$update = [
+			'is_publishable' => $state
+		];
+
+		$this->page_versions->update( $version_id, $update );
+
+		url::redirect( $_SERVER['HTTP_REFERER'] );
 	}
 
 
-	public function update_data( $id )
+
+	##################################################
+
+	public function data_index( $id )
 	{
 		$page = $this->page->read($id);
 
@@ -221,17 +229,14 @@ class pages_controller extends puffin\controller\action
 		view::add_param( 'page_data', $this->page_data->read_by_page_id( $id ) );
 	}
 
-	public function do_update_data( $id )
+	public function do_data_create( $id )
 	{
 		$params = $this->post->params( $unsanitized = true );
-
 		$result = $this->page_data->create( $params );
-
 		url::redirect($_SERVER['HTTP_REFERER']);
 	}
 
-
-	public function update_data_update( $id, $data_id )
+	public function data_update( $id, $data_id )
 	{
 		$page = $this->page->read( $id );
 
@@ -246,7 +251,7 @@ class pages_controller extends puffin\controller\action
 		view::add_param( 'datatype', $datatype );
 	}
 
-	public function do_update_data_update( $id, $data_id )
+	public function do_data_update( $id, $data_id )
 	{
 		$params = $this->post->params( $unsanitized = true );
 
@@ -293,30 +298,10 @@ class pages_controller extends puffin\controller\action
 		url::redirect($_SERVER['HTTP_REFERER']);
 	}
 
-
-
-
-	public function delete( $id )
+	public function do_data_delete( $id, $data_id )
 	{
-		$page = $this->page->read($id);
-
-		view::add_param( 'page', $page );
-	}
-
-	public function do_delete( $id )
-	{
-		$params = $this->post->params();
-
-		if( $params['id'] == $id )
-		{
-			$this->page->delete( $id, $params );
-		}
-		else
-		{
-			#message about can't delete
-		}
-
-		url::redirect('/pages');
+		$result = $this->page_data->delete( $data_id );
+		url::redirect($_SERVER['HTTP_REFERER']);
 	}
 
 }
