@@ -7,6 +7,10 @@ use \puffin\transformer as transformer;
 use \puffin\file as file;
 use \puffin\directory as directory;
 
+#
+#	MEDIA SECTION NOT PART OF MVP
+#
+
 class img_controller extends puffin\controller\action
 {
 	public function __construct(){}

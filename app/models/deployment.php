@@ -5,6 +5,7 @@ use \puffin\model\pdo as pdo;
 class deployment extends pdo
 {
 	protected $table = 'deployments';
+	protected $connection = 'datasource_deploy';
 
 	public function read( $id = false )
 	{
@@ -17,16 +18,10 @@ class deployment extends pdo
 			$params[':id'] = $id;
 		}
 
-		$sql = "SELECT
-					d.key,
-					u.first_name,
-					u.last_name,
-					da.name,
-					d.deployed_at
-					FROM deployments d
-						JOIN users u ON u.id = d.deployed_by_user_id
-						JOIN datasources da ON da.id = d.deployed_to_datasource_id
-					$where";
+		$sql = "SELECT *
+				FROM __recent_deployments
+				$where
+				ORDER BY created_at desc";
 
 		if( !empty($params) )
 		{
@@ -35,5 +30,4 @@ class deployment extends pdo
 
 		return $this->select( $sql, $params );
 	}
-
 }

@@ -44,7 +44,7 @@
 		<table class="table table-striped table-bordered">
 			<thead>
 				<tr>
-					<th width="110"><br /></th>
+					<th width="150"><br /></th>
 					<th width="110">Split %</th>
 					<th width="200">Updated</th>
 					<th>Updated By</th>
@@ -63,6 +63,9 @@
 								<a href="/pages/update/<?= $this->page['id'] ?>/version-copy/<?= $version['id'] ?>" class="btn btn-sm btn-secondary">
 									<i class="fa fa-copy"></i>
 								</a>
+								<a target="_blank" href="/preview/<?= $version['id'] ?>" class="btn btn-sm btn-secondary">
+									<i class="fa fa-eye"></i>
+								</a>
 							</div>
 						</td>
 						<td>
@@ -74,21 +77,15 @@
 						<td><?= $version['author_first_name'] ?> <?= $version['author_last_name'] ?></td>
 						<td><?= $version['comments'] ?></td>
 						<td>
-							<form class="form-inline" method="post" action="/pages/update/<?= $this->page['id'] ?>/version-delete/<?= $version['id'] ?>">
-								<?php if( $version['is_publishable'] ): ?>
-									<a href="/pages/update/<?= $this->page['id'] ?>/version-publish/<?= $version['id'] ?>/state/0" class="btn btn-sm btn-success">On</a>
-								<?php else: ?>
-									<a href="/pages/update/<?= $this->page['id'] ?>/version-publish/<?= $version['id'] ?>/state/1" class="btn btn-sm btn-secondary">Off</a>
-								<?php endif; ?>
-								<div class="btn-group" role="group">
-									<button type="button" class="btn btn-sm btn-danger dropdown-toggle" data-toggle="dropdown">
-										<i class="fa fa-times"></i>
-									</button>
-									<div class="dropdown-menu dropdown-menu-right">
-										<button type="submit" class="dropdown-item" href="#"><i class="fa fa-times"></i> Confirm Delete</button>
-									</div>
-								</div>
-							</form>
+							<?php if( $version['is_publishable'] ): ?>
+								<a href="/pages/update/<?= $this->page['id'] ?>/version-publish/<?= $version['id'] ?>/state/0" class="btn btn-sm btn-success">On</a>
+							<?php else: ?>
+								<a href="/pages/update/<?= $this->page['id'] ?>/version-publish/<?= $version['id'] ?>/state/1" class="btn btn-sm btn-secondary">Off</a>
+							<?php endif; ?>
+							<?= $this->partial('delete', [
+								'url' => "/pages/update/{$this->page['id']}/version-delete/{$version['id']}",
+								'id' => $version['id'],
+							]); ?>
 						</td>
 					</tr>
 				<?php endforeach; ?>
@@ -104,3 +101,9 @@
 		</div>
 	<?php endif; ?>
 </div>
+
+<script>
+	$(function(){
+		$('[data-toggle="popover"]').popover();
+	});
+</script>

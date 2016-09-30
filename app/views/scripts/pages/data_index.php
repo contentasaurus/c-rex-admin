@@ -20,7 +20,7 @@
 				<input class="form-control" name="reference_name" id="reference_name" type="text" value="">
 				<div class="hidden form-control-feedback" id="reference_name_feedback"></div>
 				<p class="form-text text-muted">
-					Your key must not begin with a number, and must not contain spaces, special characters (except $ and _), or emoji.
+					Your key must not begin with a number, and must not contain spaces, special characters (except underscore).
 				</p>
 			</div>
 
@@ -41,6 +41,38 @@
 
 		</form>
 	</div>
+</div>
+
+<div class="card">
+	<div class="card-header">
+		Global Data
+	</div>
+		<table class="table table-striped table-bordered">
+			<thead>
+				<tr>
+					<th>Key</th>
+					<th>Type</th>
+				</tr>
+			</thead>
+			<tbody>
+				<tr>
+					<td>Get</td>
+					<td>GET data</td>
+				</tr>
+				<tr>
+					<td>Post</td>
+					<td>POST data</td>
+				</tr>
+				<tr>
+					<td>Session</td>
+					<td>SESSION data</td>
+				</tr>
+				<tr>
+					<td>Server</td>
+					<td>SERVER data</td>
+				</tr>
+			</tbody>
+		</table>
 </div>
 
 <div class="card">
@@ -72,16 +104,10 @@
 						<td><?= $data['first_name'] ?> <?= $data['last_name'] ?></td>
 						<td><?= $data['updated_at'] ?></td>
 						<td>
-							<form method="post" action="/pages/update/<?= $this->page['id'] ?>/data-delete/<?= $data['id'] ?>">
-								<div class="btn-group" role="group">
-									<button type="button" class="btn btn-sm btn-danger dropdown-toggle" data-toggle="dropdown">
-										<i class="fa fa-times"></i>
-									</button>
-									<div class="dropdown-menu dropdown-menu-right">
-										<button type="submit" class="dropdown-item" href="#"><i class="fa fa-times"></i> Confirm Delete</button>
-									</div>
-								</div>
-							</form>
+							<?= $this->partial('delete', [
+								'url' => "/pages/update/{$this->page['id']}/data-delete/{$data['id']}",
+								'id' => $data['id'],
+							]); ?>
 						</td>
 
 					</tr>
@@ -101,11 +127,11 @@
 
 <script>
 	$(function(){
-		var regex = /^(?!(?:each|do|if|in|for|let|new|try|var|case|else|enum|eval|null|this|true|void|with|await|break|catch|class|const|false|super|throw|while|yield|delete|export|import|public|return|static|switch|typeof|default|extends|finally|package|private|continue|debugger|function|arguments|interface|protected|implements|instanceof)$)(?:[\$A-Z_a-z])*$/;
+		var regex = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
 
 		$('#reference_name').on('keypress', function(event){
 			var key = String.fromCharCode(!event.charCode ? event.which : event.charCode);
-			if( !regex.test(key) )
+			if( !/^[a-zA-Z0-9_]*$/.test(key) )
 			{
 				event.preventDefault();
 				return false;
@@ -130,7 +156,7 @@
 				{
 					ref_name.addClass('form-control-warning');
 					ref_name.parent('.form-group').addClass('has-warning');
-					ref_feedback.html('The key value contains invalid characters, or reserved words.');
+					ref_feedback.html('The key value contains invalid characters, or begins with a number.');
 					ref_feedback.removeClass('hidden');
 					fail++;
 				}
@@ -167,5 +193,12 @@
 				return false;
 			}
 		})
+	});
+</script>
+
+
+<script>
+	$(function(){
+		$('[data-toggle="popover"]').popover();
 	});
 </script>

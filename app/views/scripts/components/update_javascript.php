@@ -1,34 +1,44 @@
-<ol class="breadcrumb">
-	<li class="breadcrumb-item"><a href="/components">Components</a></li>
-	<li class="breadcrumb-item active">Update Components</li>
-</ol>
+<?php use puffin\transformer as transformer; ?>
+
+<?= $this->partial('breadcrumb', [ 'crumbs' => [
+	[ 'name'=> 'Components', 'url' => '/components' ],
+	[ 'name'=> 'Update Components', 'active' => 'true' ],
+]]); ?>
 
 <div class="card">
 	<div class="card-header">
-		<ul class="nav nav-tabs card-header-tabs pull-xs-left">
-			<li class="nav-item">
-				<a class="nav-link" href="/components/update/<?= $this->component['id'] ?>">HTML</a>
-			</li>
-			<li class="nav-item">
-				<a class="nav-link" href="/components/update/<?= $this->component['id'] ?>/css">CSS</a>
-			</li>
-			<li class="nav-item">
-				<a class="nav-link active" href="/components/update/<?= $this->component['id'] ?>/javascript">JavaScript</a>
-			</li>
-		</ul>
+		<?= $this->partial('tabs', [ 'classes' => 'card-header-tabs pull-xs-left', 'tabs' => [
+			[ 'name'=> 'HTML', 'url' => "/components/update/{$this->component['id']}" ],
+			[ 'name'=> 'SCSS', 'url' => "/components/update/{$this->component['id']}/css" ],
+			[ 'name'=> 'JS', 'active' => 'active', 'url' => "/components/update/{$this->component['id']}/javascript" ],
+			[ 'name'=> 'Nonblocking JS', 'url' => "/components/update/{$this->component['id']}/nonblocking-javascript" ],
+		]]); ?>
 	</div>
 	<div class="card-block">
 		<form method="POST" accept-charset="UTF-8" data-form-ajax="">
 			<input name="id" type="hidden" value="<?= $this->component['id'] ?>">
 
 			<div class="form-group">
+				<label>Name</label>
 				<input placeholder="Name" class="form-control required" name="name" type="text" value="<?= $this->component['name'] ?>">
 			</div>
 			<div class="form-group">
+				<label>Description</label>
 				<textarea placeholder="Description" class="form-control" name="description"><?= $this->component['description'] ?></textarea>
 			</div>
 
 			<div class="form-group">
+				<label>Wrapper</label>
+				<p class="form-control">
+					<?php $uuid = $this->component['uuid']; ?>
+					(function(uuid){
+						/* content */
+					})( "<?= $uuid ?>" );
+				</p>
+			</div>
+
+			<div class="form-group">
+				<label>Content</label>
 				<div id="js_editor" class="form-control ace_editor"><?= htmlentities($this->component['js']) ?></div>
 				<input type="hidden" name="js" id="js">
 			</div>

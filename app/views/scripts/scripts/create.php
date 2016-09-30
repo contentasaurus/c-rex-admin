@@ -1,7 +1,9 @@
-<ol class="breadcrumb">
-	<li class="breadcrumb-item"><a href="/scripts">Scripts</a></li>
-	<li class="breadcrumb-item active">Create Script</li>
-</ol>
+<?php use puffin\transformer; ?>
+
+<?= $this->partial('breadcrumb', [ 'crumbs' => [
+	[ 'name'=> 'Layouts', 'url' => '/layouts'  ],
+	[ 'name'=> 'Create Script', 'active' => 'true'  ],
+]]); ?>
 
 <div class="card">
 	<div class="card-header">
@@ -30,7 +32,7 @@
 			</div>
 			<div class="form-group">
 				<button class="btn btn-primary" type="submit">Create</button>
-				<a class="btn btn-secondary" href="/scripts">Cancel</a>
+				<a class="btn btn-secondary" href="/layouts">Cancel</a>
 			</div>
 		</form>
 	</div>

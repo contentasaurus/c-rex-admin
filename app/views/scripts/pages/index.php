@@ -22,7 +22,7 @@
 					<th>Name</th>
 					<th>Versions</th>
 					<th>Split</th>
-					<th width="120"><br /></th>
+					<th width="100"><br /></th>
 				</tr>
 			</thead>
 			<tbody>
@@ -65,22 +65,15 @@
 						<td><?= $page['num_versions'] ?></td>
 						<td><?= $page['split'] ?></td>
 						<td>
-							<form method="post" action="/pages/delete/<?= $page['id'] ?>">
-								<input type="hidden" name="id" value="<?= $page['id'] ?>">
-								<?php if( $page['is_publishable'] ): ?>
-									<a href="/pages/publish/<?= $page['id'] ?>/state/0" class="btn btn-sm btn-success">On</a>
-								<?php else: ?>
-									<a href="/pages/publish/<?= $page['id'] ?>/state/1" class="btn btn-sm btn-secondary">Off</a>
-								<?php endif; ?>
-								<div class="btn-group" role="group">
-									<button type="button" class="btn btn-sm btn-danger dropdown-toggle" data-toggle="dropdown">
-										<i class="fa fa-times"></i>
-									</button>
-									<div class="dropdown-menu dropdown-menu-right">
-										<button type="submit" class="dropdown-item" href="#"><i class="fa fa-times"></i> Confirm Delete</button>
-									</div>
-								</div>
-							</form>
+							<?php if( $page['is_publishable'] ): ?>
+								<a href="/pages/publish/<?= $page['id'] ?>/state/0" class="btn btn-sm btn-success">On</a>
+							<?php else: ?>
+								<a href="/pages/publish/<?= $page['id'] ?>/state/1" class="btn btn-sm btn-secondary">Off</a>
+							<?php endif; ?>
+							<?= $this->partial('delete', [
+								'url' => '/pages/delete/' . $page['id'],
+								'id' => $page['id'],
+							]); ?>
 
 						</td>
 					</tr>
@@ -94,8 +87,7 @@
 	$(function(){
 		$("table.tt-table").treetable();
 
-		$('[data-toggle="popover"]').popover({
-		});
+		$('[data-toggle="popover"]').popover();
 	});
 </script>
 

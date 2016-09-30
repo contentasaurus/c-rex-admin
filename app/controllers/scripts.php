@@ -45,7 +45,7 @@ class scripts_controller extends puffin\controller\action
 
 		if( $match )
 		{
-			$result = $this->page_script->create( $params );
+			$result = $this->script->create( $params );
 		}
 		else
 		{
@@ -54,7 +54,7 @@ class scripts_controller extends puffin\controller\action
 			debug( $params ); exit;
 		}
 
-		url::redirect('/scripts');
+		url::redirect('/layouts');
 
 	}
 
@@ -70,14 +70,14 @@ class scripts_controller extends puffin\controller\action
 
 		if( $params['id'] == $id )
 		{
-			$this->page_script->update( $id, $params );
+			$this->script->update( $id, $params );
 		}
 		else
 		{
 			#message about can't update
 		}
 
-		url::redirect('/scripts');
+		url::redirect($_SERVER['HTTP_REFERER']);
 	}
 
 
@@ -101,7 +101,7 @@ class scripts_controller extends puffin\controller\action
 			#message about can't delete
 		}
 
-		url::redirect('/scripts');
+		url::redirect('/layouts');
 	}
 
 }

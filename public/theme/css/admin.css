@@ -156,6 +156,10 @@ body {
           display: block;
           margin: 0;
           margin-bottom: 5px; }
+		  #nav-primary li hr {
+			  border-color: rgba(255, 255, 255, 0.5);
+			  width:50%
+		  }
       #nav-primary ul li ul {
         background: white;
         position: absolute;
@@ -370,4 +374,21 @@ select.form-control + .chosen-container-multi .chosen-results li.result-selected
     color: #ccc;
     cursor: default;
     background-color: white;
+}
+
+
+.avatar {
+	width:56px;
+	height:auto;
+	background-color: #4075A0;
+	background-image:url('/theme/img/atl-puff.svg');
+	background-repeat:no-repeat;
+	background-position: top center;
+	background-size: cover;
+	border:2px solid #9099a1;
+}
+
+.avatar:hover {
+	border:2px solid #ffffff;
+	transition: all 0.3s ease-in-out 0s; }
 }

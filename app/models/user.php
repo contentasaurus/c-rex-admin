@@ -10,7 +10,6 @@ class user extends pdo
 
 	protected $connection = 'default';
 	protected $table = 'users';
-	protected $dynamic_columns = ['additional'];
 
 	public function login( $email, $user_password )
 	{
@@ -31,8 +30,6 @@ class user extends pdo
 		{
 			$authenticated_record = $this->read( $record['id'] );
 			unset( $authenticated_record['password'] );
-			unset( $authenticated_record['additional'] );
-			$authenticated_record['additional'] = json_decode( $authenticated_record['additional'], $assoc = true );
 			return $authenticated_record;
 		}
 		else

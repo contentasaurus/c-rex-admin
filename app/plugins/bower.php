@@ -49,10 +49,10 @@ class bower extends  puffin\controller\plugin
 		view::add_js("$BOWERDIR/ace-builds/src-min-noconflict/ace.js", $nonblocking = true);
 
 		#blueimp
-		view::add_js("$BOWERDIR/blueimp-tmpl/js/tmpl.min.js", $nonblocking = true);
-		view::add_js("$BOWERDIR/blueimp-load-image/js/load-image.all.min.js", $nonblocking = true);
-		view::add_js("$BOWERDIR/blueimp-canvas-to-blob/js/canvas-to-blob.min.js", $nonblocking = true);
-		view::add_js("$BOWERDIR/blueimp-file-upload/js/jquery.fileupload.js", $nonblocking = true);
+		// view::add_js("$BOWERDIR/blueimp-tmpl/js/tmpl.min.js", $nonblocking = true);
+		// view::add_js("$BOWERDIR/blueimp-load-image/js/load-image.all.min.js", $nonblocking = true);
+		// view::add_js("$BOWERDIR/blueimp-canvas-to-blob/js/canvas-to-blob.min.js", $nonblocking = true);
+		// view::add_js("$BOWERDIR/blueimp-file-upload/js/jquery.fileupload.js", $nonblocking = true);
 
 	}
 	public function __before_call()

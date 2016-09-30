@@ -1,8 +1,8 @@
 <?php use puffin\transformer; ?>
 
-<ol class="breadcrumb">
-	<li class="breadcrumb-item active"><a href="/datatypes">Datatypes</a></li>
-</ol>
+<?= $this->partial('breadcrumb', [ 'crumbs' => [
+	[ 'name'=> 'Datatypes', 'url' => '/datatypes'  ],
+]]); ?>
 
 <div class="card">
 	<div class="card-header">
@@ -36,9 +36,10 @@
 						<td><?= $datatypes['created_at'] ?></td>
 						<td><?= ($datatypes['updated_at'] != '0000-00-00 00:00:00') ? $datatypes['updated_at'] : '--' ?></td>
 						<td>
-							<a href="/datatypes/delete/<?= $datatypes['id'] ?>" class="btn btn-sm btn-danger">
-								<i class="fa fa-times"></i>
-							</a>
+							<?= $this->partial('delete', [
+								'url' => '/datatypes/delete/' . $datatypes['id'],
+								'id' => $datatypes['id'],
+							]); ?>
 						</td>
 					</tr>
 				<?php endforeach; ?>

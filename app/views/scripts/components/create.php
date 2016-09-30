@@ -1,7 +1,9 @@
-<ol class="breadcrumb">
-  <li class="breadcrumb-item"><a href="/components">Components</a></li>
-  <li class="breadcrumb-item active">Create Component</li>
-</ol>
+<?php use puffin\transformer; ?>
+
+<?= $this->partial('breadcrumb', [ 'crumbs' => [
+	[ 'name'=> 'Components', 'url' => '/components'  ],
+	[ 'name'=> 'Create Components', 'active' => 'true'  ],
+]]); ?>
 
 <div class="card">
 	<div class="card-header">

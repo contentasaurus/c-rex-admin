@@ -1,7 +1,9 @@
-<ol class="breadcrumb">
-	<li class="breadcrumb-item"><a href="/users">Users</a></li>
-	<li class="breadcrumb-item active">Disable User</li>
-</ol>
+<?php use puffin\transformer; ?>
+
+<?= $this->partial('breadcrumb', [ 'crumbs' => [
+	[ 'name'=> 'Users', 'url' => '/users'  ],
+	[ 'name'=> 'Disable User', 'active' => 'true'  ],
+]]); ?>
 
 <div class="container-fluid">
 	<div class="col-lg-5">

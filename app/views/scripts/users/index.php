@@ -1,8 +1,8 @@
 <?php use puffin\transformer; ?>
 
-<ol class="breadcrumb">
-	<li class="breadcrumb-item active"><a href="/users">Users</a></li>
-</ol>
+<?= $this->partial('breadcrumb', [ 'crumbs' => [
+	[ 'name'=> 'Users', 'active' => 'true'  ],
+]]); ?>
 
 <div class="card">
 	<div class="card-header">

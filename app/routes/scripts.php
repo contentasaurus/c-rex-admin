@@ -3,7 +3,6 @@
 namespace puffin;
 
 $app->controller('scripts')
-	->any('/scripts', 'index')
 	->get('/scripts/create', 'create')
 	->post('/scripts/create', 'do_create')
 	->get('/scripts/update/{id:i}', 'update')

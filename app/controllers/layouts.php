@@ -18,6 +18,7 @@ class layouts_controller extends puffin\controller\action
 	public function index()
 	{
 		view::add_param( 'layouts', $this->page_layout->read() );
+		view::add_param( 'scripts', $this->script->read() );
 	}
 
 	public function create()

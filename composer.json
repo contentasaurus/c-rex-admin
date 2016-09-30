@@ -5,7 +5,10 @@
 	"require": {
 		"pinguinio/puffin-framework": "1.0.*",
 		"pinguinio/puffin-feather": "1.0.*",
-		"phpmailer/phpmailer": "~5.2"
+		"zordius/lightncandy": "dev-master",
+		"forxer/Gravatar": "~1.2",
+		"leafo/scssphp": "0.6.6",
+		"vladkens/autoprefixer": "dev-master"
 	},
 	"config": {
 		"vendor-dir": "vendor"

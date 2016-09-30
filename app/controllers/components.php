@@ -18,6 +18,8 @@ class components_controller extends puffin\controller\action
 		view::add_param( 'components', $this->component->read() );
 	}
 
+	#---------------------------
+
 	public function create()
 	{
 		#nada soul
@@ -57,21 +59,13 @@ class components_controller extends puffin\controller\action
 
 	}
 
+	#---------------------------
+
 	public function update( $id )
 	{
 		$component = $this->component->read($id);
 
 		view::add_param( 'component', $component );
-	}
-
-	public function update_css( $id )
-	{
-		$this->update($id);
-	}
-
-	public function update_javascript( $id )
-	{
-		$this->update($id);
 	}
 
 	public function do_update( $id )
@@ -90,15 +84,43 @@ class components_controller extends puffin\controller\action
 		url::redirect($_SERVER['HTTP_REFERER']);
 	}
 
+	#---------------------------
+
+	public function update_css( $id )
+	{
+		$this->update($id);
+	}
+
 	public function do_update_css( $id )
 	{
 		$this->do_update($id);
+	}
+
+	#---------------------------
+
+	public function update_javascript( $id )
+	{
+		$this->update($id);
 	}
 
 	public function do_update_javascript( $id )
 	{
 		$this->do_update($id);
 	}
+
+	#---------------------------
+
+	public function update_nonblocking_javascript( $id )
+	{
+		$this->update($id);
+	}
+
+	public function do_update_nonblocking_javascript( $id )
+	{
+		$this->do_update($id);
+	}
+
+	#---------------------------
 
 	public function delete( $id )
 	{

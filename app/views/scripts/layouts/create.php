@@ -1,7 +1,12 @@
-<ol class="breadcrumb">
-  <li><a href="/layouts">Layouts</a></li>
-  <li class="active">Create Layout</li>
-</ol>
+<?php use \puffin\transformer as transformer; ?>
+
+<?= $this->partial('breadcrumb', [ 'crumbs' => [
+	[ 'name'=> 'Layouts', 'url' => '/layouts'  ],
+	[ 'name'=> 'Create Layout', 'active' => 'true'  ],
+]]); ?>
+
+
+
 <div class="container-fluid">
 	<div class="col-lg-10">
 		<form method="POST" accept-charset="UTF-8" data-form-ajax="">

@@ -216,8 +216,6 @@ class pages_controller extends puffin\controller\action
 		url::redirect( $_SERVER['HTTP_REFERER'] );
 	}
 
-
-
 	##################################################
 
 	public function data_index( $id )

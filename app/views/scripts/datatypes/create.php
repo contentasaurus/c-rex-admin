@@ -1,7 +1,9 @@
-<ol class="breadcrumb">
-  <li class="breadcrumb-item"><a href="/datatypes">Datatypes</a></li>
-  <li class="breadcrumb-item active">Create Datatype</li>
-</ol>
+<?php use puffin\transformer; ?>
+
+<?= $this->partial('breadcrumb', [ 'crumbs' => [
+	[ 'name'=> 'Datatypes', 'url' => '/datatypes'  ],
+	[ 'name'=> 'Create Datatype', 'active' => 'true'  ],
+]]); ?>
 
 <div class="card">
 	<div class="card-header">

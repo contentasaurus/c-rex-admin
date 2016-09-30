@@ -1,12 +1,9 @@
-<?php
-	namespace puffin;
-	use \puffin\transformer as transformer;
-?>
+<?php use \puffin\transformer as transformer; ?>
 
-<ol class="breadcrumb">
-	<li class="breadcrumb-item"><a href="/layouts">Layouts</a></li>
-	<li  class="breadcrumb-item active">Update Layout</li>
-</ol>
+<?= $this->partial('breadcrumb', [ 'crumbs' => [
+	[ 'name'=> 'Layouts', 'url' => '/layouts'  ],
+	[ 'name'=> 'Update Layout', 'active' => 'true'  ],
+]]); ?>
 
 <div class="card">
 	<div class="card-header">

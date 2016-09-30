@@ -4,12 +4,14 @@ namespace puffin;
 
 $app->controller('deploy')
 	->any('/deploy', 'index')
-	->get('/deploy/datasource/create', 'datasource_create')
-	->post('/deploy/datasource/create', 'do_datasource_create')
-	->get('/deploy/datasource/update/{id:i}', 'datasource_update')
-	->post('/deploy/datasource/update/{id:i}', 'do_datasource_update')
-	->get('/deploy/datasource/delete/{id:i}', 'datasource_delete')
-	->post('/deploy/datasource/delete/{id:i}', 'do_datasource_delete')
-	->get('/deploy/datasource/test/{id:i}', 'datasource_test')
-	->post('/deploy/datasource/test/{id:i}', 'do_datasource_test')
-	->get('/deploy/datasource/build/{id:i}', 'datasource_build');
+	->get('/deploy/create', 'create')
+	->post('/deploy/create', 'do_create')
+	->get('/deploy/update/{id:i}', 'update')
+	->post('/deploy/update/{id:i}', 'do_update')
+	->get('/deploy/delete/{id:i}', 'delete')
+	->post('/deploy/delete/{id:i}', 'do_delete')
+	->get('/deploy/test/{id:i}', 'test')
+	->post('/deploy/test/{id:i}', 'do_test')
+	->get('/deploy/build/{id:i}', 'build')
+	->post('/deploy/build/{id:i}', 'do_build')
+	->post('/deploy/rollback/{id:i}', 'do_build');

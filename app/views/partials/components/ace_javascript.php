@@ -16,6 +16,16 @@
 		$('form').on('submit', function(ev){
 			$('input#js').val(js_editor.getValue());
 		});
+
+		js_editor.commands.addCommand({
+			name: 'save',
+			bindKey: {win: 'Ctrl-S',  mac: 'Command-S'},
+			exec: function(editor) {
+				$('input#content').val(editor.getValue());
+				$('form').submit();
+			},
+			readOnly: false // false if this command should not apply in readOnly mode
+		});
 	});
 
 </script>

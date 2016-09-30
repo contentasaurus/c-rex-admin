@@ -31,7 +31,7 @@ class auth_controller extends puffin\controller\action
 	{
 		$user = $this->user->login( $this->post->param('email'), $this->post->param('password') );
 
-		if( !empty($user) )
+		if( !empty($user) && $user != '-1' )
 		{
 			$_SESSION['user'] = $user;
 

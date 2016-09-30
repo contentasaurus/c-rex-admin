@@ -12,23 +12,21 @@ class deploy_controller extends puffin\controller\action
 
 	public function __init()
 	{
-		$this->deployment = new deployment();
 		$this->datasource = new datasource();
 	}
 
 	public function index()
 	{
-		view::add_param( 'deployments', $this->deployment->read() );
 		view::add_param( 'datasources', $this->datasource->read() );
 	}
 
 	#------------------------------
 
-	public function datasource_create()
+	public function create()
 	{
 	}
 
-	public function do_datasource_create()
+	public function do_create()
 	{
 		$params = $this->post->params();
 
@@ -39,12 +37,12 @@ class deploy_controller extends puffin\controller\action
 
 	#------------------------------
 
-	public function datasource_update( $id )
+	public function update( $id )
 	{
 		view::add_param( 'datasource', $this->datasource->read( $id ) );
 	}
 
-	public function do_datasource_update( $id )
+	public function do_update( $id )
 	{
 		$params = $this->post->params();
 
@@ -55,11 +53,11 @@ class deploy_controller extends puffin\controller\action
 
 	#------------------------------
 
-	public function datasource_delete()
+	public function delete()
 	{
 	}
 
-	public function do_datasource_delete( $id )
+	public function do_delete( $id )
 	{
 		$params = $this->post->params();
 
@@ -70,17 +68,17 @@ class deploy_controller extends puffin\controller\action
 
 	#------------------------------
 
-	public function datasource_test( $id )
+	public function test( $id )
 	{
 		$db = $this->datasource->read( $id );
 
-		$test_results = $this->do_datasource_test( $id, $db );
+		$test_results = $this->do_test( $id, $db );
 
 		view::add_param( 'dbname', $db['dbname']);
 		view::add_param( 'test_results', $test_results );
 	}
 
-	public function do_datasource_test( $id, $db = false )
+	public function do_test( $id, $db = false )
 	{
 		if( $db == false )
 		{
@@ -100,16 +98,13 @@ class deploy_controller extends puffin\controller\action
 
 			$test = new datasource_test();
 
-			$tables = $test->show_tables();
+			$test_results = [
+				'table_create_test' => $test->create_table(),
+				'view_create_test' => $test->create_view(),
+				'table_delete_test' => $test->delete_table(),
+				'view_delete_test' => $test->delete_view()
+			];
 
-			$test_results = [];
-			foreach($tables as $table)
-			{
-				foreach($table as $header => $tablename)
-				{
-					$test_results[$header] []= $tablename;
-				}
-			}
 		}
 		catch (Exception $e)
 		{
@@ -121,8 +116,7 @@ class deploy_controller extends puffin\controller\action
 
 
 	#------------------------------
-
-	public function datasource_build( $id )
+	public function build( $id )
 	{
 		$db = $this->datasource->read( $id );
 
@@ -135,42 +129,41 @@ class deploy_controller extends puffin\controller\action
 			'port' => $db['port'],
 		]);
 
-		$export = [];
-		$deploy_key = date('Ymdhis');
+		$deployment = new deployment();
 
-		$this->page = new page();
-		$export["pages_$deploy_key"] = $this->page->build_runtime();
-
-		$this->page_layout = new page_layout();
-		$export["page_layouts_$deploy_key"] = $this->page_layout->read();
-
-		debug($export); exit;
+		view::add_param( 'datasource', $db );
+		view::add_param( 'deployments', $deployment->read() );
 	}
 
-	#------------------------------
-
-	private function export_scripts()
+	public function do_build()
 	{
-	}
+		$params = $this->post->params();
 
-	private function export_layouts()
-	{
-	}
+		$db = $this->datasource->read( $params['id'] );
 
-	private function export_data()
-	{
-	}
+		dsn::set('datasource_deploy', [
+			'type' => $db['type'],
+			'name' => $db['dbname'],
+			'user' => $db['username'],
+			'pass' => $db['password'],
+			'addr' => $db['host'],
+			'port' => $db['port'],
+		]);
 
-	private function export_pages()
-	{
-	}
+		if( empty($params['key']) )
+		{
+			$params['key'] = date('Ymdhis');
+		}
 
-	private function export_components()
-	{
-	}
+		$export = new deployment_export();
 
-	private function export_media()
-	{
+		$export->set_key( $params['key'] )
+			->make()
+			->create_tables()
+			->verify_tables()
+			->alter_views();
+
+		url::redirect( $_SERVER['HTTP_REFERER'] );
 	}
 
 }

@@ -4,6 +4,7 @@ namespace puffin;
 
 $app->controller('layouts')
 	->any('/layouts', 'index')
+	->any('/scripts', 'index') //scripts and layouts index pages are now merged
 	->get('/layouts/create', 'create')
 	->post('/layouts/create', 'do_create')
 	->get('/layouts/update/{id:i}', 'update')
