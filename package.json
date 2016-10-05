@@ -1,0 +1,32 @@
+{
+  "name": "atlantic-cms-admin",
+  "version": "1.0.0",
+  "description": "",
+  "main": "gulpfile.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pinguinio/atlantic-cms-admin.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/pinguinio/atlantic-cms-admin/issues"
+  },
+  "homepage": "https://github.com/pinguinio/atlantic-cms-admin#readme",
+  "devDependencies": {
+    "ace-builds": "^1.2.5",
+    "bootstrap": "^4.0.0-alpha.4",
+    "bootstrap-toggle": "^2.2.2",
+    "chosen-npm": "^1.4.2",
+    "clipboard": "^1.5.12",
+    "d3": "^4.2.6",
+    "handlebars": "^4.0.5",
+    "jquery-treetable": "^3.2.0",
+    "jquery-ui": "^1.12.1",
+    "medium-editor-insert-plugin": "^2.4.0",
+    "watchify": "^3.7.0"
+  }
+}
