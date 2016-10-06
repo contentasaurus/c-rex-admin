@@ -16,9 +16,11 @@ var cleanCss = require('gulp-clean-css');
 var runSequence = require('run-sequence');
 var source = require('vinyl-source-stream');
 
+
 // High Level Tasks
 //
 gulp.task('default', ['js', 'css']);
+
 
 // JS Tasks
 //
@@ -60,7 +62,6 @@ gulp.task('js:low-dom-admin', function(done) {
 		gulp.dest('public/dist/js/low-dom')
 	], done);
 });
-
 
 gulp.task('js:minify', function(done) {
 	pump([
@@ -122,6 +123,7 @@ gulp.task('css:minify', function(done) {
 	], done);
 });
 
+
 // Helper Functions
 //
 function getModulePath(moduleName) {
@@ -133,6 +135,5 @@ function getModulePath(moduleName) {
 function getCssPath(moduleName, filePath) {
 	filePath || (filePath = '');
 	var modulePath = getModulePath(moduleName);
-	// console.log('CssPath: ', modulePath+filePath);
 	return modulePath+filePath;
 }
