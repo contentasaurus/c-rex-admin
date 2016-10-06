@@ -16,7 +16,7 @@ class bower extends  puffin\controller\plugin
 		// view::add_js("$BOWERDIR/jquery-ui/jquery-ui.min.js", $nonblocking = false);
 		// view::add_js("$BOWERDIR/jquery-sortable/source/js/jquery-sortable-min.js", $nonblocking = true);
 		// view::add_js("$BOWERDIR/jquery-treetable/jquery.treetable.js", $nonblocking = false);
-		view::add_css("$BOWERDIR/jquery-treetable/css/jquery.treetable.css");
+		// view::add_css("$BOWERDIR/jquery-treetable/css/jquery.treetable.css");
 		//view::add_css("$BOWERDIR/jquery-treetable/css/jquery.treetable.theme.default.css");
 
 		#clipboard
@@ -24,17 +24,17 @@ class bower extends  puffin\controller\plugin
 
 		#chosen
 		// view::add_js("$BOWERDIR/chosen/chosen.jquery.js", $nonblocking = false);
-		view::add_css("$BOWERDIR/chosen/chosen.css");
+		// view::add_css("$BOWERDIR/chosen/chosen.css");
 
 		#handlebars
 		// view::add_js("$BOWERDIR/handlebars/handlebars.min.js", $nonblocking = false);
 
 		#tether
-		view::add_css("$BOWERDIR/tether/dist/css/tether.min.css");
+		// view::add_css("$BOWERDIR/tether/dist/css/tether.min.css");
 		// view::add_js("$BOWERDIR/tether/dist/js/tether.min.js", $nonblocking = true);
 
 		#bootstrap
-		view::add_css("$BOWERDIR/bootstrap/dist/css/bootstrap.min.css");
+		// view::add_css("$BOWERDIR/bootstrap/dist/css/bootstrap.min.css");
 		// view::add_js("$BOWERDIR/bootstrap/dist/js/bootstrap.min.js", $nonblocking = true);
 
 		#medium editor
