@@ -44,5 +44,3 @@
 <script type="text/javascript">
 	$('#body').addClass('login');
 </script>
-
-<script type="text/javascript" src="{{ URL::to('js/admin.js') }}"></script>

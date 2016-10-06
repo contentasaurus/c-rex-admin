@@ -21,6 +21,7 @@ dsn::set('default', [
 
 #Plugins
 plugin::register('bower');
+plugin::register('compiled_js');
 plugin::register('theme');
 plugin::register('forceauth');
 plugin::register('fonts');
