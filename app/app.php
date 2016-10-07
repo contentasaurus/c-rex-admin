@@ -20,8 +20,7 @@ dsn::set('default', [
 ]);
 
 #Plugins
-plugin::register('compiled_css');
-plugin::register('compiled_js');
+plugin::register('compiled_assets');
 plugin::register('forceauth');
 plugin::register('fonts');
 plugin::register('layout');
