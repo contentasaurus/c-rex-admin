@@ -10,6 +10,15 @@ class deploy_controller extends puffin\controller\action
 {
 	public function __construct(){}
 
+	public function __before_call()
+	{
+		$user = new user();
+		if( !$user->is_admin( $_SESSION['user']['id'] ) )
+		{
+			url::redirect('/');
+		}
+	}
+
 	public function __init()
 	{
 		$this->datasource = new datasource();

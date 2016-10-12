@@ -5,6 +5,8 @@ use \puffin\app as app;
 use \puffin\view as view;
 use \puffin\autoload as autoload;
 
+define('SERVER_URL', 'http://localhost:8080');
+
 define('SERVER_ROOT', dirname(__FILE__));
 
 define('APP_PATH', SERVER_ROOT.'/app');
@@ -33,13 +35,6 @@ define('ERROR_REPORTING', true);
 ############################################
 
 require VENDOR_PATH . '/autoload.php';
-
-############################################
-
-define('DB_NAME', 'atlantic');
-define('DB_USER', 'root');
-define('DB_PASSWORD', '*T3mp3st!');
-define('DB_ADDRESS', '45.55.40.232');
 
 ############################################
 

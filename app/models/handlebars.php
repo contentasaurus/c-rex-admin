@@ -31,7 +31,7 @@ class handlebars
 		]);
 	}
 
-	public function render( $php, $page_data )
+	public function render( $php, $page_data = [] )
 	{
 		$renderer = LightnCandy::prepare($php);
 		return $renderer( $page_data );

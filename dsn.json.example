@@ -1,0 +1,59 @@
+{
+	"prod" : {
+		"url" : "example.com",
+		"dsn" : [
+			{
+				"name" : "default",
+				"credentials" : {
+					"type" : "mysql",
+					"name" : "cms",
+					"user" : "cms_user",
+					"pass" : "cms_password",
+					"addr" : "127.0.0.1",
+					"port" : "3306"
+				}
+			}
+		],
+		"session" : {
+			"example" : "1234"
+		}
+	},
+	"test" : {
+		"url" : "test.example.com",
+		"dsn" : [
+			{
+				"name" : "default",
+				"credentials" : {
+					"type" : "mysql",
+					"name" : "cms",
+					"user" : "cms_user",
+					"pass" : "cms_password",
+					"addr" : "127.0.0.1",
+					"port" : "3306"
+				}
+			}
+		],
+		"session" : {
+			"example" : "1234"
+		}
+	},
+	"local" : {
+		"url" : "test.example.com",
+		"dsn" : [
+			{
+				"name" : "default",
+				"credentials" : {
+					"type" : "mysql",
+					"name" : "cms",
+					"user" : "cms_user",
+					"pass" : "cms_password",
+					"addr" : "127.0.0.1",
+					"port" : "3306"
+				}
+			}
+		],
+		"session" : {
+			"example" : "1234"
+		}
+	}
+}

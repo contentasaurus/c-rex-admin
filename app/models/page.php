@@ -59,15 +59,15 @@ class page extends pdo
 					max(parent) AS parent,
 					permalink
 				FROM (
-				SELECT
-					p2.id AS page_id,
-					p.id AS parent_id,
-					p.permalink AS parent,
-					length(p.permalink) AS parent_length,
-					p2.permalink
-				FROM pages p
-					LEFT JOIN pages p2 ON p2.permalink LIKE concat(p.permalink, '%')
-				WHERE p.permalink != p2.permalink
+					SELECT
+						p2.id AS page_id,
+						p.id AS parent_id,
+						IF( p.permalink = '/', p.permalink, concat(p.permalink, '/') ) AS parent,
+						length(p.permalink) AS parent_length,
+						p2.permalink
+					FROM pages p
+						LEFT JOIN pages p2 ON p2.permalink LIKE concat(IF( p.permalink = '/', p.permalink, concat(p.permalink, '/') ), '%')
+					WHERE p.permalink != p2.permalink
 				) a
 				GROUP BY permalink
 				ORDER BY permalink";

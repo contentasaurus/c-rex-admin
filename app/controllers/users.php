@@ -18,7 +18,7 @@ class users_controller extends puffin\controller\action
 	{
 		if( controller::$action != 'profile' )
 		{
-			if( !$this->user->is_editor( $_SESSION['user']['id'] ) )
+			if( !$this->user->is_admin( $_SESSION['user']['id'] ) )
 			{
 				url::redirect('/users/no-access');
 			}

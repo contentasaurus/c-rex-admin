@@ -22,7 +22,6 @@
 					<th>Role</th>
 					<th>Email</th>
 					<th>Create Date</th>
-					<th>Last Updated</th>
 					<th width="50"><br /></th>
 				</tr>
 			</thead>
@@ -40,10 +39,21 @@
 							</div>
 						</td>
 						<td><?= $user['first_name'] ?> <?= $user['last_name'] ?></td>
-						<td><?= transformer::role2str($user['role_id']) ?></td>
+						<td>
+							<?php if( !$user['is_active'] ): ?>
+								Disabled
+							<?php else: ?>
+								<?php if( $user['is_admin'] == 2 ): ?>
+									Site Owner
+								<?php elseif( $user['is_admin'] == 1 ): ?>
+									Administrator
+								<?php else: ?>
+									Standard
+								<?php endif; ?>
+							<?php endif; ?>
+						</td>
 						<td><?= $user['email'] ?></td>
 						<td><?= $user['created_at'] ?></td>
-						<td><?= ($user['updated_at'] != '0000-00-00 00:00:00') ? $user['updated_at'] : '--' ?></td>
 						<td>
 							<?php if( $user['id'] != $_SESSION['user']['id'] ): ?>
 								<?php if( $user['is_active'] ): ?>

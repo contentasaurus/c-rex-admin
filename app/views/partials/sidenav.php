@@ -62,11 +62,11 @@
 				<i class="fa fa-database fa-2x"></i><br/><span class="nav-label">Datatypes</span>
 			</a>
 		</li>
-		<li>
+		<!-- <li>
 			<a href="/helpers" <?php if( controller::$controller == 'helpers' ): ?>class="active"<?php endif; ?> data-toggle="tooltip" data-placement="right" title="Helpers">
 				<i class="fa fa-thumbs-o-up fa-2x"></i><br/><span class="nav-label">Helpers</span>
 			</a>
-		</li>
+		</li> -->
 
 		<li>
 			<hr />

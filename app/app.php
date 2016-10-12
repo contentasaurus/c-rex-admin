@@ -1,5 +1,6 @@
 <?php
 
+use \puffin\environment as environment;
 use \puffin\plugin as plugin;
 use \puffin\view as view;
 use \puffin\debug as debug;
@@ -11,13 +12,9 @@ function debug( $input ){ echo debug::printr($input); }
 function clog( $input ){ echo debug::clog($input); }
 function redirect( $location = false ){ url::redirect($location); }
 
-dsn::set('default', [
-	'type' => 'mysql',
-	'name' => DB_NAME,
-	'user' => DB_USER,
-	'pass' => DB_PASSWORD,
-	'addr' => DB_ADDRESS
-]);
+
+environment::init(SERVER_ROOT . '/dsn.json');
+environment::load();
 
 #Plugins
 plugin::register('bower');

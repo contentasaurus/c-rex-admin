@@ -1,1 +1,1 @@
-<?php echo $this->CONTENTS ?>
+<?= $this->CONTENTS ?>

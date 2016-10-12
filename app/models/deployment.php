@@ -19,7 +19,7 @@ class deployment extends pdo
 		}
 
 		$sql = "SELECT *
-				FROM __recent_deployments
+				FROM ___recent_deployments
 				$where
 				ORDER BY created_at desc";
 

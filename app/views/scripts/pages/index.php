@@ -45,7 +45,7 @@
 								<?php elseif( $page['permalink'] == '/' ): ?>
 									<i class="fa fa-home"></i>
 								<?php else: ?>
-									<?= $page['permalink'] ?>
+									<?= trim( $page['permalink'], '/' ) ?>
 								<?php endif; ?>
 								<button type="button" class="tt-button btn btn-sm btn-link" data-toggle="popover" title="Add Page" data-html="true" data-content='
 									<form class="form-inline" method="post" action="/pages/create">

@@ -1,16 +1,12 @@
 <?= $this->partial('breadcrumb', [ 'crumbs' => [
 	[ 'name'=> 'Pages', 'url' => '/pages' ],
-	[ 'name'=> 'Versions', 'url' => "/pages/update/{$this->page['id']}/versions" ],
+	[ 'name'=> 'Contents', 'url' => "/pages/update/{$this->page['id']}" ],
 	[ 'name'=> 'Update Version', 'active' => 'true' ],
 ]]); ?>
 
 <div class="card">
 	<div class="card-header">
-		<?= $this->partial('tabs', [ 'classes' => 'card-header-tabs pull-xs-left', 'tabs' => [
-			[ 'name'=> 'Contents', 'url' => "/pages/update/{$this->page['id']}" ],
-			[ 'name'=> 'Versions', 'active' => 'active', 'url' => "/pages/update/{$this->page['id']}/versions" ],
-			[ 'name'=> 'Data', 'url' => "/pages/update/{$this->page['id']}/data" ]
-		]]); ?>
+		Update Version
 	</div>
 	<div class="card-block">
 		<form method="POST" accept-charset="UTF-8" data-form-ajax="">

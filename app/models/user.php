@@ -103,36 +103,23 @@ class user extends pdo
 	{
 		$user = $this->read( $id );
 
-		if( !empty($user['role_id']) )
-		{
-			$roles = new role();
-			$role = $roles->read( $user['role_id'] );
-			return $role['access_level'];
-		}
-		else
-		{
-			return -1;
-		}
-
+		return $user['is_admin'];
 	}
 
 	public function is_owner( $id )
 	{
-		return $this->_check_role( $id ) == 255;
+		return $this->_check_role( $id ) == 2;
 	}
 
-	public function is_editor( $id )
+	public function is_admin( $id )
 	{
-		return $this->_check_role( $id ) >= 128;
+		return $this->_check_role( $id ) >= 1;
 	}
 
-	public function is_author( $id )
+	public function is_standard( $id )
 	{
-		return $this->_check_role( $id ) >= 64;
+		return $this->_check_role( $id ) >= 0;
 	}
 
-	public function is_disabled( $id )
-	{
-		return $this->_check_role( $id ) <= 0;
-	}
+
 }
