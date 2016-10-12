@@ -17,8 +17,7 @@ environment::init(SERVER_ROOT . '/dsn.json');
 environment::load();
 
 #Plugins
-plugin::register('bower');
-plugin::register('theme');
+plugin::register('compiled_assets');
 plugin::register('forceauth');
 plugin::register('fonts');
 plugin::register('layout');
