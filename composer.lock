@@ -4,8 +4,8 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#composer-lock-the-lock-file",
         "This file is @generated automatically"
     ],
-    "hash": "061c425ea61e54dbc0d230e99a55d6bf",
-    "content-hash": "72e9ab1e9fcc36be61c296faf4bb9063",
+    "hash": "e68ad522c015878761ab7a28860b8ea5",
+    "content-hash": "329615d6a05e1d572837bf0e73be65ab",
     "packages": [
         {
             "name": "forxer/gravatar",
@@ -191,6 +191,42 @@
             "time": "2015-07-22 20:46:43"
         },
         {
+            "name": "pinguinio/node-php-process",
+            "version": "dev-master",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/pinguinio/node-php-process.git",
+                "reference": "baffe4f4078dd5730b083932a0bf8424ca030788"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/pinguinio/node-php-process/zipball/baffe4f4078dd5730b083932a0bf8424ca030788",
+                "reference": "baffe4f4078dd5730b083932a0bf8424ca030788",
+                "shasum": ""
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "pinguinio\\": "src/"
+                }
+            },
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Jake Wood",
+                    "email": "jwood@paradowski.com"
+                }
+            ],
+            "description": "Provides a standard for handing off processing to node and having node respond with its results.",
+            "support": {
+                "source": "https://github.com/pinguinio/node-php-process/tree/master",
+                "issues": "https://github.com/pinguinio/node-php-process/issues"
+            },
+            "time": "2016-10-12 19:57:20"
+        },
+        {
             "name": "pinguinio/puffin-feather",
             "version": "v0001",
             "source": {
@@ -215,16 +251,16 @@
         },
         {
             "name": "pinguinio/puffin-framework",
-            "version": "1.0.0-beta18",
+            "version": "dev-master",
             "source": {
                 "type": "git",
-                "url": "https://bitbucket.org/pinguinio/puffin-framework.git",
-                "reference": "e7d2f265d36f13b148c9ee4de85a05cb62b15909"
+                "url": "https://github.com/pinguinio/puffin-framework.git",
+                "reference": "54c2bcb414ce7c9cceb77d8cc35fc9c9c16a55d5"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://bitbucket.org/pinguinio/puffin-framework/get/e7d2f265d36f13b148c9ee4de85a05cb62b15909.zip",
-                "reference": "e7d2f265d36f13b148c9ee4de85a05cb62b15909",
+                "url": "https://api.github.com/repos/pinguinio/puffin-framework/zipball/54c2bcb414ce7c9cceb77d8cc35fc9c9c16a55d5",
+                "reference": "54c2bcb414ce7c9cceb77d8cc35fc9c9c16a55d5",
                 "shasum": ""
             },
             "require": {
@@ -238,12 +274,15 @@
                     "puffin\\": "src/"
                 }
             },
-            "notification-url": "https://packagist.org/downloads/",
             "license": [
                 "MIT"
             ],
             "description": "A nice MVC framework, made by nice people.",
-            "time": "2016-07-19 00:12:49"
+            "support": {
+                "source": "https://github.com/pinguinio/puffin-framework/tree/master",
+                "issues": "https://github.com/pinguinio/puffin-framework/issues"
+            },
+            "time": "2016-10-12 02:42:27"
         },
         {
             "name": "vladkens/autoprefixer",
@@ -344,8 +383,10 @@
     "aliases": [],
     "minimum-stability": "alpha",
     "stability-flags": {
+        "pinguinio/puffin-framework": 20,
         "zordius/lightncandy": 20,
-        "vladkens/autoprefixer": 20
+        "vladkens/autoprefixer": 20,
+        "pinguinio/node-php-process": 20
     },
     "prefer-stable": false,
     "prefer-lowest": false,

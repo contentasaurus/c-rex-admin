@@ -3,6 +3,7 @@
 use \puffin\model\pdo as pdo;
 use \puffin\controller\param as param;
 use \Leafo\ScssPhp\Compiler as scss_compiler;
+use \pinguinio\NodePhpProcess as node_php_process;
 
 class deployment_export extends pdo
 {
@@ -70,8 +71,8 @@ class deployment_export extends pdo
 	public function get_component_scripts()
 	{
 		return [
-			['name' => 'component.head.js', 'content' => $this->get_components_part('js') ],
-			['name' => 'component.body.js', 'content' => $this->get_components_part('nonblocking_js') ],
+			['name' => 'component.head.js', 'content' => $this->node_compile_js( 'head' ) ],
+			['name' => 'component.body.js', 'content' => $this->node_compile_js( 'body' ) ],
 			['name' => 'component.css', 'content' => $this->make_components_css( $this->get_components_part('css') ) ],
 		];
 	}
@@ -354,6 +355,42 @@ class deployment_export extends pdo
 		{
 			return $this->$cpart;
 		}
+	}
+
+	public function format_components_js_for_compile( $position ) 
+	{
+		$formatted_components = [];
+		$components = $this->get_components();
+		$key = false;
+
+		if( $position == 'head' ) $key = 'js';
+		if( $position == 'body' ) $key = 'nonblocking_js';
+		if( !$key ) return $formatted_components;
+
+		foreach( $components as $component )
+		{
+			$name = $components['name'];
+			$js = $components[$key];
+			$formatted_components[$name] = $js;
+		}
+
+		return $formatted_components;
+	}
+
+	public function node_compile_js( $position ) 
+	{
+		$formatted_components 
+			= $this->format_components_js_for_compile( $position );
+		
+		$process = new node_php_process();
+
+		$process
+			->script_path( NODE_PATH )
+			->content( $formatted_components )
+			->run( 'js_compiler/index' )
+			->output( $js );
+
+		return $js;
 	}
 
 	public function format_components_html_for_compile()

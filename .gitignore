@@ -5,3 +5,4 @@ Thumbs.db
 .sass-cache/
 npm-debug.log
 /vendor
+dsn.json

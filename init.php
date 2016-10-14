@@ -16,6 +16,7 @@ define('MODEL_PATH', APP_PATH.'/models');
 define('PLUGIN_PATH', APP_PATH.'/plugins');
 define('TEST_PATH', APP_PATH.'/tests');
 define('VIEW_PATH', APP_PATH.'/views');
+define('NODE_PATH', APP_PATH.'/node');
 define('PARTIAL_PATH', VIEW_PATH.'/partials');
 define('LAYOUT_PATH', VIEW_PATH.'/layouts');
 define('SCRIPT_PATH', VIEW_PATH.'/scripts');
