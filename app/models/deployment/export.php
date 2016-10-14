@@ -70,11 +70,13 @@ class deployment_export extends pdo
 
 	public function get_component_scripts()
 	{
-		return [
-			['name' => 'component.head.js', 'content' => $this->node_compile_js( 'head' ) ],
-			['name' => 'component.body.js', 'content' => $this->node_compile_js( 'body' ) ],
+		$return = [
+			['name' => 'component.head.js', 'content' => $this->node_compile_js('head') ],
+			['name' => 'component.body.js', 'content' => $this->node_compile_js('body') ],
 			['name' => 'component.css', 'content' => $this->make_components_css( $this->get_components_part('css') ) ],
 		];
+
+		return $return;
 	}
 
 	public function get_page_data()
@@ -318,20 +320,19 @@ class deployment_export extends pdo
 		return $this->hbs->compile( $template );
 	}
 
-
 	public function make_components_css( $sass )
 	{
 		$scss = new scss_compiler();
 		$css = $scss->compile( $sass );
 
 		$autoprefixer = new Autoprefixer([
-			'last 2 versions',
+			'last 2 versions', 
 			'iOS 8'
 		]);
 
 		$prefixed_css = $autoprefixer->compile($css);
 
-		return $prefixed_css;
+		return $css;
 	}
 
 	public function get_components_part( $part = '' )
@@ -367,11 +368,18 @@ class deployment_export extends pdo
 		if( $position == 'body' ) $key = 'nonblocking_js';
 		if( !$key ) return $formatted_components;
 
+		$formatted_components['__init_script__'] = '';
+
 		foreach( $components as $component )
 		{
-			$name = $components['name'];
-			$js = $components[$key];
-			$formatted_components[$name] = $js;
+			$js = trim($component[$key]);
+
+			if(!empty($js)) {
+				$name = $component['name'];
+				$formatted_components[$name] = $js;
+				$formatted_components['__init_script__'] 
+					.= "require('{$component['name']}');";
+			}
 		}
 
 		return $formatted_components;
@@ -381,13 +389,17 @@ class deployment_export extends pdo
 	{
 		$formatted_components 
 			= $this->format_components_js_for_compile( $position );
-		
+
+		$formatted_components = [
+			'modules' => $formatted_components
+		];
+
 		$process = new node_php_process();
 
 		$process
 			->script_path( NODE_PATH )
 			->content( $formatted_components )
-			->run( 'js_compiler/index' )
+			->run( 'js_compiler' )
 			->output( $js );
 
 		return $js;
