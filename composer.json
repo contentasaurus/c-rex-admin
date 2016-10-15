@@ -1,15 +1,15 @@
 {
-	"name": "pinguinio/atlantic-admin-bootstrap",
-	"description": "Atlantic Puffin CMS Admin.",
+	"name": "contentasaurus/c-rex-admin",
+	"description": "Contentasaurus Admin.",
 	"license": "MIT",
 	"require": {
-		"pinguinio/puffin-framework": "dev-master",
-		"pinguinio/puffin-feather": "1.0.*",
-		"zordius/lightncandy": "dev-master",
-		"forxer/Gravatar": "~1.2",
+		"contentasaurus/puffin-framework": "dev-master",
+		"contentasaurus/puffin-feather": "1.0.*",
+		"contentasaurus/lightncandy": "dev-master",
+		"contentasaurus/Gravatar": "~1.2",
 		"leafo/scssphp": "0.6.6",
 		"vladkens/autoprefixer": "dev-master",
-		"pinguinio/node-php-process": "dev-master"
+		"contentasaurus/node-php-process": "dev-master"
 	},
 	"config": {
 		"vendor-dir": "vendor"
@@ -18,11 +18,11 @@
 	"repositories": [
 		{
 			"type": "vcs",
-			"url": "git@github.com:pinguinio/node-php-process.git"
+			"url": "git@github.com:contentasaurus/node-php-process.git"
 		},
 		{
 			"type": "vcs",
-			"url": "git@github.com:pinguinio/puffin-framework.git"
+			"url": "git@github.com:contentasaurus/puffin-framework.git"
 		}
 	]
 }
