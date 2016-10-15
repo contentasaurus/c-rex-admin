@@ -5,7 +5,7 @@
 	"require": {
 		"contentasaurus/puffin-framework": "dev-master",
 		"contentasaurus/puffin-feather": "1.0.*",
-		"contentasaurus/node-php-process": "dev-master"
+		"contentasaurus/node-php-process": "dev-master",
 		"contentasaurus/lightncandy": "dev-master",
 		"forxer/Gravatar": "~1.2",
 		"leafo/scssphp": "0.6.6",
