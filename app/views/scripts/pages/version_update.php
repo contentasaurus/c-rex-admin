@@ -39,7 +39,7 @@
 			<br />
 
 			<button type="submit" class="btn btn-primary">Save</button>
-			<a class="btn btn-secondary" href="/pages/update/{$this->page['id']}/versions">Cancel</a>
+			<a class="btn btn-secondary" href="/pages/update/<?= $this->page['id'] ?>">Cancel</a>
 		</form>
 	</div>
 </div>

@@ -7,7 +7,7 @@
 
 <div class="card">
 	<div class="card-header">
-		Create Datatype
+		Create Datatype Template
 	</div>
 	<div class="card-block">
 		<form method="POST" accept-charset="UTF-8" data-form-ajax="">
@@ -19,7 +19,7 @@
 			</div>
 			<div class="form-group">
 				<button class="btn btn-primary" type="submit">Next</button>
-				<a class="btn btn-default" href="/datatypes">Cancel</a>
+				<a class="btn btn-secondary" href="/datatypes">Cancel</a>
 			</div>
 		</form>
 	</div>

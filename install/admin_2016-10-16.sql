@@ -5,7 +5,11 @@
 # http://www.sequelpro.com/
 # https://github.com/sequelpro/sequelpro
 #
+# Host: 127.0.0.1 (MySQL 5.5.5-10.1.10-MariaDB)
+# Database: contentasaurus
+# Generation Time: 2016-10-16 06:15:51 +0000
 # ************************************************************
+
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
@@ -48,7 +52,11 @@ VALUES
 	(7,1,'cf6225263-842e-11e6-9506-04019a288d01','footer','The Footer','<footer>\r\n    <div>i\'m the f**king footer</div>\r\n</footer>',NULL,NULL,NULL,'2016-09-23 17:15:59','2016-10-11 16:16:16'),
 	(8,1,'cf6225428-842e-11e6-9506-04019a288d01','button','standard button','<button class=\"{{ class }}\" type=\"{{ type }}\">{{ value }}</button>','border:1px solid orange;',NULL,NULL,'2016-09-24 00:35:16','2016-09-30 11:37:02'),
 	(9,1,'cf62254d3-842e-11e6-9506-04019a288d01','a','Anchor Tag','<a {{~#if class}} class=\"{{ class }}\"{{/if~}} {{~#if target}} target=\"{{ target }}\"{{/if~}} {{~#if href}} href=\"{{ href }}\"{{/if~}} >{{ text }}</a>','display:flex;\r\na {\r\n    font-size:4em;\r\n    color:blue;\r\n    border:1px solid red;\r\n    margin:4px;\r\n    padding:4px;\r\n}',NULL,'','2016-09-24 00:36:17','2016-09-30 11:37:24'),
-	(20,1,'c46168939-8727-11e6-9506-04019a288d01','team_member_table','table wrapper for team members','<h1>{{ name }}</h1>\r\n<table class=\"table table-bordered table-hover\">\r\n    <thead>\r\n        <tr>\r\n            <th>First Name</th>\r\n            <th>Last Name</th>\r\n            <th>Hire Date</th>\r\n            <th>Age</th>\r\n            <th>Lucky Number</th>\r\n            <th>Handedness</th>\r\n        </tr>\r\n    </thead>\r\n    <tbody>\r\n        {{#each members}}\r\n            <tr>\r\n                <td>{{ first_name }}</td>\r\n                <td>{{ last_name }}</td>\r\n                <td>{{ hire_date }}</td>\r\n                <td>{{ age }}</td>\r\n                <td>{{ lucky_number }}</td>\r\n                <td>{{ handedness }}</td>\r\n            </tr>\r\n        {{/each}}\r\n    </tbody>\r\n</table>',NULL,NULL,NULL,'2016-09-30 12:02:23','2016-09-30 12:44:23');
+	(20,1,'c46168939-8727-11e6-9506-04019a288d01','team_member_table','table wrapper for team members','<h1>{{ name }}</h1>\r\n<table class=\"table table-bordered table-hover\">\r\n    <thead>\r\n        <tr>\r\n            <th>First Name</th>\r\n            <th>Last Name</th>\r\n            <th>Hire Date</th>\r\n            <th>Age</th>\r\n            <th>Lucky Number</th>\r\n            <th>Handedness</th>\r\n        </tr>\r\n    </thead>\r\n    <tbody>\r\n        {{#each members}}\r\n            <tr>\r\n                <td>{{ first_name }}</td>\r\n                <td>{{ last_name }}</td>\r\n                <td>{{ hire_date }}</td>\r\n                <td>{{ age }}</td>\r\n                <td>{{ lucky_number }}</td>\r\n                <td>{{ handedness }}</td>\r\n            </tr>\r\n        {{/each}}\r\n    </tbody>\r\n</table>',NULL,NULL,NULL,'2016-09-30 12:02:23','2016-09-30 12:44:23'),
+	(21,7,'cd1bcd1d2-922f-11e6-9506-04019a288d01','test_a','Used for testing',NULL,NULL,'\r\nconsole.log(\'test_a\');\r\nrequire(\'test_b\');',NULL,'2016-10-14 13:01:16','2016-10-14 13:04:03'),
+	(22,7,'c8ceeb8b8-9230-11e6-9506-04019a288d01','test_b','','',NULL,'\r\nconsole.log(\'test_b\');\r\nrequire(\'test_c\');',NULL,'2016-10-14 13:06:30','2016-10-14 13:13:56'),
+	(23,7,'c9e429acb-9230-11e6-9506-04019a288d01','test_c','','',NULL,'\r\nconsole.log(\'test_c\');\r\nconsole.log(\'that is call folks\');',NULL,'2016-10-14 13:06:59','2016-10-14 13:14:11'),
+	(24,1,'c393c051d-9361-11e6-9506-04019a288d01','test','This is a test of the messages','',NULL,NULL,NULL,'2016-10-16 01:27:26','2016-10-16 01:27:42');
 
 /*!40000 ALTER TABLE `components` ENABLE KEYS */;
 UNLOCK TABLES;
@@ -58,69 +66,6 @@ DELIMITER ;;
 /*!50003 CREATE */ /*!50017 DEFINER=`root`@`%` */ /*!50003 TRIGGER `before_insert_components` BEFORE INSERT ON `components` FOR EACH ROW SET new.uuid = concat('c',uuid()) */;;
 DELIMITER ;
 /*!50003 SET SESSION SQL_MODE=@OLD_SQL_MODE */;
-
-
-# Dump of table dam_media
-# ------------------------------------------------------------
-
-DROP TABLE IF EXISTS `dam_media`;
-
-CREATE TABLE `dam_media` (
-  `id` bigint(11) unsigned NOT NULL AUTO_INCREMENT,
-  `remote_uri` varchar(2000) DEFAULT '',
-  `local_path` varchar(2000) DEFAULT '',
-  `thumbnail_path` varchar(2000) DEFAULT '',
-  `mimetype` varchar(100) NOT NULL DEFAULT '',
-  `width` int(11) DEFAULT NULL,
-  `height` int(11) DEFAULT NULL,
-  `size` bigint(20) NOT NULL,
-  `views` bigint(11) unsigned NOT NULL DEFAULT '0',
-  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` datetime NOT NULL DEFAULT '0000-00-00 00:00:00' ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-
-
-
-# Dump of table dam_media_tags
-# ------------------------------------------------------------
-
-DROP TABLE IF EXISTS `dam_media_tags`;
-
-CREATE TABLE `dam_media_tags` (
-  `id` bigint(11) unsigned NOT NULL AUTO_INCREMENT,
-  `media_id` bigint(11) unsigned NOT NULL,
-  `tag_id` bigint(11) unsigned NOT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `tag_id` (`tag_id`,`media_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-
-
-
-# Dump of table dam_media_types
-# ------------------------------------------------------------
-
-DROP TABLE IF EXISTS `dam_media_types`;
-
-CREATE TABLE `dam_media_types` (
-  `id` bigint(11) unsigned NOT NULL AUTO_INCREMENT,
-  `name` varchar(20) DEFAULT NULL,
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-
-
-
-# Dump of table dam_tags
-# ------------------------------------------------------------
-
-DROP TABLE IF EXISTS `dam_tags`;
-
-CREATE TABLE `dam_tags` (
-  `id` bigint(11) unsigned NOT NULL AUTO_INCREMENT,
-  `tagname` varchar(50) NOT NULL DEFAULT '',
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-
 
 
 # Dump of table datasources
@@ -143,10 +88,6 @@ CREATE TABLE `datasources` (
 
 LOCK TABLES `datasources` WRITE;
 /*!40000 ALTER TABLE `datasources` DISABLE KEYS */;
-
-INSERT INTO `datasources` (`id`, `name`, `type`, `host`, `port`, `dbname`, `username`, `password`, `description`)
-VALUES
-	(4,'Staging','mysql','45.55.40.232','3306','atlantic_runtime','root','*T3mp3st!','Staging!');
 
 /*!40000 ALTER TABLE `datasources` ENABLE KEYS */;
 UNLOCK TABLES;
@@ -175,7 +116,6 @@ LOCK TABLES `datatypes` WRITE;
 
 INSERT INTO `datatypes` (`id`, `author_user_id`, `name`, `content`, `created_at`, `updated_at`)
 VALUES
-	(18,1,'menu','{[\r\n    {\r\n        \"name\":\"Home\",\r\n        \"href\":\"/\"\r\n    },\r\n    {\r\n        \"name\":\"Menu 1\",\r\n        \"children\":[\r\n            {\r\n              \"name\":\"Subitem 1\",\r\n              \"href\": \"/sub-item-1\"\r\n            },\r\n            {\r\n              \"name\":\"Subitem 2\",\r\n              \"href\": \"/sub-item-2\"\r\n            },\r\n            {\r\n              \"name\":\"Subitem 3\",\r\n              \"href\": \"/sub-item-3\"\r\n            },\r\n        ]\r\n    },\r\n    {\r\n        \"name\":\"Menu 2\",\r\n        \"children\":[\r\n            {\r\n              \"name\":\"Subitem 1\",\r\n              \"href\": \"/sub-item-1\"\r\n            },\r\n            {\r\n              \"name\":\"Subitem 2\",\r\n              \"href\": \"/sub-item-2\"\r\n            },\r\n            {\r\n              \"name\":\"Subitem 3\",\r\n              \"href\": \"/sub-item-3\"\r\n            },\r\n        ]\r\n    },\r\n]}','2016-07-09 23:53:00','2016-07-09 23:56:48'),
 	(20,1,'form example','{\r\n    \"name\":{ \r\n        \"type\":\"text\", \r\n        \"placeholder\":\"Name\",\r\n        \"label\": \"Name\",\r\n        \"default\": \"\",\r\n        \"required\":true\r\n    },\r\n    \"age\":{ \r\n        \"type\":\"number\", \r\n        \"placeholder\":\"21\",\r\n        \"label\": \"Age\",\r\n        \"default\": \"\",\r\n        \"required\":false\r\n    },\r\n    \"color\":{ \r\n        \"type\":\"color\", \r\n        \"placeholder\":\"\",\r\n        \"label\": \"Favorite Color\",\r\n        \"default\": \"\",\r\n        \"required\":false\r\n    },\r\n    \"date\":{ \r\n        \"type\":\"date\", \r\n        \"placeholder\":\"\",\r\n        \"label\": \"Favorite Date\",\r\n        \"default\": \"\",\r\n        \"required\":false\r\n    },\r\n    \"email\":{ \r\n        \"type\":\"email\", \r\n        \"placeholder\":\"atlantic@puffin.pinguinio.com\",\r\n        \"label\": \"Email Address\",\r\n        \"default\": \"\",\r\n        \"required\":false\r\n    },\r\n    \"gender\":{ \r\n        \"type\":\"radio\", \r\n        \"options\":[\r\n            {\"label\":\"Male\", \"value\":\"M\"},\r\n            {\"label\":\"Female\", \"value\":\"F\"},\r\n            {\"label\":\"Both\", \"value\":\"B\"},\r\n            {\"label\":\"Neither\", \"value\":\"N\"},\r\n            {\"label\":\"Other\", \"value\":\"O\"}\r\n        ],\r\n        \"label\": \"Gender\",\r\n        \"default\": \"\",\r\n        \"required\":false\r\n    },\r\n    \"role\":{\r\n        \"type\":\"select\", \r\n        \"label\": \"Role\",\r\n        \"default\": \"\",\r\n        \"multiple\": false,\r\n        \"options\":[\r\n            {\"label\":\"Standard\", \"value\":0},\r\n            {\"label\":\"Admin\", \"value\":1},\r\n            {\"label\":\"Superadmin\", \"value\":2}\r\n        ],\r\n        \"required\":false\r\n    },\r\n    \"food\":{\r\n        \"type\":\"select\", \r\n        \"label\": \"Food I Like\",\r\n        \"default\": \"\",\r\n        \"multiple\": true,\r\n        \"options\":[\r\n            {\"label\":\"Spaghetti\", \"value\":\"Spaghetti\"},\r\n            {\"label\":\"Pizza\", \"value\":\"Pizza\"},\r\n            {\"label\":\"Ice Cream\", \"value\":\"Ice Cream\"},\r\n            {\"label\":\"Burrito\", \"value\":\"Burrito\"}\r\n        ],\r\n        \"required\":false\r\n    },\r\n    \"hear_about\":{\r\n        \"type\":\"checkbox\",\r\n        \"label\": \"How did you hear about us?\",\r\n        \"options\":[\r\n            {\"label\":\"Mail\", \"value\":\"Mail\"},\r\n            {\"label\":\"Facebook\", \"value\":\"Facebook\"},\r\n            {\"label\":\"Twitter\", \"value\":\"Twitter\"},\r\n            {\"label\":\"CNN\", \"value\":\"CNN\"},\r\n            {\"label\":\"Newspaper\", \"value\":\"Newspaper\"}\r\n        ],\r\n        \"value\": \"true\"\r\n    },\r\n    \"comment\":{ \r\n        \"type\":\"textarea\", \r\n        \"placeholder\":\"Add a comment\",\r\n        \"label\": \"Comment\",\r\n        \"default\": \"\",\r\n        \"required\":false\r\n    }\r\n}','2016-08-17 14:04:59','2016-08-20 00:19:20'),
 	(21,1,'Repeater Example','{\r\n    \"name\":{ \r\n        \"type\":\"text\", \r\n        \"placeholder\":\"Team Valour\",\r\n        \"label\": \"Team name\",\r\n        \"default\": \"\",\r\n        \"required\":true\r\n    },\r\n    \"members\":{\r\n        \"type\":\"repeater\",\r\n        \"label\":\"Team members\",\r\n        \"fields\":{\r\n            \"first_name\":{ \r\n                \"type\":\"text\", \r\n                \"placeholder\":\"First Name\",\r\n                \"label\": \"First Name\",\r\n                \"default\": \"\",\r\n                \"required\":true\r\n            },\r\n            \"last_name\":{ \r\n                \"type\":\"text\", \r\n                \"placeholder\":\"Last Name\",\r\n                \"label\": \"Last Name\",\r\n                \"default\": \"\",\r\n                \"required\":true\r\n            },\r\n            \"hire_date\":{ \r\n                \"type\":\"date\", \r\n                \"label\": \"Hire Date\",\r\n                \"default\": \"\",\r\n                \"required\":false\r\n            },\r\n            \"age\":{ \r\n                \"type\":\"number\", \r\n                \"placeholder\":\"21\",\r\n                \"label\": \"Age\",\r\n                \"default\": \"\",\r\n                \"required\":false\r\n            },\r\n            \"lucky_number\":{ \r\n                \"type\":\"number\", \r\n                \"placeholder\":\"5\",\r\n                \"label\": \"Lucky Number\",\r\n                \"default\": \"\",\r\n                \"required\":false\r\n            },\r\n            \"handedness\":{\r\n                \"type\":\"select\", \r\n                \"label\": \"Handedness\",\r\n                \"default\": \"\",\r\n                \"multiple\": false,\r\n                \"options\":[\r\n                    {\"label\":\"Left\", \"value\":\"Left\"},\r\n                    {\"label\":\"Right\", \"value\":\"Right\"},\r\n                    {\"label\":\"Both\", \"value\":\"Both\"},\r\n                    {\"label\":\"Neither\", \"value\":\"Neither\"}\r\n                ],\r\n                \"required\":true\r\n            }\r\n        }\r\n    }\r\n}','2016-08-20 00:31:58','2016-08-21 23:21:42'),
 	(22,1,'Anchor Tag','{\r\n    \"href\":{ \r\n        \"type\":\"text\", \r\n        \"placeholder\":\"href\",\r\n        \"label\": \"href\",\r\n        \"default\": \"\",\r\n        \"required\":true\r\n    },\r\n    \"text\":{ \r\n        \"type\":\"text\", \r\n        \"placeholder\":\"text\",\r\n        \"label\": \"text\",\r\n        \"default\": \"\",\r\n        \"required\":true\r\n    }\r\n}','2016-09-26 16:20:57','2016-09-26 16:22:00');
@@ -591,7 +531,7 @@ LOCK TABLES `users` WRITE;
 
 INSERT INTO `users` (`id`, `is_admin`, `first_name`, `last_name`, `email`, `password`, `title`, `updated_at`, `created_at`, `is_active`)
 VALUES
-	(1,2,'Joshua','Byington','jbyington@paradowski.com','$2y$10$Vj6Wq64MsoNrujkHHztno.a3NzqEph/rhG3x9B38i5xOAWOgZ1qMK','Director of Development','2016-10-12 12:08:46','2016-04-27 16:59:58',1),
+	(1,2,'Joshua','Byington','jbyington@paradowski.com','$2y$10$Vj6Wq64MsoNrujkHHztno.a3NzqEph/rhG3x9B38i5xOAWOgZ1qMK','Director of Development','2016-10-13 11:19:40','2016-04-27 16:59:58',1),
 	(2,0,'Jim','Croche','jbyington+editor@paradowski.com','$2y$10$qu2FOYe4fnylKfDc1QS1yOKY9.5vwEI98vJVT0Hl0r8wAZPTIyKKS','Master Guitarist and Vocalist','2016-05-31 18:19:31','2016-05-10 23:26:26',1),
 	(3,0,'Cat','Stevens','jbyington+author@paradowski.com','$2y$10$RrSjdbpND0EB4/pzTRJ9uO9KMrV0XHg84Ly0IxxXkGRV1i9Tv6f36','Conductor, Peace Train','2016-05-19 12:14:04','2016-05-10 23:51:42',1),
 	(4,0,'James','Hendrix','jbyington+disabled@paradowski.com','$2y$10$O2omz5AOrHF.e9LAjYiSzedpz4zb6DcQdAFzIDEaJKmF6Mqz2ShMG','Genius','2016-10-12 11:56:41','2016-05-10 23:52:43',0),

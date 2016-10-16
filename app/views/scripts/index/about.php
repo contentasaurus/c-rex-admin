@@ -1,18 +1,8 @@
-<!-- <div class="card card-outline-secondary col-md-4">
-	<h1 class="display-1">Hi there.</h1>
-	<p class="lead">Here's the deal.</p>
-	<p>At some point content jumped the damn fence and wandered off in new directions.</p>
-	<p>CMSes are amazing tools. But they're just tools. They don't create ideas any more than a shovel, by itself, digs ditches.</p>
-	<p>If you want an interesting website you have to actually BE interesting. No amount of WordPress plugins can make up the the lack of depth, of substance&mdash; OF SOUL.</p>
-	<p>Content is King. The old institutions of its management are creaking in their dusty foundations. We aren't the revolution. We're the revolution that comes AFTER the revolution.</p>
-	<p>Now, go create.</p>
-</div> -->
-
 <div class="card card-primary card-inverse">
 	<div class="card-block">
  		<blockquote class="card-blockquote">
 			<p>MIT LICENSE</p>
-			<p>Copyright (c) 2015-2016 Paradowski.com</p>
+			<p>Copyright (c) 2015-<?= date('Y') ?> Contentasaurus.com</p>
 			<p>Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:</p>
 			<p>The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.</p>
 			<p>THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.</p>

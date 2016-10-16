@@ -14,10 +14,7 @@ class pages_controller extends puffin\controller\action
 		$this->datatype = new datatype();
 
 		$this->page = new page();
-		$this->page_log = new page_log();
 		$this->page_data = new page_data();
-		$this->page_status = new page_status();
-		$this->page_history = new page_history();
 		$this->page_layouts = new page_layout();
 		$this->page_versions = new page_version();
 	}
