@@ -1,5 +1,6 @@
 <?php
 
+use \puffin\message as message;
 use \puffin\model as model;
 use \puffin\view as view;
 use \puffin\url as url;
@@ -64,6 +65,13 @@ class pages_controller extends puffin\controller\action
 		if( $match )
 		{
 			$result = $this->page->create( $params );
+
+			message::add([
+				'class' => 'success',
+				'title' => 'Success!',
+				'message' => 'This page has been added.'
+			]);
+
 			if( $quick_add )
 			{
 				url::redirect($_SERVER['HTTP_REFERER']);
@@ -72,13 +80,12 @@ class pages_controller extends puffin\controller\action
 		}
 		else
 		{
-			#TODO remove this!
-			var_dump($match);
-			debug( $params ); exit;
+			message::add([
+				'class' => 'danger',
+				'title' => 'Failure!',
+				'message' => 'This page has not been added.'
+			]);
 		}
-
-		url::redirect('/pages');
-
 	}
 
 	public function update( $id )
@@ -107,8 +114,18 @@ class pages_controller extends puffin\controller\action
 		}
 		else
 		{
-			#message about can't update
+			message::add([
+				'class' => 'danger',
+				'title' => 'Failure!',
+				'message' => 'This page has not been updated.'
+			]);
 		}
+
+		message::add([
+			'class' => 'success',
+			'title' => 'Success!',
+			'message' => 'This page has been updated.'
+		]);
 
 		url::redirect('/pages');
 	}
@@ -141,8 +158,18 @@ class pages_controller extends puffin\controller\action
 		}
 		else
 		{
-			#message about can't delete
+			message::add([
+				'class' => 'danger',
+				'title' => 'Failure!',
+				'message' => 'This page has not been deleted.'
+			]);
 		}
+
+		message::add([
+			'class' => 'success',
+			'title' => 'Success!',
+			'message' => 'This page has been deleted.'
+		]);
 
 		url::redirect('/pages');
 	}

@@ -1,5 +1,6 @@
 <?php
 
+use \puffin\message as message;
 use \puffin\model as model;
 use \puffin\view as view;
 use \puffin\url as url;
@@ -50,10 +51,18 @@ class components_controller extends puffin\controller\action
 		}
 		else
 		{
-			#TODO remove this!
-			var_dump($match);
-			debug( $params ); exit;
+			message::add([
+				'class' => 'danger',
+				'title' => 'Failure!',
+				'message' => 'This component has not been added.'
+			]);
 		}
+
+		message::add([
+			'class' => 'success',
+			'title' => 'Success!',
+			'message' => 'This component has been added.'
+		]);
 
 		url::redirect("/components/update/$result");
 
@@ -78,8 +87,19 @@ class components_controller extends puffin\controller\action
 		}
 		else
 		{
-			#message about can't update
+			message::add([
+				'class' => 'danger',
+				'title' => 'Failure!',
+				'message' => 'This component has not been updated.'
+			]);
+
 		}
+
+		message::add([
+			'class' => 'success',
+			'title' => 'Success!',
+			'message' => 'This component has been updated.'
+		]);
 
 		url::redirect($_SERVER['HTTP_REFERER']);
 	}
@@ -139,10 +159,20 @@ class components_controller extends puffin\controller\action
 		}
 		else
 		{
-			#message about can't delete
+			message::add([
+				'class' => 'danger',
+				'title' => 'Failure!',
+				'message' => 'This component has not been deleted.'
+			]);
 		}
 
-		url::redirect('/components');
+		message::add([
+			'class' => 'success',
+			'title' => 'Success!',
+			'message' => 'This component has been deleted.'
+		]);
+
+		url::redirect($_SERVER['HTTP_REFERER']);
 	}
 
 }

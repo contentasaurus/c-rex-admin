@@ -1,9 +1,10 @@
 <?php
 
+use \puffin\transformer as transformer;
+use \puffin\message as message;
 use \puffin\model as model;
 use \puffin\view as view;
 use \puffin\url as url;
-use \puffin\transformer as transformer;
 use \puffin\dsn as dsn;
 
 class deploy_controller extends puffin\controller\action
@@ -12,8 +13,7 @@ class deploy_controller extends puffin\controller\action
 
 	public function __before_call()
 	{
-		$user = new user();
-		if( !$user->is_admin( $_SESSION['user']['id'] ) )
+		if( !permissions::is_admin() )
 		{
 			url::redirect('/');
 		}

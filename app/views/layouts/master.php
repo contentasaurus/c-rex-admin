@@ -12,8 +12,14 @@
 	<body id="body">
 		<?php echo $this->partial('sidenav') ?>
 		<section id="content">
+			<?php echo $this->partial('messages') ?>
 			<?php echo $this->CONTENTS ?>
 		</section>
 		<?php echo $this->NONBLOCKING_JS ?>
+		<script>
+			$(function(){
+				$(".alert").alert();
+			});
+		</script>
 	</body>
 </html>

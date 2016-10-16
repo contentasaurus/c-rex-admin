@@ -67,20 +67,21 @@
 				<i class="fa fa-thumbs-o-up fa-2x"></i><br/><span class="nav-label">Helpers</span>
 			</a>
 		</li> -->
-
-		<li>
-			<hr />
-		</li>
-		<li>
-			<a href="/deploy" <?php if( controller::$controller == 'deploy' ): ?>class="active"<?php endif; ?> data-toggle="tooltip" data-placement="right" title="Deploy">
-				<i class="fa fa-cloud-upload fa-2x"></i><br/><span class="nav-label">Deploy</span>
-			</a>
-		</li>
-		<li>
-			<a href="/users" <?php if( controller::$controller == 'users' && controller::$action != 'profile' ): ?>class="active"<?php endif; ?> data-toggle="tooltip" data-placement="right" title="Users">
-				<i class="fa fa-users fa-2x"></i><br/><span class="nav-label">Users</span>
-			</a>
-		</li>
+		<?php if( permissions::is_admin() ): ?>
+			<li>
+				<hr />
+			</li>
+			<li>
+				<a href="/deploy" <?php if( controller::$controller == 'deploy' ): ?>class="active"<?php endif; ?> data-toggle="tooltip" data-placement="right" title="Deploy">
+					<i class="fa fa-cloud-upload fa-2x"></i><br/><span class="nav-label">Deploy</span>
+				</a>
+			</li>
+			<li>
+				<a href="/users" <?php if( controller::$controller == 'users' && controller::$action != 'profile' ): ?>class="active"<?php endif; ?> data-toggle="tooltip" data-placement="right" title="Users">
+					<i class="fa fa-users fa-2x"></i><br/><span class="nav-label">Users</span>
+				</a>
+			</li>
+		<?php endif; ?>
 	</ul>
 </nav>
 

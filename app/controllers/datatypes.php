@@ -1,5 +1,6 @@
 <?php
 
+use \puffin\message as message;
 use \puffin\model as model;
 use \puffin\view as view;
 use \puffin\url as url;
@@ -48,10 +49,18 @@ class datatypes_controller extends puffin\controller\action
 		}
 		else
 		{
-			#TODO remove this!
-			var_dump($match);
-			debug( $params ); exit;
+			message::add([
+				'class' => 'danger',
+				'title' => 'Failure!',
+				'message' => 'This datatype has not been added.'
+			]);
 		}
+
+		message::add([
+			'class' => 'success',
+			'title' => 'Success!',
+			'message' => 'This datatype has been added.'
+		]);
 
 		url::redirect("/datatypes/update/$result");
 
@@ -74,8 +83,18 @@ class datatypes_controller extends puffin\controller\action
 		}
 		else
 		{
-			#message about can't update
+			message::add([
+				'class' => 'danger',
+				'title' => 'Failure!',
+				'message' => 'This datatype has not been updated.'
+			]);
 		}
+
+		message::add([
+			'class' => 'success',
+			'title' => 'Success!',
+			'message' => 'This datatype has been updated.'
+		]);
 
 		url::redirect($_SERVER['HTTP_REFERER']);
 	}
@@ -97,9 +116,19 @@ class datatypes_controller extends puffin\controller\action
 		}
 		else
 		{
-			#message about can't delete
+			message::add([
+				'class' => 'danger',
+				'title' => 'Failure!',
+				'message' => 'This datatype has not been deleted.'
+			]);
 		}
 
-		url::redirect('/datatypes');
+		message::add([
+			'class' => 'success',
+			'title' => 'Success!',
+			'message' => 'This datatype has been deleted.'
+		]);
+
+		url::redirect($_SERVER['HTTP_REFERER']);
 	}
 }

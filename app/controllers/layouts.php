@@ -1,5 +1,6 @@
 <?php
 
+use \puffin\message as message;
 use \puffin\model as model;
 use \puffin\view as view;
 use \puffin\url as url;
@@ -51,10 +52,18 @@ class layouts_controller extends puffin\controller\action
 		}
 		else
 		{
-			#TODO remove this!
-			var_dump($match);
-			debug( $params ); exit;
+			message::add([
+				'class' => 'danger',
+				'title' => 'Failure!',
+				'message' => 'This layout has not been added.'
+			]);
 		}
+
+		message::add([
+			'class' => 'success',
+			'title' => 'Success!',
+			'message' => 'This layout has been added.'
+		]);
 
 		url::redirect("/layouts/update/$result");
 
@@ -69,6 +78,13 @@ class layouts_controller extends puffin\controller\action
 	{
 		$params = $this->post->params( $unsanitized = true );
 		$this->page_layout->update( $id, $params );
+
+		message::add([
+			'class' => 'success',
+			'title' => 'Success!',
+			'message' => 'This layout has been updated.'
+		]);
+
 		url::redirect($_SERVER['HTTP_REFERER']);
 	}
 
@@ -117,6 +133,12 @@ class layouts_controller extends puffin\controller\action
 			$this->page_layout_script->create( $record );
 		}
 
+		message::add([
+			'class' => 'success',
+			'title' => 'Success!',
+			'message' => 'This layout has been updated.'
+		]);
+
 		url::redirect("/layouts/update/$page_layout_id/scripts");
 	}
 
@@ -140,6 +162,13 @@ class layouts_controller extends puffin\controller\action
 
 		$this->page_layout_script->recreate( $page_layout_id, $records );
 
+
+		message::add([
+			'class' => 'success',
+			'title' => 'Success!',
+			'message' => 'This layout has been updated.'
+		]);
+
 		url::redirect("/layouts/update/$page_layout_id/scripts");
 
 
@@ -162,8 +191,18 @@ class layouts_controller extends puffin\controller\action
 		}
 		else
 		{
-			#message about can't delete
+			message::add([
+				'class' => 'danger',
+				'title' => 'Failure!',
+				'message' => 'This layout has not been deleted.'
+			]);
 		}
+
+		message::add([
+			'class' => 'success',
+			'title' => 'Success!',
+			'message' => 'This layout has been deleted.'
+		]);
 
 		url::redirect('/layouts');
 	}

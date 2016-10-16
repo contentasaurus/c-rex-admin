@@ -5,11 +5,7 @@
 # http://www.sequelpro.com/
 # https://github.com/sequelpro/sequelpro
 #
-# Host: 45.55.40.232 (MySQL 5.5.5-10.1.10-MariaDB)
-# Database: atlantic
-# Generation Time: 2016-10-12 22:10:08 +0000
 # ************************************************************
-
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;

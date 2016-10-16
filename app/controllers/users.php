@@ -1,7 +1,7 @@
 <?php
 
-use puffin\view as view;
 use puffin\url as url;
+use puffin\view as view;
 use puffin\message as message;
 use puffin\password as password;
 use puffin\controller as controller;
@@ -11,16 +11,15 @@ class users_controller extends puffin\controller\action
 	public function __init()
 	{
 		$this->user = new user();
-		$this->role = new role();
 	}
 
 	public function __before_call()
 	{
 		if( controller::$action != 'profile' )
 		{
-			if( !$this->user->is_admin( $_SESSION['user']['id'] ) )
+			if( !permissions::is_admin() )
 			{
-				url::redirect('/users/no-access');
+				url::redirect('/');
 			}
 		}
 	}
@@ -47,7 +46,6 @@ class users_controller extends puffin\controller\action
 
 	public function create()
 	{
-		view::add_param( 'roles', $this->role->read() );
 	}
 
 	public function do_create()
@@ -81,10 +79,18 @@ class users_controller extends puffin\controller\action
 		}
 		else
 		{
-			#TODO remove this!
-			var_dump($match);
-			debug( $params ); exit;
+			message::add([
+				'class' => 'danger',
+				'title' => 'Failure!',
+				'message' => 'This user has not been added.'
+			]);
 		}
+
+		message::add([
+			'class' => 'success',
+			'title' => 'Success!',
+			'message' => 'This user has been added.'
+		]);
 
 		url::redirect('/users');
 
@@ -92,13 +98,12 @@ class users_controller extends puffin\controller\action
 
 	public function update( $id )
 	{
-		view::add_param( 'roles', $this->role->read() );
 		view::add_param( 'user', $this->user->read( $id ) );
 	}
 
 	public function do_update( $id )
 	{
-		$params = $this->put->params();
+		$params = $this->post->params();
 		$this->user->update( $params['id'], $params );
 	}
 
