@@ -5,7 +5,9 @@
 # http://www.sequelpro.com/
 # https://github.com/sequelpro/sequelpro
 #
-# Generation Time: 2016-10-17 06:23:33 +0000
+# Host: 45.55.40.232 (MySQL 5.5.5-10.1.10-MariaDB)
+# Database: atlantic
+# Generation Time: 2016-10-17 18:06:09 +0000
 # ************************************************************
 
 
@@ -33,7 +35,7 @@ CREATE TABLE `components` (
   `css` text,
   `js` text,
   `nonblocking_js` text,
-  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `created_at` datetime NOT NULL DEFAULT '0000-00-00 00:00:00',
   `updated_at` datetime NOT NULL DEFAULT '0000-00-00 00:00:00' ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `name` (`name`),
@@ -61,7 +63,8 @@ UNLOCK TABLES;
 
 DELIMITER ;;
 /*!50003 SET SESSION SQL_MODE="NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION" */;;
-/*!50003 CREATE */ /*!50017 DEFINER=`root`@`%` */ /*!50003 TRIGGER `before_insert_components` BEFORE INSERT ON `components` FOR EACH ROW SET new.uuid = concat('c',uuid()) */;;
+/*!50003 CREATE */ /*!50017 DEFINER=`root`@`%` */ /*!50003 TRIGGER `before_insert_components` BEFORE INSERT ON `components` FOR EACH ROW SET new.uuid = concat('c',uuid()),
+new.created_at = now() */;;
 DELIMITER ;
 /*!50003 SET SESSION SQL_MODE=@OLD_SQL_MODE */;
 
@@ -105,7 +108,7 @@ CREATE TABLE `datatypes` (
   `author_user_id` bigint(20) unsigned NOT NULL,
   `name` varchar(100) NOT NULL DEFAULT '',
   `content` text,
-  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `created_at` datetime NOT NULL,
   `updated_at` datetime NOT NULL DEFAULT '0000-00-00 00:00:00' ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `collection_name` (`name`),
@@ -124,6 +127,12 @@ VALUES
 
 /*!40000 ALTER TABLE `datatypes` ENABLE KEYS */;
 UNLOCK TABLES;
+
+DELIMITER ;;
+/*!50003 SET SESSION SQL_MODE="NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION" */;;
+/*!50003 CREATE */ /*!50017 DEFINER=`root`@`%` */ /*!50003 TRIGGER `before_datatypes_insert` BEFORE INSERT ON `datatypes` FOR EACH ROW set new.created_at = now() */;;
+DELIMITER ;
+/*!50003 SET SESSION SQL_MODE=@OLD_SQL_MODE */;
 
 
 # Dump of table deployable_components
@@ -201,7 +210,7 @@ CREATE TABLE `helpers` (
   `name` varchar(100) NOT NULL DEFAULT '',
   `description` varchar(200) DEFAULT '',
   `content` text,
-  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `created_at` datetime NOT NULL,
   `updated_at` datetime NOT NULL DEFAULT '0000-00-00 00:00:00' ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `name` (`name`),
@@ -220,6 +229,12 @@ VALUES
 /*!40000 ALTER TABLE `helpers` ENABLE KEYS */;
 UNLOCK TABLES;
 
+DELIMITER ;;
+/*!50003 SET SESSION SQL_MODE="NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION" */;;
+/*!50003 CREATE */ /*!50017 DEFINER=`root`@`%` */ /*!50003 TRIGGER `before_helpers_insert` BEFORE INSERT ON `helpers` FOR EACH ROW set new.created_at = now() */;;
+DELIMITER ;
+/*!50003 SET SESSION SQL_MODE=@OLD_SQL_MODE */;
+
 
 # Dump of table page_data
 # ------------------------------------------------------------
@@ -233,7 +248,7 @@ CREATE TABLE `page_data` (
   `author_user_id` bigint(20) unsigned NOT NULL,
   `reference_name` varchar(100) NOT NULL DEFAULT '',
   `content` text,
-  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `created_at` datetime NOT NULL,
   `updated_at` datetime NOT NULL DEFAULT '0000-00-00 00:00:00' ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `name` (`reference_name`),
@@ -257,6 +272,12 @@ VALUES
 
 /*!40000 ALTER TABLE `page_data` ENABLE KEYS */;
 UNLOCK TABLES;
+
+DELIMITER ;;
+/*!50003 SET SESSION SQL_MODE="NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION" */;;
+/*!50003 CREATE */ /*!50017 DEFINER=`root`@`%` */ /*!50003 TRIGGER `before_page_data_insert` BEFORE INSERT ON `page_data` FOR EACH ROW set new.created_at = now() */;;
+DELIMITER ;
+/*!50003 SET SESSION SQL_MODE=@OLD_SQL_MODE */;
 
 
 # Dump of table page_layout_scripts
@@ -297,7 +318,7 @@ CREATE TABLE `page_layouts` (
   `name` varchar(100) NOT NULL DEFAULT '',
   `description` varchar(200) DEFAULT '',
   `content` text,
-  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `created_at` datetime NOT NULL,
   `updated_at` datetime NOT NULL DEFAULT '0000-00-00 00:00:00' ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `name` (`name`),
@@ -316,6 +337,12 @@ VALUES
 
 /*!40000 ALTER TABLE `page_layouts` ENABLE KEYS */;
 UNLOCK TABLES;
+
+DELIMITER ;;
+/*!50003 SET SESSION SQL_MODE="NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION" */;;
+/*!50003 CREATE */ /*!50017 DEFINER=`root`@`%` */ /*!50003 TRIGGER `before_page_layouts_insert` BEFORE INSERT ON `page_layouts` FOR EACH ROW set new.created_at = now() */;;
+DELIMITER ;
+/*!50003 SET SESSION SQL_MODE=@OLD_SQL_MODE */;
 
 
 # Dump of table page_version_preview
@@ -350,7 +377,7 @@ CREATE TABLE `page_versions` (
   `contents` longtext,
   `comments` varchar(500) DEFAULT NULL,
   `is_publishable` tinyint(4) NOT NULL DEFAULT '0',
-  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `created_at` datetime NOT NULL,
   `updated_at` datetime NOT NULL DEFAULT '0000-00-00 00:00:00' ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `author_user_id` (`author_user_id`),
@@ -371,6 +398,12 @@ VALUES
 /*!40000 ALTER TABLE `page_versions` ENABLE KEYS */;
 UNLOCK TABLES;
 
+DELIMITER ;;
+/*!50003 SET SESSION SQL_MODE="NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION" */;;
+/*!50003 CREATE */ /*!50017 DEFINER=`root`@`%` */ /*!50003 TRIGGER `before_page_versions_insert` BEFORE INSERT ON `page_versions` FOR EACH ROW set new.created_at = now() */;;
+DELIMITER ;
+/*!50003 SET SESSION SQL_MODE=@OLD_SQL_MODE */;
+
 
 # Dump of table pages
 # ------------------------------------------------------------
@@ -384,7 +417,7 @@ CREATE TABLE `pages` (
   `name` varchar(255) NOT NULL DEFAULT '',
   `sort_order` bigint(20) unsigned NOT NULL DEFAULT '1',
   `is_publishable` tinyint(4) NOT NULL DEFAULT '0',
-  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `created_at` datetime NOT NULL,
   `updated_at` datetime NOT NULL DEFAULT '0000-00-00 00:00:00' ON UPDATE CURRENT_TIMESTAMP,
   `published_at` datetime DEFAULT NULL,
   PRIMARY KEY (`id`),
@@ -433,6 +466,12 @@ VALUES
 
 /*!40000 ALTER TABLE `pages` ENABLE KEYS */;
 UNLOCK TABLES;
+
+DELIMITER ;;
+/*!50003 SET SESSION SQL_MODE="NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION" */;;
+/*!50003 CREATE */ /*!50017 DEFINER=`root`@`%` */ /*!50003 TRIGGER `before_pages_insert` BEFORE INSERT ON `pages` FOR EACH ROW SET new.created_at = now() */;;
+DELIMITER ;
+/*!50003 SET SESSION SQL_MODE=@OLD_SQL_MODE */;
 
 
 # Dump of table previewable_pages
@@ -490,7 +529,7 @@ CREATE TABLE `scripts` (
   `author_user_id` bigint(20) unsigned NOT NULL,
   `name` varchar(50) NOT NULL DEFAULT '',
   `html` longtext,
-  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `created_at` datetime NOT NULL,
   `updated_at` datetime NOT NULL DEFAULT '0000-00-00 00:00:00' ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
@@ -508,6 +547,12 @@ VALUES
 /*!40000 ALTER TABLE `scripts` ENABLE KEYS */;
 UNLOCK TABLES;
 
+DELIMITER ;;
+/*!50003 SET SESSION SQL_MODE="NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION" */;;
+/*!50003 CREATE */ /*!50017 DEFINER=`root`@`%` */ /*!50003 TRIGGER `before_scripts_insert` BEFORE INSERT ON `scripts` FOR EACH ROW set new.created_at = now() */;;
+DELIMITER ;
+/*!50003 SET SESSION SQL_MODE=@OLD_SQL_MODE */;
+
 
 # Dump of table users
 # ------------------------------------------------------------
@@ -523,7 +568,7 @@ CREATE TABLE `users` (
   `password` varchar(1000) NOT NULL DEFAULT '',
   `title` varchar(100) DEFAULT NULL,
   `reset_token` varchar(255) DEFAULT NULL,
-  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `created_at` datetime NOT NULL,
   `updated_at` datetime NOT NULL DEFAULT '0000-00-00 00:00:00' ON UPDATE CURRENT_TIMESTAMP,
   `is_active` tinyint(4) NOT NULL DEFAULT '1',
   PRIMARY KEY (`id`)
@@ -534,7 +579,7 @@ LOCK TABLES `users` WRITE;
 
 INSERT INTO `users` (`id`, `is_admin`, `first_name`, `last_name`, `email`, `password`, `title`, `reset_token`, `created_at`, `updated_at`, `is_active`)
 VALUES
-	(1,2,'Joshua','Byington','jbyington@paradowski.com','$2y$10$xfCLeSqxkD.U77/ZBFPsZeLZX1o28uc3pxxdWXC5MPGgF2.o6b.ea','Director of Development',NULL,'2016-04-27 16:59:58','2016-10-17 02:17:40',1),
+	(1,2,'Joshua','Byington','jbyington@paradowski.com','$2y$10$1Zmf4JJJJvQ8fQkEa/IP7.HEUNOmCjvSCES6E7i5xgFnV6rbQRlYG','Director of Development',NULL,'2016-04-27 16:59:58','2016-10-17 02:30:23',1),
 	(2,0,'Jim','Croche','jbyington+editor@paradowski.com','$2y$10$qu2FOYe4fnylKfDc1QS1yOKY9.5vwEI98vJVT0Hl0r8wAZPTIyKKS','Master Guitarist and Vocalist',NULL,'2016-05-10 23:26:26','2016-05-31 18:19:31',1),
 	(3,0,'Cat','Stevens','jbyington+author@paradowski.com','$2y$10$RrSjdbpND0EB4/pzTRJ9uO9KMrV0XHg84Ly0IxxXkGRV1i9Tv6f36','Conductor, Peace Train',NULL,'2016-05-10 23:51:42','2016-05-19 12:14:04',1),
 	(4,0,'James','Hendrix','jbyington+disabled@paradowski.com','$2y$10$O2omz5AOrHF.e9LAjYiSzedpz4zb6DcQdAFzIDEaJKmF6Mqz2ShMG','Genius',NULL,'2016-05-10 23:52:43','2016-10-12 11:56:41',0),
@@ -542,6 +587,12 @@ VALUES
 
 /*!40000 ALTER TABLE `users` ENABLE KEYS */;
 UNLOCK TABLES;
+
+DELIMITER ;;
+/*!50003 SET SESSION SQL_MODE="NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION" */;;
+/*!50003 CREATE */ /*!50017 DEFINER=`root`@`%` */ /*!50003 TRIGGER `before_users_insert` BEFORE INSERT ON `users` FOR EACH ROW set new.created_at = now() */;;
+DELIMITER ;
+/*!50003 SET SESSION SQL_MODE=@OLD_SQL_MODE */;
 
 
 
