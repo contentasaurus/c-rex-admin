@@ -35,17 +35,16 @@ class auth_controller extends puffin\controller\action
 		{
 			$_SESSION['user'] = $user;
 
-			// if( $user['force_password_reset'] == 1 )
-			// {
-			// 	$_SESSION['FORCED_RESET'] = 1;
-			// 	url::redirect('/auth/change-password/');
-			// }
-
 			url::redirect('/');
 		}
 		else
 		{
-			message::add( array( 'class' => 'error', 'message' => 'Bad email or password' ) );
+			message::add([
+				'class' => 'danger',
+				'title' => 'Failure!',
+				'message' => 'Bad email or password.'
+			]);
+
 			url::redirect('/auth/login/');
 		}
 	}
@@ -56,26 +55,57 @@ class auth_controller extends puffin\controller\action
 		url::redirect('/auth/login/');
 	}
 
-	public function change_password()
-	{
-		#change password form
-	}
+	public function force_change_password(){}
 
-	public function process_change_password()
+	public function do_force_change_password()
 	{
 		$this->user->change_password( $_SESSION['user']['email'], $this->post('password'), $this->post('confirm_password') );
 	}
 
-	public function password_reset()
-	{
-		#password reset form
-	}
+	public function password_reset(){}
 
 	public function process_password_reset()
 	{
-		$password = $this->user->reset_password( $this->post('email') );
-		message::add( array( 'class' => 'info', 'message' => "$password" ) );
-		url::redirect('/auth/reset-confirm/');
+		$email = $this->post->param('email');
+
+		#$password = $this->user->reset_password( $email );
+
+		$this->user->email_password_reset_confirmation( $email );
+
+		url::redirect('/auth/password-reset-sent/');
 	}
+
+	public function password_reset_sent(){}
+
+	public function reset_confirm( $token )
+	{
+		$user = $this->user->get_by_reset_token( $token );
+
+		if( !$user )
+		{
+			url::redirect('/auth/reset-failure');
+		}
+	}
+
+	public function do_password_reset( $token )
+	{
+		$params = $this->post->params();
+
+		$user = $this->user->get_by_reset_token( $token );
+
+		$success = $this->user->change_password_by_token( $token, $params['password'], $params['password_confirm'] );
+
+		if( $success )
+		{
+			url::redirect('/auth/reset-complete');
+		}
+		else
+		{
+			url::redirect('/auth/reset-failure');
+		}
+	}
+
+	public function reset_failure(){}
+	public function reset_complete(){}
 
 }

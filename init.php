@@ -5,7 +5,7 @@ use \puffin\app as app;
 use \puffin\view as view;
 use \puffin\autoload as autoload;
 
-define('SERVER_URL', 'http://localhost:8080');
+define('SERVER_URL', 'http://localhost:8000');
 
 define('SERVER_ROOT', dirname(__FILE__));
 

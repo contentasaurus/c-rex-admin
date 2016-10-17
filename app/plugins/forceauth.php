@@ -7,7 +7,7 @@ class forceauth extends  puffin\controller\plugin
 {
 	public function __init()
 	{
-		if( empty($_SESSION['user']) && ( controller::$controller != 'auth' ||  controller::$controller != 'setup') )
+		if( empty($_SESSION['user']) && controller::$controller != 'auth' )
 		{
 			url::redirect('/auth/login');
 		}
