@@ -13,4 +13,5 @@ $app->controller('users')
 	->get('/users/disable/{id:i}', 'disable')
 	->post('/users/disable/{id:i}', 'do_disable')
 	->get('/users/enable/{id:i}', 'enable')
-	->post('/users/enable/{id:i}', 'do_enable');
+	->post('/users/enable/{id:i}', 'do_enable')
+	->get('/users/reset/{id:i}', 'do_reset');

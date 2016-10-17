@@ -68,8 +68,6 @@ class auth_controller extends puffin\controller\action
 	{
 		$email = $this->post->param('email');
 
-		#$password = $this->user->reset_password( $email );
-
 		$this->user->email_password_reset_confirmation( $email );
 
 		url::redirect('/auth/password-reset-sent/');

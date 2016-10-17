@@ -33,9 +33,6 @@
 								<a href="/users/update/<?= $user['id'] ?>" class="btn btn-sm btn-secondary">
 									<i class="fa fa-pencil"></i>
 								</a>
-								<a href="/users/reset/<?= $user['id'] ?>" class="btn btn-sm btn-secondary">
-									<i class="fa fa-key"></i>
-								</a>
 							</div>
 						</td>
 						<td><?= $user['first_name'] ?> <?= $user['last_name'] ?></td>

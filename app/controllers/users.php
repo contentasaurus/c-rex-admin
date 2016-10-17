@@ -138,4 +138,18 @@ class users_controller extends puffin\controller\action
 		url::redirect('/users');
 		exit;
 	}
+
+	public function do_reset( $id )
+	{
+		$user = $this->user->read( $id );
+		$this->user->email_password_reset_confirmation( $user['email'] );
+
+		message::add([
+			'class' => 'success',
+			'title' => 'Success!',
+			'message' => 'An email with instructions has been sent to this user.'
+		]);
+
+		url::redirect($_SERVER['HTTP_REFERER']);
+	}
 }

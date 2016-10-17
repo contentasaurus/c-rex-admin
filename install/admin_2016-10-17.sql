@@ -5,9 +5,7 @@
 # http://www.sequelpro.com/
 # https://github.com/sequelpro/sequelpro
 #
-# Host: 127.0.0.1 (MySQL 5.5.5-10.1.10-MariaDB)
-# Database: contentasaurus
-# Generation Time: 2016-10-16 06:15:51 +0000
+# Generation Time: 2016-10-17 06:23:33 +0000
 # ************************************************************
 
 
@@ -88,6 +86,10 @@ CREATE TABLE `datasources` (
 
 LOCK TABLES `datasources` WRITE;
 /*!40000 ALTER TABLE `datasources` DISABLE KEYS */;
+
+INSERT INTO `datasources` (`id`, `name`, `type`, `host`, `port`, `dbname`, `username`, `password`, `description`)
+VALUES
+	(4,'Staging','mysql','45.55.40.232','3306','atlantic_runtime','root','*T3mp3st!','Staging!');
 
 /*!40000 ALTER TABLE `datasources` ENABLE KEYS */;
 UNLOCK TABLES;
@@ -520,8 +522,9 @@ CREATE TABLE `users` (
   `email` varchar(500) NOT NULL DEFAULT '',
   `password` varchar(1000) NOT NULL DEFAULT '',
   `title` varchar(100) DEFAULT NULL,
-  `updated_at` datetime NOT NULL DEFAULT '0000-00-00 00:00:00' ON UPDATE CURRENT_TIMESTAMP,
+  `reset_token` varchar(255) DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime NOT NULL DEFAULT '0000-00-00 00:00:00' ON UPDATE CURRENT_TIMESTAMP,
   `is_active` tinyint(4) NOT NULL DEFAULT '1',
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
@@ -529,13 +532,13 @@ CREATE TABLE `users` (
 LOCK TABLES `users` WRITE;
 /*!40000 ALTER TABLE `users` DISABLE KEYS */;
 
-INSERT INTO `users` (`id`, `is_admin`, `first_name`, `last_name`, `email`, `password`, `title`, `updated_at`, `created_at`, `is_active`)
+INSERT INTO `users` (`id`, `is_admin`, `first_name`, `last_name`, `email`, `password`, `title`, `reset_token`, `created_at`, `updated_at`, `is_active`)
 VALUES
-	(1,2,'Joshua','Byington','jbyington@paradowski.com','$2y$10$Vj6Wq64MsoNrujkHHztno.a3NzqEph/rhG3x9B38i5xOAWOgZ1qMK','Director of Development','2016-10-13 11:19:40','2016-04-27 16:59:58',1),
-	(2,0,'Jim','Croche','jbyington+editor@paradowski.com','$2y$10$qu2FOYe4fnylKfDc1QS1yOKY9.5vwEI98vJVT0Hl0r8wAZPTIyKKS','Master Guitarist and Vocalist','2016-05-31 18:19:31','2016-05-10 23:26:26',1),
-	(3,0,'Cat','Stevens','jbyington+author@paradowski.com','$2y$10$RrSjdbpND0EB4/pzTRJ9uO9KMrV0XHg84Ly0IxxXkGRV1i9Tv6f36','Conductor, Peace Train','2016-05-19 12:14:04','2016-05-10 23:51:42',1),
-	(4,0,'James','Hendrix','jbyington+disabled@paradowski.com','$2y$10$O2omz5AOrHF.e9LAjYiSzedpz4zb6DcQdAFzIDEaJKmF6Mqz2ShMG','Genius','2016-10-12 11:56:41','2016-05-10 23:52:43',0),
-	(7,1,'Jake','Wood','jwood@paradowski.com','$2y$10$diIHUHjkseSMJq5ntj.Nm.x8HwiZMUmY9NNIBHHDg8qKPrcoqwWz6','Esq.','2016-10-12 12:08:49','2016-08-26 12:19:52',1);
+	(1,2,'Joshua','Byington','jbyington@paradowski.com','$2y$10$xfCLeSqxkD.U77/ZBFPsZeLZX1o28uc3pxxdWXC5MPGgF2.o6b.ea','Director of Development',NULL,'2016-04-27 16:59:58','2016-10-17 02:17:40',1),
+	(2,0,'Jim','Croche','jbyington+editor@paradowski.com','$2y$10$qu2FOYe4fnylKfDc1QS1yOKY9.5vwEI98vJVT0Hl0r8wAZPTIyKKS','Master Guitarist and Vocalist',NULL,'2016-05-10 23:26:26','2016-05-31 18:19:31',1),
+	(3,0,'Cat','Stevens','jbyington+author@paradowski.com','$2y$10$RrSjdbpND0EB4/pzTRJ9uO9KMrV0XHg84Ly0IxxXkGRV1i9Tv6f36','Conductor, Peace Train',NULL,'2016-05-10 23:51:42','2016-05-19 12:14:04',1),
+	(4,0,'James','Hendrix','jbyington+disabled@paradowski.com','$2y$10$O2omz5AOrHF.e9LAjYiSzedpz4zb6DcQdAFzIDEaJKmF6Mqz2ShMG','Genius',NULL,'2016-05-10 23:52:43','2016-10-12 11:56:41',0),
+	(7,1,'Jake','Wood','jwood@paradowski.com','$2y$10$diIHUHjkseSMJq5ntj.Nm.x8HwiZMUmY9NNIBHHDg8qKPrcoqwWz6','Esq.',NULL,'2016-08-26 12:19:52','2016-10-12 12:08:49',1);
 
 /*!40000 ALTER TABLE `users` ENABLE KEYS */;
 UNLOCK TABLES;
