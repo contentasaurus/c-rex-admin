@@ -30320,7 +30320,7 @@ function amdefine(module, requireFn) {
 
 module.exports = amdefine;
 
-}).call(this,require('_process'),"/node_modules/handlebars/node_modules/source-map/node_modules/amdefine/amdefine.js")
+}).call(this,require('_process'),"/../node_modules/handlebars/node_modules/source-map/node_modules/amdefine/amdefine.js")
 },{"_process":5,"path":4}],60:[function(require,module,exports){
 jQuery.fn.extend({
 	treetable: function() {
