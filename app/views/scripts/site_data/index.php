@@ -62,7 +62,7 @@
 			<thead>
 				<tr>
 					<th width="50"><br /></th>
-					<th>Reference Name</th>
+					<th>Name</th>
 					<th>Create Date</th>
 					<th>Last Updated</th>
 					<th width="50"><br /></th>
@@ -76,7 +76,7 @@
 								<i class="fa fa-pencil"></i>
 							</a>
 						</td>
-						<td>Site.<?= $site_data['reference_name'] ?></td>
+						<td><?= $site_data['name'] ?></td>
 						<td><?= $site_data['created_at'] ?></td>
 						<td><?= ($site_data['updated_at'] != '0000-00-00 00:00:00') ? $site_data['updated_at'] : '--' ?></td>
 						<td>

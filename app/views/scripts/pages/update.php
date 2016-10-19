@@ -5,10 +5,7 @@
 
 <div class="card">
 	<div class="card-header">
-		<?= $this->partial('tabs', [ 'classes' => 'card-header-tabs pull-xs-left', 'tabs' => [
-			[ 'name'=> 'Contents', 'active' => 'active', 'url' => "/pages/update/{$this->page['id']}" ],
-			[ 'name'=> 'Data', 'url' => "/pages/update/{$this->page['id']}/data" ],
-		]]); ?>
+		Page information
 	</div>
 	<div class="card-block">
 		<form method="POST" accept-charset="UTF-8" data-form-ajax="">
@@ -16,13 +13,13 @@
 			<input name="author_user_id" type="hidden" value="<?= $_SESSION['user']['id'] ?>">
 
 			<div class="form-group">
-				<label>Permalink</label>
-				<input placeholder="/my-permalink" class="form-control required" name="permalink" type="text" value="<?= $this->page['permalink'] ?>">
+				<label>Page Name</label>
+				<input placeholder="Name" class="form-control required" name="page_name" type="text" value="<?= $this->page['name'] ?>">
 			</div>
 
 			<div class="form-group">
-				<label>Name</label>
-				<input placeholder="Name" class="form-control required" name="page_name" type="text" value="<?= $this->page['name'] ?>">
+				<label>Permalink</label>
+				<input placeholder="/my-permalink" class="form-control required" name="permalink" type="text" value="<?= $this->page['permalink'] ?>">
 			</div>
 
 			<button type="submit" class="btn btn-primary">Save</button>
@@ -35,8 +32,63 @@
 	<div class="card-header">
 		<ul class="nav card-header-pills">
 			<li class="nav-item">
-				<a class="nav-item pull-xs-left btn btn-link disabled">Contents</a>
-				<a class="nav-item pull-xs-right btn btn-secondary" href="/pages/update/<?= $this->page['id'] ?>/version-create/"><i class="fa fa-plus"></i> Add Version</a>
+				<a class="nav-item pull-xs-left btn btn-link disabled" style="color:black">Page Data</a>
+				<a class="nav-item pull-xs-right btn btn-secondary" href="/pages/update/<?= $this->page['id'] ?>/data-create/"><i class="fa fa-plus"></i> Add</a>
+			</li>
+		</ul>
+	</div>
+	<?php if( !empty($this->page_data) ): ?>
+		<table class="table table-striped table-bordered">
+			<thead>
+				<tr>
+					<th width="50"><br /></th>
+					<th>Key</th>
+					<th>Type</th>
+					<th>By</th>
+					<th>Last Updated</th>
+					<th width="50"><br /></th>
+				</tr>
+			</thead>
+			<tbody>
+				<?php foreach( $this->page_data as $data ): ?>
+					<tr>
+						<td>
+							<a href="/pages/update/<?= $this->page['id'] ?>/data-update/<?= $data['id'] ?>" class="btn btn-secondary btn-sm">
+								<i class="fa fa-pencil"></i>
+							</a>
+						</td>
+						<td>Page.<?= $data['reference_name'] ?></td>
+						<td><?= $data['datatype_name'] ?></td>
+						<td><?= $data['first_name'] ?> <?= $data['last_name'] ?></td>
+						<td><?= $data['updated_at'] ?></td>
+						<td>
+							<?= $this->partial('delete', [
+								'url' => "/pages/update/{$this->page['id']}/data-delete/{$data['id']}",
+								'id' => $data['id'],
+							]); ?>
+						</td>
+
+					</tr>
+				<?php endforeach; ?>
+			</tbody>
+		</table>
+	<?php else: ?>
+		<div class="card-block">
+			<div class="card-block">
+				<blockquote class="card-blockquote">
+					This page has no data objects associated with it.
+				</blockquote>
+			</div>
+		</div>
+	<?php endif; ?>
+</div>
+
+<div class="card">
+	<div class="card-header">
+		<ul class="nav card-header-pills">
+			<li class="nav-item">
+				<a class="nav-item pull-xs-left btn btn-link disabled" style="color:black">Contents</a>
+				<a class="nav-item pull-xs-right btn btn-secondary" href="/pages/update/<?= $this->page['id'] ?>/version-create/"><i class="fa fa-plus"></i> Add</a>
 			</li>
 		</ul>
 	</div>

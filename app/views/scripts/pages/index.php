@@ -8,8 +8,8 @@
 	<div class="card-header">
 		<ul class="nav card-header-pills">
 			<li class="nav-item">
-				<a class="nav-item pull-xs-left btn btn-link disabled"><?= count($this->pages) ?> Page(s)</a>
-				<a class="nav-item pull-xs-right btn btn-secondary" href="/pages/create"><i class="fa fa-plus"></i> Add Page</a>
+				<a class="nav-item pull-xs-left btn btn-link disabled" style="color:black"><?= count($this->pages) ?> Page(s)</a>
+				<a class="nav-item pull-xs-right btn btn-secondary" href="/pages/create"><i class="fa fa-plus"></i> Add</a>
 			</li>
 		</ul>
 	</div>

@@ -33,7 +33,7 @@
 				<label>Comments</label>
 				<input class="form-control required" name="comments" type="text" value="<?= $this->page_version['comments'] ?>">
 			</div>
-			<label>Content</label>
+			<label>Content</label> <?= $this->partial('datahelper') ?>
 			<div id="editor" class="form-control"><?= htmlentities($this->page_version['contents']) ?></div>
 			<input type="hidden" name="contents" id="content">
 			<br />

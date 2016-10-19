@@ -13,8 +13,8 @@ $app->controller('pages')
 	->post('/pages/delete/{id:i}', 'do_delete')
 
 	#pages section, create data from on-page form
-	->get('/pages/update/{id:i}/data', 'data_index')
-	->post('/pages/update/{id:i}/data', 'do_data_create')
+	->get('/pages/update/{id:i}/data-create', 'data_create')
+	->post('/pages/update/{id:i}/data-create', 'do_data_create')
 	->get('/pages/update/{id:i}/data-update/{data_id:i}', 'data_update')
 	->post('/pages/update/{id:i}/data-update/{data_id:i}', 'do_data_update')
 	->post('/pages/update/{id:i}/data-delete/{data_id:i}', 'do_data_delete')

@@ -36,7 +36,7 @@
 			</div>
 
 			<div class="form-group">
-				<label>Content</label>
+				<label>Content</label> <?= $this->partial('datahelper') ?>
 				<div id="html_editor" class="form-control ace_editor"><?= htmlentities($this->component['html']) ?></div>
 				<input type="hidden" name="html" id="html">
 			</div>

@@ -3,8 +3,8 @@
 	[ 'name'=> 'Create Page', 'active' => 'true' ],
 ]]); ?>
 
-<div class="card">
-	<div class="card-header">
+<div class="card card-outline-info">
+	<div class="card-header card-info">
 		Create Page
 	</div>
 	<div class="card-block">
@@ -12,18 +12,18 @@
 			<input name="author_user_id" type="hidden" value="<?= $_SESSION['user']['id'] ?>">
 
 			<div class="form-group">
+				<label class="col-form-label">Page Name</label>
+				<input placeholder="Friendly name for your page" class="input-lg form-control required" name="name" type="text">
+			</div>
+
+			<div class="form-group">
 				<label class="col-form-label">Permalink</label>
 				<input placeholder="/my-permalink" class="form-control required" name="permalink" type="text">
 			</div>
 
 			<div class="form-group">
-				<label class="col-form-label">Name</label>
-				<input placeholder="Friendly name for your page" class="input-lg form-control required" name="name" type="text">
-			</div>
-
-			<div class="form-group">
 				<button class="btn btn-primary" type="submit">Next</button>
-				<a class="btn btn-default" href="/pages">Cancel</a>
+				<a class="btn btn-secondary" href="/pages">Cancel</a>
 			</div>
 		</form>
 	</div>

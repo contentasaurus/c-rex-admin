@@ -30,7 +30,6 @@ class pages_controller extends puffin\controller\action
 	public function create()
 	{
 		view::add_param( 'page_layouts', $this->page_layouts->read() );
-		view::add_param( 'page_statuses', $this->page_status->read() );
 	}
 
 	public function do_create()
@@ -91,6 +90,7 @@ class pages_controller extends puffin\controller\action
 
 		view::add_param( 'page', $page );
 		view::add_param( 'page_versions', $this->page_versions->read_by_page_id($id) );
+		view::add_param( 'page_data', $this->page_data->read_by_page_id( $id ) );
 	}
 
 	public function do_update( $id )
@@ -205,9 +205,9 @@ class pages_controller extends puffin\controller\action
 		url::redirect($_SERVER['HTTP_REFERER']);
 	}
 
-	public function do_version_copy( $id )
+	public function do_version_copy( $id, $version_id )
 	{
-		$version = $this->page_versions->read( $id );
+		$version = $this->page_versions->read( $version_id );
 
 		$create = [
 			'page_id' => $version['page_id'],
@@ -242,13 +242,12 @@ class pages_controller extends puffin\controller\action
 
 	##################################################
 
-	public function data_index( $id )
+	public function data_create( $id )
 	{
 		$page = $this->page->read($id);
 
 		view::add_param( 'page', $page );
 		view::add_param( 'datatypes', $this->datatype->read() );
-		view::add_param( 'page_data', $this->page_data->read_by_page_id( $id ) );
 	}
 
 	public function do_data_create( $id )

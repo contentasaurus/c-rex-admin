@@ -11,12 +11,14 @@ class datatypes_controller extends puffin\controller\action
 
 	public function __init()
 	{
+		$this->site_data = new site_data();
 		$this->datatype = new datatype();
 	}
 
 	public function index()
 	{
 		view::add_param( 'datatypes', $this->datatype->read() );
+		view::add_param( 'site_data', $this->site_data->read() );
 	}
 
 	public function create()

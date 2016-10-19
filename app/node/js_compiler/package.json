@@ -11,6 +11,6 @@
   "dependencies": {
     "browserify": "^13.1.0",
     "fs-extra": "^0.30.0",
-    "node-php-process": "git@github.com:pinguinio/node-php-process.git"
+    "node-php-process": "git://github.com/contentasaurus/node-php-process.git"
   }
 }

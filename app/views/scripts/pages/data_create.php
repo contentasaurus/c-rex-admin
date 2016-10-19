@@ -1,14 +1,12 @@
 <?= $this->partial('breadcrumb', [ 'crumbs' => [
 	[ 'name'=> 'Pages', 'url' => '/pages' ],
-	[ 'name'=> 'Update Page', 'active' => 'true' ],
+	[ 'name'=> 'Content', 'url' => "/pages/update/{$this->page['id']}" ],
+	[ 'name'=> 'Page Data Create', 'active' => 'true' ],
 ]]); ?>
 
 <div class="card">
 	<div class="card-header">
-		<?= $this->partial('tabs', [ 'classes' => 'card-header-tabs pull-xs-left', 'tabs' => [
-			[ 'name'=> 'Contents', 'url' => "/pages/update/{$this->page['id']}" ],
-			[ 'name'=> 'Data', 'active' => 'active', 'url' => "/pages/update/{$this->page['id']}/data" ]
-		]]); ?>
+		Create Page Data
 	</div>
 	<div class="card-block">
 		<form id="add_form" method="POST" accept-charset="UTF-8" data-form-ajax="">
@@ -41,88 +39,6 @@
 
 		</form>
 	</div>
-</div>
-
-<div class="card">
-	<div class="card-header">
-		Global Data
-	</div>
-		<table class="table table-striped table-bordered">
-			<thead>
-				<tr>
-					<th>Key</th>
-					<th>Type</th>
-				</tr>
-			</thead>
-			<tbody>
-				<tr>
-					<td>Get</td>
-					<td>GET data</td>
-				</tr>
-				<tr>
-					<td>Post</td>
-					<td>POST data</td>
-				</tr>
-				<tr>
-					<td>Session</td>
-					<td>SESSION data</td>
-				</tr>
-				<tr>
-					<td>Server</td>
-					<td>SERVER data</td>
-				</tr>
-			</tbody>
-		</table>
-</div>
-
-<div class="card">
-	<div class="card-header">
-		Page Data
-	</div>
-	<?php if( !empty($this->page_data) ): ?>
-		<table class="table table-striped table-bordered">
-			<thead>
-				<tr>
-					<th width="50"><br /></th>
-					<th>Key</th>
-					<th>Type</th>
-					<th>By</th>
-					<th>Last Updated</th>
-					<th width="50"><br /></th>
-				</tr>
-			</thead>
-			<tbody>
-				<?php foreach( $this->page_data as $data ): ?>
-					<tr>
-						<td>
-							<a href="/pages/update/<?= $this->page['id'] ?>/data-update/<?= $data['id'] ?>" class="btn btn-secondary btn-sm">
-								<i class="fa fa-pencil"></i>
-							</a>
-						</td>
-						<td>Data.<?= $data['reference_name'] ?></td>
-						<td><?= $data['datatype_name'] ?></td>
-						<td><?= $data['first_name'] ?> <?= $data['last_name'] ?></td>
-						<td><?= $data['updated_at'] ?></td>
-						<td>
-							<?= $this->partial('delete', [
-								'url' => "/pages/update/{$this->page['id']}/data-delete/{$data['id']}",
-								'id' => $data['id'],
-							]); ?>
-						</td>
-
-					</tr>
-				<?php endforeach; ?>
-			</tbody>
-		</table>
-	<?php else: ?>
-		<div class="card-block">
-			<div class="card-block">
-				<blockquote class="card-blockquote">
-					This page has no data objects associated with it.
-				</blockquote>
-			</div>
-		</div>
-	<?php endif; ?>
 </div>
 
 <script>

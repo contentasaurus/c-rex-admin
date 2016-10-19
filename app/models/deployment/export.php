@@ -46,6 +46,7 @@ class deployment_export extends pdo
 		$this->verification = false;
 
 		$this->export[ $this->get_key() ]['pages'] = $this->get_pages();
+		$this->export[ $this->get_key() ]['site_data'] = $this->get_site_data();
 		$this->export[ $this->get_key() ]['page_data'] = $this->get_page_data();
 		$this->export[ $this->get_key() ]['components'] = $this->get_components();
 		$this->export[ $this->get_key() ]['layouts'] = $this->get_layouts();
@@ -79,9 +80,48 @@ class deployment_export extends pdo
 		return $return;
 	}
 
+	public function get_site_data()
+	{
+		return $this->select( 'SELECT * from deployable_site_data' );
+	}
+
 	public function get_page_data()
 	{
 		return $this->select( 'SELECT * from deployable_page_data' );
+	}
+
+	public function get_data_for_preview( $page_id )
+	{
+		$param = new param([]); #need a blank and empty object
+
+		return [
+			'Get' => $param->sanitize($_GET),
+			'Page' => $param->sanitize( $this->get_page_data_for_preview($page_id) ),
+			'Post' => $param->sanitize($_POST),
+			'Server' => $_SERVER,
+			'Session' => $_SESSION,
+			'Site' => $param->sanitize( $this->get_site_data_for_preview() )
+		];
+	}
+
+	public function get_site_data_for_preview()
+	{
+		$sql = 'SELECT
+					reference_name,
+					content
+				FROM site_data';
+
+		$params = [];
+
+		$data = $this->select( $sql, $params );
+
+		$return = [];
+		foreach( $data as $datum )
+		{
+			$return[$datum['reference_name']] = json_decode($datum['content'], $assoc = true);
+		}
+
+		return $return;
 	}
 
 	public function get_page_data_for_preview( $page_id )
@@ -106,13 +146,7 @@ class deployment_export extends pdo
 
 		$param = new param([]); #need a blank and empty object
 
-		return [
-			'Get' => $param->sanitize($_GET),
-			'Post' => $param->sanitize($_POST),
-			'Server' => $_SERVER,
-			'Session' => $_SESSION,
-			'Data' => $param->sanitize($return)
-		];
+		return $return;
 	}
 
 
@@ -261,7 +295,7 @@ class deployment_export extends pdo
 
 		$compiled_template = $this->compile_lightncandy( $page, $js, $css, $nonblocking_js );
 
-		return $this->hbs->render( $compiled_template, $this->get_page_data_for_preview($page['page_id']) );
+		return $this->hbs->render( $compiled_template, $this->get_data_for_preview($page['page_id']) );
 	}
 
 	public function build( $version_id = false )
@@ -326,7 +360,7 @@ class deployment_export extends pdo
 		$css = $scss->compile( $sass );
 
 		$autoprefixer = new Autoprefixer([
-			'last 2 versions', 
+			'last 2 versions',
 			'iOS 8'
 		]);
 
@@ -358,7 +392,7 @@ class deployment_export extends pdo
 		}
 	}
 
-	public function format_components_js_for_compile( $position ) 
+	public function format_components_js_for_compile( $position )
 	{
 		$formatted_components = [];
 		$components = $this->get_components();
@@ -377,7 +411,7 @@ class deployment_export extends pdo
 			if(!empty($js)) {
 				$name = $component['name'];
 				$formatted_components[$name] = $js;
-				$formatted_components['__init_script__'] 
+				$formatted_components['__init_script__']
 					.= "require('{$component['name']}');";
 			}
 		}
@@ -385,9 +419,9 @@ class deployment_export extends pdo
 		return $formatted_components;
 	}
 
-	public function node_compile_js( $position ) 
+	public function node_compile_js( $position )
 	{
-		$formatted_components 
+		$formatted_components
 			= $this->format_components_js_for_compile( $position );
 
 		$formatted_components = [
