@@ -9,7 +9,7 @@
 		<ul class="nav card-header-pills">
 			<li class="nav-item">
 				<a class="nav-item pull-xs-left btn btn-link disabled"><?= count($this->layouts) ?> Layout(s)</a>
-				<a class="nav-item pull-xs-right btn btn-secondary" href="/layouts/create"><i class="fa fa-plus"></i> Add Layout</a>
+				<a class="nav-item pull-xs-right btn btn-secondary" href="/layouts/create"><i class="fa fa-plus"></i> Add</a>
 			</li>
 		</ul>
 	</div>
@@ -60,9 +60,7 @@
 		<ul class="nav card-header-pills">
 			<li class="nav-item">
 				<a class="nav-item pull-xs-left btn btn-link disabled"><?= count($this->scripts) ?> Scripts(s)</a>
-				<a class="nav-item pull-xs-right btn btn-secondary" href="/scripts/create">
-					<i class="fa fa-plus"></i> Add Script
-				</a>
+				<a class="nav-item pull-xs-right btn btn-secondary" href="/scripts/create"><i class="fa fa-plus"></i> Add</a>
 			</li>
 		</ul>
 	</div>

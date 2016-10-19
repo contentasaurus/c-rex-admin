@@ -9,7 +9,7 @@
 	<div class="card-header">
 		<ul class="nav card-header-pills">
 			<li class="nav-item">
-				<a class="nav-item pull-xs-left btn btn-link disabled"><?= count($this->deployments) ?> Deployment(s)</a>
+				<a class="nav-item pull-xs-left btn btn-link disabled" style="color:black"><?= count($this->deployments) ?> Deployment(s)</a>
 				<button type="button" class="nav-item pull-xs-right btn btn-secondary" data-toggle="popover" data-placement="left" title="Deployment Key" data-html="true" data-content='
 					<form class="form-inline" method="post" action="/deploy/build/<?= $this->datasource['id'] ?>">
 						<input type="hidden" name="author_user_id" value="<?= $_SESSION['user']['id'] ?>">
@@ -18,7 +18,7 @@
 						<button type="submit" class="btn btn-sm btn-primary"><i class="fa fa-check"></i></button>
 					</form>
 				'>
-					<i class="fa fa-plus"></i> Add Deployment
+					<i class="fa fa-plus"></i> Add
 				</button>
 			</li>
 		</ul>

@@ -9,7 +9,7 @@
 		<ul class="nav card-header-pills">
 			<li class="nav-item">
 				<a class="nav-item pull-xs-left btn btn-link disabled"><?= count($this->datasources) ?> Datasource(s)</a>
-				<a class="nav-item pull-xs-right btn btn-secondary" href="/deploy/create/"><i class="fa fa-plus"></i> Add Datasource</a>
+				<a class="nav-item pull-xs-right btn btn-secondary" href="/deploy/create/"><i class="fa fa-plus"></i> Add</a>
 			</li>
 		</ul>
 	</div>

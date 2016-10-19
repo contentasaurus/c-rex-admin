@@ -9,7 +9,7 @@
 		<ul class="nav card-header-pills">
 			<li class="nav-item">
 				<a class="nav-item pull-xs-left btn btn-link disabled"><?= count($this->datatypes) ?> Datatypes</a>
-				<a class="nav-item pull-xs-right btn btn-secondary" href="/datatypes/create"><i class="fa fa-plus"></i> Add Datatype</a>
+				<a class="nav-item pull-xs-right btn btn-secondary" href="/datatypes/create"><i class="fa fa-plus"></i> Add</a>
 			</li>
 		</ul>
 	</div>
@@ -53,7 +53,7 @@
 		<ul class="nav card-header-pills">
 			<li class="nav-item">
 				<a class="nav-item pull-xs-left btn btn-link disabled"><?= count($this->site_data) ?> Site Data</a>
-				<a class="nav-item pull-xs-right btn btn-secondary" href="/datatypes/site-data/create"><i class="fa fa-plus"></i> Add Site Data</a>
+				<a class="nav-item pull-xs-right btn btn-secondary" href="/datatypes/site-data/create"><i class="fa fa-plus"></i> Add</a>
 			</li>
 		</ul>
 	</div>
