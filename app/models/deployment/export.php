@@ -392,9 +392,7 @@ class deployment_export extends pdo
 
 		$formatted_components = [
 			'options' => [
-				'compile_path' => NODE_PATH,
-				'compile_folder' => 'compile_scripts',
-				'init_script_name' => '__init_script__.js'
+				'compile_path' => NODE_PATH
 			],
 			'modules' => $formatted_components
 		];
@@ -405,9 +403,7 @@ class deployment_export extends pdo
 			->content( $formatted_components )
 			->run( 'js_compiler' )
 			->output( $js );
-
-		// vd($js);
-		// die();
+		
 		return $js;
 	}
 

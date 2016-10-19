@@ -1,34 +1,35 @@
 
 //
-//
+// JS Compiler
 //
 
 const browserify = require('browserify');
-const NpmPhpProcess = require('node-php-process');
+const NodePhpProcess = require('node-php-process');
 const jsonToFiles = require('./json-to-js-files');
 
-const defaults = [
-	compile_path : './',
-	compile_folder : 'compile_scripts',
-	init_script_name : '__init_script__.js'
-];
+const defaults = {
+	compile_path : '.',
+	compile_folder : 'temp',
+	init_script_name : '__init_script__'
+};
 var options = defaults;
 var full_script_path = '';
+var compile_folder = '';
 
-
-var npmNodeProcess = new NpmPhpProcess(onProcessHandle);
+var nodePhpProcess = new NodePhpProcess(onProcessHandle);
 
 function onProcessHandle(data) {
-	Object.assign(data.options, defaults);
-	full_script_path ='${options.compile_path}/${options.compile_folder}/${options.init_script_name}';
-	jsonToFiles(full_script_path, data.modules, onJsonToFilesDone);
+	options = Object.assign(options, data.options);
+	compile_folder = `${options.compile_path}/js_compiler/${options.compile_folder}`;
+	full_script_path =`${compile_folder}/${options.init_script_name}`;
+	jsonToFiles(compile_folder, data.modules, onJsonToFilesDone);
 }
 
 function onJsonToFilesDone() {
 	var options = {
 		paths:  [
 			'node_modules', 
-			options.compile_folder
+			compile_folder
 		]
 	};
 

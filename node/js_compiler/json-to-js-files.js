@@ -35,7 +35,7 @@ function JsonToJsFiles(rootPath, json, done) {
 		var modules = this.json;
 		var keys = Object.keys(modules);
 		var writeCount = 0;
-
+		
 		keys.forEach( (key) => {
 			fs.writeFile(this.rootPath+'/'+key+'.js', modules[key], (err) => {
 				writeCount++;
