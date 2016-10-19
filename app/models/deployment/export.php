@@ -3,7 +3,7 @@
 use \puffin\model\pdo as pdo;
 use \puffin\controller\param as param;
 use \Leafo\ScssPhp\Compiler as scss_compiler;
-use \pinguinio\NodePhpProcess as node_php_process;
+use \contentasaurus\NodePhpProcess as node_php_process;
 
 class deployment_export extends pdo
 {
@@ -425,17 +425,19 @@ class deployment_export extends pdo
 			= $this->format_components_js_for_compile( $position );
 
 		$formatted_components = [
+			'options' => [
+				'compile_path' => NODE_PATH
+			],
 			'modules' => $formatted_components
 		];
 
 		$process = new node_php_process();
-
 		$process
 			->script_path( NODE_PATH )
 			->content( $formatted_components )
 			->run( 'js_compiler' )
 			->output( $js );
-
+		
 		return $js;
 	}
 
