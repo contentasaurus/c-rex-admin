@@ -50,7 +50,7 @@ class users_controller extends puffin\controller\action
 
 	public function do_create()
 	{
-		$required = ['role_id', 'first_name', 'last_name', 'email', 'password'];
+		$required = ['first_name', 'last_name', 'is_admin', 'email', 'password'];
 		$password = new password();
 		$params = $this->post->params();
 
@@ -84,6 +84,8 @@ class users_controller extends puffin\controller\action
 				'title' => 'Failure!',
 				'message' => 'This user has not been added.'
 			]);
+
+			url::redirect('/users');
 		}
 
 		message::add([

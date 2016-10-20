@@ -11,12 +11,13 @@
 		<form method="POST" action="/users/create" accept-charset="UTF-8" data-form-ajax="">
 
 			<div class="form-group">
-				<label>Role</label>
-				<select class="form-control required" name="role_id">
-					<option value="" selected="selected">Select User Role</option>
-					<?php foreach( $this->roles as $role ): ?>
-					<option value="<?= $role['id'] ?>"><?= $role['name'] ?></option>
-					<?php endforeach; ?>
+				<label>Administrator?</label>
+				<select class="form-control required" name="is_admin">
+					<?php if( permissions::is_owner() ): ?>
+						<option value="2" selected="selected">Super Admin!</option>
+					<?php endif; ?>
+					<option value="1" selected="selected">Yes</option>
+					<option value="0" selected="selected">No</option>
 				</select>
 			</div>
 

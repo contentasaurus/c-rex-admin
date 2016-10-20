@@ -20,12 +20,13 @@
 			<input name="id" type="hidden" value="<?= $this->user['id'] ?>" >
 
 			<div class="form-group">
-				<label>Role</label>
-				<select class="form-control required" name="role_id">
-					<option value="">Select User Group</option>
-					<?php foreach( $this->roles as $role ): ?>
-					<option <?php if($this->user['role_id'] == $role['id']): ?>selected="selected"<?php endif; ?> value="<?= $role['id'] ?>"><?= $role['name'] ?></option>
-					<?php endforeach; ?>
+				<label>Administrator?</label>
+				<select class="form-control required" name="is_admin">
+					<?php if( permissions::is_owner() ): ?>
+						<option <?php if( $this->user['is_admin'] == 2 ): ?>selected="selected"<?php endif; ?> value="2" selected="selected">Super Admin!</option>
+					<?php endif; ?>
+					<option <?php if( $this->user['is_admin'] == 1 ): ?>selected="selected"<?php endif; ?> value="1" selected="selected">Yes</option>
+					<option <?php if( $this->user['is_admin'] == 0 ): ?>selected="selected"<?php endif; ?> value="0" selected="selected">No</option>
 				</select>
 			</div>
 

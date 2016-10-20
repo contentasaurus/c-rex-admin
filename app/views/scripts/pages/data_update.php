@@ -1,6 +1,6 @@
 <?= $this->partial('breadcrumb', [ 'crumbs' => [
 	[ 'name'=> 'Pages', 'url' => '/pages' ],
-	[ 'name'=> 'Data', 'url' => "/pages/update/{$this->page['id']}/data" ],
+	[ 'name'=> 'Page', 'url' => "/pages/update/{$this->page['id']}" ],
 	[ 'name'=> 'Update Data', 'active' => 'true' ],
 ]]); ?>
 

@@ -123,6 +123,28 @@ class deploy_controller extends puffin\controller\action
 		return $test_results;
 	}
 
+	#------------------------------
+	public function do_rollback( $key )
+	{
+		$params = $this->post->params();
+
+		$db = $this->datasource->read( $params['datasource_id'] );
+
+		dsn::set('datasource_deploy', [
+			'type' => $db['type'],
+			'name' => $db['dbname'],
+			'user' => $db['username'],
+			'pass' => $db['password'],
+			'addr' => $db['host'],
+			'port' => $db['port'],
+		]);
+
+		$export = new deployment_export();
+
+		$export->rollback_views( $key );
+
+		url::redirect( $_SERVER['HTTP_REFERER'] );
+	}
 
 	#------------------------------
 	public function build( $id )

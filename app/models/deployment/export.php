@@ -276,6 +276,44 @@ class deployment_export extends pdo
 		return $this;
 	}
 
+	#datasource_deploy
+	public function rollback_views( $rollback_key )
+	{
+		$this->connection = 'datasource_deploy';
+
+		$rollback[ $rollback_key ]['pages'] = '';
+		$rollback[ $rollback_key ]['site_data'] = '';
+		$rollback[ $rollback_key ]['page_data'] = '';
+		$rollback[ $rollback_key ]['components'] = '';
+		$rollback[ $rollback_key ]['layouts'] = '';
+		$rollback[ $rollback_key ]['scripts'] = '';
+
+		foreach( $rollback as $key => $table )
+		{
+			foreach( $table as $tablename => $resultset )
+			{
+				$sql = "CREATE OR REPLACE VIEW {$tablename} AS
+						SELECT * FROM {$key}_{$tablename}";
+				$this->execute($sql);
+			}
+		}
+
+		$this->table = '___recent_deployments';
+
+		$this->execute("UPDATE {$this->table} SET is_current = 0");
+
+		$sql = "UPDATE {$this->table}
+				SET is_current = 1
+				WHERE deployment_key = :deployment_key";
+
+		$params = [
+			':deployment_key' => $rollback_key
+		];
+
+		$this->execute($sql, $params);
+
+		$this->connection = 'default';
+	}
 
 	#========================================================================
 	#
@@ -437,7 +475,7 @@ class deployment_export extends pdo
 			->content( $formatted_components )
 			->run( 'js_compiler' )
 			->output( $js );
-		
+
 		return $js;
 	}
 

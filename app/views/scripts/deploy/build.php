@@ -41,9 +41,9 @@
 							<div class="btn-group">
 								<?php if( !$deployment['is_current'] ): ?>
 									<button type="button" class="btn btn-warning btn-sm" data-toggle="popover" data-placement="right" data-html="true" data-content='
-										<form method="post" action="/deploy/rollback/<?= $deployment['id'] ?>">
-											<input type="hidden" name="id" value="<?= $deployment['id'] ?>">
-											<input type="hidden" name="datasource_id" value="<?= $datasource['id'] ?>">
+										<form method="post" action="/deploy/rollback/<?= $deployment['deployment_key'] ?>">
+											<input type="hidden" name="deployment_key" value="<?= $deployment['deployment_key'] ?>">
+											<input type="hidden" name="datasource_id" value="<?= $this->datasource['id'] ?>">
 											<button type="submit" class="btn btn-warning"><i class="fa fa-history"></i> Confirm Rollback</button>
 										</form>
 									'>

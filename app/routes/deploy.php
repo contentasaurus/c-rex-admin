@@ -14,4 +14,4 @@ $app->controller('deploy')
 	->post('/deploy/test/{id:i}', 'do_test')
 	->get('/deploy/build/{id:i}', 'build')
 	->post('/deploy/build/{id:i}', 'do_build')
-	->post('/deploy/rollback/{id:i}', 'do_build');
+	->post('/deploy/rollback/{key}', 'do_rollback');
