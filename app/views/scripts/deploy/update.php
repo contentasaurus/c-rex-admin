@@ -41,7 +41,7 @@
 
 			<div class="form-group">
 				<label>Password</label>
-				<input placeholder="hunter2" class="form-control required" name="password" type="text" value="<?= $this->datasource['password'] ?>">
+				<input placeholder="hunter2" class="form-control required" name="password" type="password" value="<?= $this->datasource['password'] ?>">
 			</div>
 
 			<div class="form-group">

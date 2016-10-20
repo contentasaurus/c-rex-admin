@@ -23,6 +23,7 @@ $app->controller('pages')
 	->get('/pages/update/{id:i}/version-create', 'do_version_create')
 	->get('/pages/update/{id:i}/version-update/{version_id:i}', 'version_update')
 	->post('/pages/update/{id:i}/version-update/{version_id:i}', 'do_version_update')
+	->post('/pages/update/{id:i}/version-split-update', 'do_version_split_update')
 	->get('/pages/update/{id:i}/version-copy/{version_id:i}', 'do_version_copy')
 	->get('/pages/update/{id:i}/version-publish/{version_id:i}/state/{state:i}', 'version_set_publish')
 	->post('/pages/update/{id:i}/version-delete/{version_id:i}', 'do_version_delete');

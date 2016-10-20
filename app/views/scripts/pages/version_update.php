@@ -30,6 +30,10 @@
 				</select>
 			</div>
 			<div class="form-group">
+				<label>Split Percentage</label>
+				<p class="form-control form-control-static"><?= $this->page_version['percentage'] ?></p>
+			</div>
+			<div class="form-group">
 				<label>Comments</label>
 				<input class="form-control required" name="comments" type="text" value="<?= $this->page_version['comments'] ?>">
 			</div>

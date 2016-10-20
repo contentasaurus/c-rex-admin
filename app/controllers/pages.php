@@ -72,6 +72,7 @@ class pages_controller extends puffin\controller\action
 			{
 				url::redirect($_SERVER['HTTP_REFERER']);
 			}
+
 			url::redirect("/pages/update/$result");
 		}
 		else
@@ -97,13 +98,6 @@ class pages_controller extends puffin\controller\action
 	{
 		$params = $this->post->params( $unsanitized = true );
 
-		#page history
-		$orignal_page = $this->page->read($id);
-		$orignal_page['page_id'] = $orignal_page['id'];
-		unset($orignal_page['id']);
-
-		$this->page_history->create($orignal_page);
-
 
 		if( $params['id'] == $id )
 		{
@@ -116,6 +110,8 @@ class pages_controller extends puffin\controller\action
 				'title' => 'Failure!',
 				'message' => 'This page has not been updated.'
 			]);
+
+			url::redirect($_SERVER['HTTP_REFERER']);
 		}
 
 		message::add([
@@ -124,7 +120,7 @@ class pages_controller extends puffin\controller\action
 			'message' => 'This page has been updated.'
 		]);
 
-		url::redirect('/pages');
+		url::redirect($_SERVER['HTTP_REFERER']);
 	}
 
 	public function set_publish( $id, $state )
@@ -201,6 +197,18 @@ class pages_controller extends puffin\controller\action
 		$params = $this->post->params( $unsanitized = true );
 
 		$result = $this->page_versions->update( $version_id, $params );
+
+		url::redirect($_SERVER['HTTP_REFERER']);
+	}
+
+	public function do_version_split_update( $page_id  )
+	{
+		$params = $this->post->params( $unsanitized = true );
+
+		foreach( $params['version'] as $id => $update )
+		{
+			$this->page_versions->update( $id, $update );
+		}
 
 		url::redirect($_SERVER['HTTP_REFERER']);
 	}
