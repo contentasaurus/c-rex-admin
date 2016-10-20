@@ -99,10 +99,11 @@ class user extends pdo
 		if( $email_exists )
 		{
 			$sql = 'UPDATE users
-					SET reset_token = TO_BASE64(uuid())
+					SET reset_token = :token
 					WHERE email = :email';
 
 			$params = [
+				':token' => base64_encode(uniqid()),
 				':email' => $email
 			];
 
