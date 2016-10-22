@@ -88,6 +88,8 @@ class scripts_controller extends puffin\controller\action
 				'title' => 'Failure!',
 				'message' => 'This script has not been updated.'
 			]);
+			
+			url::redirect($_SERVER['HTTP_REFERER']);
 		}
 
 		message::add([

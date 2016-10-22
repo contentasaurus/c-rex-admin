@@ -13,13 +13,29 @@ class layouts_controller extends puffin\controller\action
 	{
 		$this->page_layout = new page_layout();
 		$this->script = new script();
+		$this->script_type = new script_type();
 		$this->page_layout_script = new page_layout_script();
 	}
 
 	public function index()
 	{
 		view::add_param( 'layouts', $this->page_layout->read() );
-		view::add_param( 'scripts', $this->script->read() );
+
+		$scripts = $this->script->read();
+		$script_types = $this->script_type->read();
+
+		foreach ($scripts as $key => $script) 
+		{
+			foreach ($script_types as $script_type) 
+			{
+				if($script['script_type_id'] == $script_type['id'])
+				{
+					$scripts[$key]['type'] = $script_type['name'];
+				}
+			}
+		}
+
+		view::add_param( 'scripts', $scripts );
 	}
 
 	public function create()

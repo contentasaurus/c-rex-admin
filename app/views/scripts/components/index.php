@@ -21,6 +21,7 @@
 					<th>Name</th>
 					<th>Description</th>
 					<th>Create Date</th>
+					<th>Priority</th>
 					<th>Last Updated</th>
 					<th width="50"><br /></th>
 				</tr>
@@ -36,6 +37,7 @@
 						<td><?= $component['name'] ?></td>
 						<td><?= $component['description'] ?></td>
 						<td><?= $component['created_at'] ?></td>
+						<td><?= $component['priority'] ?></td>
 						<td><?= ($component['updated_at'] != '0000-00-00 00:00:00') ? $component['updated_at'] : '--' ?></td>
 						<td>
 							<?= $this->partial('delete', [

@@ -52,6 +52,9 @@ class deployment_export extends pdo
 		$this->export[ $this->get_key() ]['layouts'] = $this->get_layouts();
 		$this->export[ $this->get_key() ]['scripts'] = $this->get_component_scripts();
 
+		vd($this->export);
+		die();
+
 		return $this;
 	}
 
@@ -74,7 +77,7 @@ class deployment_export extends pdo
 		$return = [
 			['name' => 'component.head.js', 'content' => $this->node_compile_js('head') ],
 			['name' => 'component.body.js', 'content' => $this->node_compile_js('body') ],
-			['name' => 'component.css', 'content' => $this->make_components_css( $this->get_components_part('css') ) ],
+			['name' => 'component.css', 'content' => $this->node_compile_scss() ],
 		];
 
 		return $return;
@@ -154,7 +157,11 @@ class deployment_export extends pdo
 	{
 		if( empty($this->components) )
 		{
-			$this->components = $this->select( 'SELECT * from deployable_components' );
+			$sql = "SELECT * 
+					FROM deployable_components
+					ORDER BY priority DESC";
+
+			$this->components = $this->select( $sql );
 		}
 
 		return $this->components;
@@ -325,15 +332,35 @@ class deployment_export extends pdo
 	{
 		$this->hbs->set_partials( $this->format_components_html_for_compile() );
 
-		$js = $this->get_components_part('js');
-		$nonblocking_js = $this->get_components_part('nonblocking_js');
-		$css = $this->make_components_css( $this->get_components_part('css') );
+		$js = $this->node_compile_js('head');
+		$nonblocking_js = $this->node_compile_js('body');
+		$css = $this->node_compile_scss();
 
+		// $script_model = new script();
+		// $scripts = $script_model->get_by_type('SCSS');
+		// $scripts = $this->format_js_scripts_to_modules( $scripts );
+		// vd($scripts);
+		
+		// vd($this->format_components_scss_for_compile());
+		// vd($this->node_compile_scss());
 		$page = $this->get_version_preview($version_id);
 
 		$compiled_template = $this->compile_lightncandy( $page, $js, $css, $nonblocking_js );
 
 		return $this->hbs->render( $compiled_template, $this->get_data_for_preview($page['page_id']) );
+	}
+
+	public function format_js_scripts_to_modules( $scripts ) 
+	{
+		$formatted_scripts = [];
+
+		foreach ($scripts as $script) 
+		{
+			$formatted_scripts["__{$script['name']}__"] 
+				= $script['content'];
+		}
+
+		return $formatted_scripts;
 	}
 
 	public function build( $version_id = false )
@@ -457,6 +484,29 @@ class deployment_export extends pdo
 		return $formatted_components;
 	}
 
+	public function format_components_scss_for_compile()
+	{
+		$formatted_components = [];
+		$components = $this->get_components();
+		$key = 'css';
+
+		$formatted_components['init_script__'] = '';
+
+		foreach( $components as $component )
+		{
+			$scss = trim($component[$key]);
+
+			if(!empty($scss)) {
+				$name = '_'.$component['name'];
+				$formatted_components[$name] = $scss;
+				$formatted_components['init_script__']
+					.= "@import '{$component['name']}';";
+			}
+		}
+
+		return $formatted_components;
+	}
+
 	public function node_compile_js( $position )
 	{
 		$formatted_components
@@ -477,6 +527,28 @@ class deployment_export extends pdo
 			->output( $js );
 
 		return $js;
+	}
+
+	public function node_compile_scss()
+	{
+		$formatted_components
+			= $this->format_components_scss_for_compile();
+
+		$formatted_components = [
+			'options' => [
+				'compile_path' => NODE_PATH
+			],
+			'modules' => $formatted_components
+		];
+
+		$process = new node_php_process();
+		$process
+			->script_path( NODE_PATH )
+			->content( $formatted_components )
+			->run( 'scss_compiler' )
+			->output( $scss );
+
+		return $scss;
 	}
 
 	public function format_components_html_for_compile()
@@ -535,5 +607,4 @@ class deployment_export extends pdo
 
 		return $this->select_row( $sql, $params );
 	}
-
 }
