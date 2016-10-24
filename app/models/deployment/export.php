@@ -2,8 +2,6 @@
 
 use \puffin\model\pdo as pdo;
 use \puffin\controller\param as param;
-use \Leafo\ScssPhp\Compiler as scss_compiler;
-use \contentasaurus\NodePhpProcess as node_php_process;
 
 class deployment_export extends pdo
 {
