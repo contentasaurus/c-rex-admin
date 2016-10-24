@@ -14,8 +14,313 @@
             })();
         
 },{}],2:[function(require,module,exports){
+(function (process,__filename){
+/** vim: et:ts=4:sw=4:sts=4
+ * @license amdefine 1.0.0 Copyright (c) 2011-2015, The Dojo Foundation All Rights Reserved.
+ * Available via the MIT or new BSD license.
+ * see: http://github.com/jrburke/amdefine for details
+ */
+
+/*jslint node: true */
+/*global module, process */
+'use strict';
+
+/**
+ * Creates a define for node.
+ * @param {Object} module the "module" object that is defined by Node for the
+ * current module.
+ * @param {Function} [requireFn]. Node's require function for the current module.
+ * It only needs to be passed in Node versions before 0.5, when module.require
+ * did not exist.
+ * @returns {Function} a define function that is usable for the current node
+ * module.
+ */
+function amdefine(module, requireFn) {
+    'use strict';
+    var defineCache = {},
+        loaderCache = {},
+        alreadyCalled = false,
+        path = require('path'),
+        makeRequire, stringRequire;
+
+    /**
+     * Trims the . and .. from an array of path segments.
+     * It will keep a leading path segment if a .. will become
+     * the first path segment, to help with module name lookups,
+     * which act like paths, but can be remapped. But the end result,
+     * all paths that use this function should look normalized.
+     * NOTE: this method MODIFIES the input array.
+     * @param {Array} ary the array of path segments.
+     */
+    function trimDots(ary) {
+        var i, part;
+        for (i = 0; ary[i]; i+= 1) {
+            part = ary[i];
+            if (part === '.') {
+                ary.splice(i, 1);
+                i -= 1;
+            } else if (part === '..') {
+                if (i === 1 && (ary[2] === '..' || ary[0] === '..')) {
+                    //End of the line. Keep at least one non-dot
+                    //path segment at the front so it can be mapped
+                    //correctly to disk. Otherwise, there is likely
+                    //no path mapping for a path starting with '..'.
+                    //This can still fail, but catches the most reasonable
+                    //uses of ..
+                    break;
+                } else if (i > 0) {
+                    ary.splice(i - 1, 2);
+                    i -= 2;
+                }
+            }
+        }
+    }
+
+    function normalize(name, baseName) {
+        var baseParts;
+
+        //Adjust any relative paths.
+        if (name && name.charAt(0) === '.') {
+            //If have a base name, try to normalize against it,
+            //otherwise, assume it is a top-level require that will
+            //be relative to baseUrl in the end.
+            if (baseName) {
+                baseParts = baseName.split('/');
+                baseParts = baseParts.slice(0, baseParts.length - 1);
+                baseParts = baseParts.concat(name.split('/'));
+                trimDots(baseParts);
+                name = baseParts.join('/');
+            }
+        }
+
+        return name;
+    }
+
+    /**
+     * Create the normalize() function passed to a loader plugin's
+     * normalize method.
+     */
+    function makeNormalize(relName) {
+        return function (name) {
+            return normalize(name, relName);
+        };
+    }
+
+    function makeLoad(id) {
+        function load(value) {
+            loaderCache[id] = value;
+        }
+
+        load.fromText = function (id, text) {
+            //This one is difficult because the text can/probably uses
+            //define, and any relative paths and requires should be relative
+            //to that id was it would be found on disk. But this would require
+            //bootstrapping a module/require fairly deeply from node core.
+            //Not sure how best to go about that yet.
+            throw new Error('amdefine does not implement load.fromText');
+        };
+
+        return load;
+    }
+
+    makeRequire = function (systemRequire, exports, module, relId) {
+        function amdRequire(deps, callback) {
+            if (typeof deps === 'string') {
+                //Synchronous, single module require('')
+                return stringRequire(systemRequire, exports, module, deps, relId);
+            } else {
+                //Array of dependencies with a callback.
+
+                //Convert the dependencies to modules.
+                deps = deps.map(function (depName) {
+                    return stringRequire(systemRequire, exports, module, depName, relId);
+                });
+
+                //Wait for next tick to call back the require call.
+                if (callback) {
+                    process.nextTick(function () {
+                        callback.apply(null, deps);
+                    });
+                }
+            }
+        }
+
+        amdRequire.toUrl = function (filePath) {
+            if (filePath.indexOf('.') === 0) {
+                return normalize(filePath, path.dirname(module.filename));
+            } else {
+                return filePath;
+            }
+        };
+
+        return amdRequire;
+    };
+
+    //Favor explicit value, passed in if the module wants to support Node 0.4.
+    requireFn = requireFn || function req() {
+        return module.require.apply(module, arguments);
+    };
+
+    function runFactory(id, deps, factory) {
+        var r, e, m, result;
+
+        if (id) {
+            e = loaderCache[id] = {};
+            m = {
+                id: id,
+                uri: __filename,
+                exports: e
+            };
+            r = makeRequire(requireFn, e, m, id);
+        } else {
+            //Only support one define call per file
+            if (alreadyCalled) {
+                throw new Error('amdefine with no module ID cannot be called more than once per file.');
+            }
+            alreadyCalled = true;
+
+            //Use the real variables from node
+            //Use module.exports for exports, since
+            //the exports in here is amdefine exports.
+            e = module.exports;
+            m = module;
+            r = makeRequire(requireFn, e, m, module.id);
+        }
+
+        //If there are dependencies, they are strings, so need
+        //to convert them to dependency values.
+        if (deps) {
+            deps = deps.map(function (depName) {
+                return r(depName);
+            });
+        }
+
+        //Call the factory with the right dependencies.
+        if (typeof factory === 'function') {
+            result = factory.apply(m.exports, deps);
+        } else {
+            result = factory;
+        }
+
+        if (result !== undefined) {
+            m.exports = result;
+            if (id) {
+                loaderCache[id] = m.exports;
+            }
+        }
+    }
+
+    stringRequire = function (systemRequire, exports, module, id, relId) {
+        //Split the ID by a ! so that
+        var index = id.indexOf('!'),
+            originalId = id,
+            prefix, plugin;
+
+        if (index === -1) {
+            id = normalize(id, relId);
+
+            //Straight module lookup. If it is one of the special dependencies,
+            //deal with it, otherwise, delegate to node.
+            if (id === 'require') {
+                return makeRequire(systemRequire, exports, module, relId);
+            } else if (id === 'exports') {
+                return exports;
+            } else if (id === 'module') {
+                return module;
+            } else if (loaderCache.hasOwnProperty(id)) {
+                return loaderCache[id];
+            } else if (defineCache[id]) {
+                runFactory.apply(null, defineCache[id]);
+                return loaderCache[id];
+            } else {
+                if(systemRequire) {
+                    return systemRequire(originalId);
+                } else {
+                    throw new Error('No module with ID: ' + id);
+                }
+            }
+        } else {
+            //There is a plugin in play.
+            prefix = id.substring(0, index);
+            id = id.substring(index + 1, id.length);
+
+            plugin = stringRequire(systemRequire, exports, module, prefix, relId);
+
+            if (plugin.normalize) {
+                id = plugin.normalize(id, makeNormalize(relId));
+            } else {
+                //Normalize the ID normally.
+                id = normalize(id, relId);
+            }
+
+            if (loaderCache[id]) {
+                return loaderCache[id];
+            } else {
+                plugin.load(id, makeRequire(systemRequire, exports, module, relId), makeLoad(id), {});
+
+                return loaderCache[id];
+            }
+        }
+    };
+
+    //Create a define function specific to the module asking for amdefine.
+    function define(id, deps, factory) {
+        if (Array.isArray(id)) {
+            factory = deps;
+            deps = id;
+            id = undefined;
+        } else if (typeof id !== 'string') {
+            factory = id;
+            id = deps = undefined;
+        }
+
+        if (deps && !Array.isArray(deps)) {
+            factory = deps;
+            deps = undefined;
+        }
+
+        if (!deps) {
+            deps = ['require', 'exports', 'module'];
+        }
+
+        //Set up properties for this module. If an ID, then use
+        //internal cache. If no ID, then use the external variables
+        //for this node module.
+        if (id) {
+            //Put the module in deep freeze until there is a
+            //require call for it.
+            defineCache[id] = [id, deps, factory];
+        } else {
+            runFactory(id, deps, factory);
+        }
+    }
+
+    //define.require, which has access to all the values in the
+    //cache. Useful for AMD modules that all have IDs in the file,
+    //but need to finally export a value to node based on one of those
+    //IDs.
+    define.require = function (id) {
+        if (loaderCache[id]) {
+            return loaderCache[id];
+        }
+
+        if (defineCache[id]) {
+            runFactory.apply(null, defineCache[id]);
+            return loaderCache[id];
+        }
+    };
+
+    define.amd = {};
+
+    return define;
+}
+
+module.exports = amdefine;
+
+}).call(this,require('_process'),"/../node_modules/amdefine/amdefine.js")
+},{"_process":63,"path":62}],3:[function(require,module,exports){
 /*!
- * Bootstrap v4.0.0-alpha.4 (http://getbootstrap.com)
+ * Bootstrap v4.0.0-alpha.5 (https://getbootstrap.com)
  * Copyright 2011-2016 The Bootstrap Authors (https://github.com/twbs/bootstrap/graphs/contributors)
  * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
  */
@@ -32,26 +337,26 @@ if (typeof jQuery === 'undefined') {
 }(jQuery);
 
 
-+function ($) {
++function () {
+
+var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
 /**
  * --------------------------------------------------------------------------
- * Bootstrap (v4.0.0-alpha.4): util.js
+ * Bootstrap (v4.0.0-alpha.5): util.js
  * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
  * --------------------------------------------------------------------------
  */
 
-'use strict';
-
-var _get = function get(_x, _x2, _x3) { var _again = true; _function: while (_again) { var object = _x, property = _x2, receiver = _x3; _again = false; if (object === null) object = Function.prototype; var desc = Object.getOwnPropertyDescriptor(object, property); if (desc === undefined) { var parent = Object.getPrototypeOf(object); if (parent === null) { return undefined; } else { _x = parent; _x2 = property; _x3 = receiver; _again = true; desc = parent = undefined; continue _function; } } else if ('value' in desc) { return desc.value; } else { var getter = desc.get; if (getter === undefined) { return undefined; } return getter.call(receiver); } } };
-
-var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ('value' in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
-
-function _inherits(subClass, superClass) { if (typeof superClass !== 'function' && superClass !== null) { throw new TypeError('Super expression must either be null or a function, not ' + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
-
-function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError('Cannot call a class as a function'); } }
-
-var Util = (function ($) {
+var Util = function ($) {
 
   /**
    * ------------------------------------------------------------------------
@@ -72,7 +377,7 @@ var Util = (function ($) {
 
   // shoutout AngusCroll (https://goo.gl/pxwQGp)
   function toType(obj) {
-    return ({}).toString.call(obj).match(/\s([a-zA-Z]+)/)[1].toLowerCase();
+    return {}.toString.call(obj).match(/\s([a-zA-Z]+)/)[1].toLowerCase();
   }
 
   function isElement(obj) {
@@ -99,9 +404,9 @@ var Util = (function ($) {
 
     var el = document.createElement('bootstrap');
 
-    for (var _name in TransitionEndEvent) {
-      if (el.style[_name] !== undefined) {
-        return { end: TransitionEndEvent[_name] };
+    for (var name in TransitionEndEvent) {
+      if (el.style[name] !== undefined) {
+        return { end: TransitionEndEvent[name] };
       }
     }
 
@@ -149,12 +454,11 @@ var Util = (function ($) {
     getUID: function getUID(prefix) {
       do {
         /* eslint-disable no-bitwise */
-        prefix += ~ ~(Math.random() * MAX_UID); // "~~" acts like a faster Math.floor() here
+        prefix += ~~(Math.random() * MAX_UID); // "~~" acts like a faster Math.floor() here
         /* eslint-enable no-bitwise */
       } while (document.getElementById(prefix));
       return prefix;
     },
-
     getSelectorFromElement: function getSelectorFromElement(element) {
       var selector = element.getAttribute('data-target');
 
@@ -165,25 +469,21 @@ var Util = (function ($) {
 
       return selector;
     },
-
     reflow: function reflow(element) {
       new Function('bs', 'return bs')(element.offsetHeight);
     },
-
     triggerTransitionEnd: function triggerTransitionEnd(element) {
       $(element).trigger(transition.end);
     },
-
     supportsTransitionEnd: function supportsTransitionEnd() {
       return Boolean(transition);
     },
-
     typeCheckConfig: function typeCheckConfig(componentName, config, configTypes) {
       for (var property in configTypes) {
         if (configTypes.hasOwnProperty(property)) {
           var expectedTypes = configTypes[property];
           var value = config[property];
-          var valueType = undefined;
+          var valueType = void 0;
 
           if (value && isElement(value)) {
             valueType = 'element';
@@ -202,16 +502,16 @@ var Util = (function ($) {
   setTransitionEndSupport();
 
   return Util;
-})(jQuery);
+}(jQuery);
 
 /**
  * --------------------------------------------------------------------------
- * Bootstrap (v4.0.0-alpha.4): alert.js
+ * Bootstrap (v4.0.0-alpha.5): alert.js
  * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
  * --------------------------------------------------------------------------
  */
 
-var Alert = (function ($) {
+var Alert = function ($) {
 
   /**
    * ------------------------------------------------------------------------
@@ -220,7 +520,7 @@ var Alert = (function ($) {
    */
 
   var NAME = 'alert';
-  var VERSION = '4.0.0-alpha.4';
+  var VERSION = '4.0.0-alpha.5';
   var DATA_KEY = 'bs.alert';
   var EVENT_KEY = '.' + DATA_KEY;
   var DATA_API_KEY = '.data-api';
@@ -249,120 +549,103 @@ var Alert = (function ($) {
    * ------------------------------------------------------------------------
    */
 
-  var Alert = (function () {
+  var Alert = function () {
     function Alert(element) {
       _classCallCheck(this, Alert);
 
       this._element = element;
     }
 
-    /**
-     * ------------------------------------------------------------------------
-     * Data Api implementation
-     * ------------------------------------------------------------------------
-     */
-
     // getters
 
-    _createClass(Alert, [{
-      key: 'close',
+    // public
 
-      // public
+    Alert.prototype.close = function close(element) {
+      element = element || this._element;
 
-      value: function close(element) {
-        element = element || this._element;
+      var rootElement = this._getRootElement(element);
+      var customEvent = this._triggerCloseEvent(rootElement);
 
-        var rootElement = this._getRootElement(element);
-        var customEvent = this._triggerCloseEvent(rootElement);
+      if (customEvent.isDefaultPrevented()) {
+        return;
+      }
 
-        if (customEvent.isDefaultPrevented()) {
-          return;
+      this._removeElement(rootElement);
+    };
+
+    Alert.prototype.dispose = function dispose() {
+      $.removeData(this._element, DATA_KEY);
+      this._element = null;
+    };
+
+    // private
+
+    Alert.prototype._getRootElement = function _getRootElement(element) {
+      var selector = Util.getSelectorFromElement(element);
+      var parent = false;
+
+      if (selector) {
+        parent = $(selector)[0];
+      }
+
+      if (!parent) {
+        parent = $(element).closest('.' + ClassName.ALERT)[0];
+      }
+
+      return parent;
+    };
+
+    Alert.prototype._triggerCloseEvent = function _triggerCloseEvent(element) {
+      var closeEvent = $.Event(Event.CLOSE);
+
+      $(element).trigger(closeEvent);
+      return closeEvent;
+    };
+
+    Alert.prototype._removeElement = function _removeElement(element) {
+      $(element).removeClass(ClassName.IN);
+
+      if (!Util.supportsTransitionEnd() || !$(element).hasClass(ClassName.FADE)) {
+        this._destroyElement(element);
+        return;
+      }
+
+      $(element).one(Util.TRANSITION_END, $.proxy(this._destroyElement, this, element)).emulateTransitionEnd(TRANSITION_DURATION);
+    };
+
+    Alert.prototype._destroyElement = function _destroyElement(element) {
+      $(element).detach().trigger(Event.CLOSED).remove();
+    };
+
+    // static
+
+    Alert._jQueryInterface = function _jQueryInterface(config) {
+      return this.each(function () {
+        var $element = $(this);
+        var data = $element.data(DATA_KEY);
+
+        if (!data) {
+          data = new Alert(this);
+          $element.data(DATA_KEY, data);
         }
 
-        this._removeElement(rootElement);
-      }
-    }, {
-      key: 'dispose',
-      value: function dispose() {
-        $.removeData(this._element, DATA_KEY);
-        this._element = null;
-      }
+        if (config === 'close') {
+          data[config](this);
+        }
+      });
+    };
 
-      // private
-
-    }, {
-      key: '_getRootElement',
-      value: function _getRootElement(element) {
-        var selector = Util.getSelectorFromElement(element);
-        var parent = false;
-
-        if (selector) {
-          parent = $(selector)[0];
+    Alert._handleDismiss = function _handleDismiss(alertInstance) {
+      return function (event) {
+        if (event) {
+          event.preventDefault();
         }
 
-        if (!parent) {
-          parent = $(element).closest('.' + ClassName.ALERT)[0];
-        }
+        alertInstance.close(this);
+      };
+    };
 
-        return parent;
-      }
-    }, {
-      key: '_triggerCloseEvent',
-      value: function _triggerCloseEvent(element) {
-        var closeEvent = $.Event(Event.CLOSE);
-
-        $(element).trigger(closeEvent);
-        return closeEvent;
-      }
-    }, {
-      key: '_removeElement',
-      value: function _removeElement(element) {
-        $(element).removeClass(ClassName.IN);
-
-        if (!Util.supportsTransitionEnd() || !$(element).hasClass(ClassName.FADE)) {
-          this._destroyElement(element);
-          return;
-        }
-
-        $(element).one(Util.TRANSITION_END, $.proxy(this._destroyElement, this, element)).emulateTransitionEnd(TRANSITION_DURATION);
-      }
-    }, {
-      key: '_destroyElement',
-      value: function _destroyElement(element) {
-        $(element).detach().trigger(Event.CLOSED).remove();
-      }
-
-      // static
-
-    }], [{
-      key: '_jQueryInterface',
-      value: function _jQueryInterface(config) {
-        return this.each(function () {
-          var $element = $(this);
-          var data = $element.data(DATA_KEY);
-
-          if (!data) {
-            data = new Alert(this);
-            $element.data(DATA_KEY, data);
-          }
-
-          if (config === 'close') {
-            data[config](this);
-          }
-        });
-      }
-    }, {
-      key: '_handleDismiss',
-      value: function _handleDismiss(alertInstance) {
-        return function (event) {
-          if (event) {
-            event.preventDefault();
-          }
-
-          alertInstance.close(this);
-        };
-      }
-    }, {
+    _createClass(Alert, null, [{
       key: 'VERSION',
       get: function get() {
         return VERSION;
@@ -370,7 +653,13 @@ var Alert = (function ($) {
     }]);
 
     return Alert;
-  })();
+  }();
+
+  /**
+   * ------------------------------------------------------------------------
+   * Data Api implementation
+   * ------------------------------------------------------------------------
+   */
 
   $(document).on(Event.CLICK_DATA_API, Selector.DISMISS, Alert._handleDismiss(new Alert()));
 
@@ -388,16 +677,16 @@ var Alert = (function ($) {
   };
 
   return Alert;
-})(jQuery);
+}(jQuery);
 
 /**
  * --------------------------------------------------------------------------
- * Bootstrap (v4.0.0-alpha.4): button.js
+ * Bootstrap (v4.0.0-alpha.5): button.js
  * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
  * --------------------------------------------------------------------------
  */
 
-var Button = (function ($) {
+var Button = function ($) {
 
   /**
    * ------------------------------------------------------------------------
@@ -406,7 +695,7 @@ var Button = (function ($) {
    */
 
   var NAME = 'button';
-  var VERSION = '4.0.0-alpha.4';
+  var VERSION = '4.0.0-alpha.5';
   var DATA_KEY = 'bs.button';
   var EVENT_KEY = '.' + DATA_KEY;
   var DATA_API_KEY = '.data-api';
@@ -437,87 +726,76 @@ var Button = (function ($) {
    * ------------------------------------------------------------------------
    */
 
-  var Button = (function () {
+  var Button = function () {
     function Button(element) {
       _classCallCheck(this, Button);
 
       this._element = element;
     }
 
-    /**
-     * ------------------------------------------------------------------------
-     * Data Api implementation
-     * ------------------------------------------------------------------------
-     */
-
     // getters
 
-    _createClass(Button, [{
-      key: 'toggle',
+    // public
 
-      // public
+    Button.prototype.toggle = function toggle() {
+      var triggerChangeEvent = true;
+      var rootElement = $(this._element).closest(Selector.DATA_TOGGLE)[0];
 
-      value: function toggle() {
-        var triggerChangeEvent = true;
-        var rootElement = $(this._element).closest(Selector.DATA_TOGGLE)[0];
+      if (rootElement) {
+        var input = $(this._element).find(Selector.INPUT)[0];
 
-        if (rootElement) {
-          var input = $(this._element).find(Selector.INPUT)[0];
+        if (input) {
+          if (input.type === 'radio') {
+            if (input.checked && $(this._element).hasClass(ClassName.ACTIVE)) {
+              triggerChangeEvent = false;
+            } else {
+              var activeElement = $(rootElement).find(Selector.ACTIVE)[0];
 
-          if (input) {
-            if (input.type === 'radio') {
-              if (input.checked && $(this._element).hasClass(ClassName.ACTIVE)) {
-                triggerChangeEvent = false;
-              } else {
-                var activeElement = $(rootElement).find(Selector.ACTIVE)[0];
-
-                if (activeElement) {
-                  $(activeElement).removeClass(ClassName.ACTIVE);
-                }
+              if (activeElement) {
+                $(activeElement).removeClass(ClassName.ACTIVE);
               }
             }
-
-            if (triggerChangeEvent) {
-              input.checked = !$(this._element).hasClass(ClassName.ACTIVE);
-              $(this._element).trigger('change');
-            }
-
-            input.focus();
           }
-        } else {
-          this._element.setAttribute('aria-pressed', !$(this._element).hasClass(ClassName.ACTIVE));
+
+          if (triggerChangeEvent) {
+            input.checked = !$(this._element).hasClass(ClassName.ACTIVE);
+            $(this._element).trigger('change');
+          }
+
+          input.focus();
+        }
+      } else {
+        this._element.setAttribute('aria-pressed', !$(this._element).hasClass(ClassName.ACTIVE));
+      }
+
+      if (triggerChangeEvent) {
+        $(this._element).toggleClass(ClassName.ACTIVE);
+      }
+    };
+
+    Button.prototype.dispose = function dispose() {
+      $.removeData(this._element, DATA_KEY);
+      this._element = null;
+    };
+
+    // static
+
+    Button._jQueryInterface = function _jQueryInterface(config) {
+      return this.each(function () {
+        var data = $(this).data(DATA_KEY);
+
+        if (!data) {
+          data = new Button(this);
+          $(this).data(DATA_KEY, data);
         }
 
-        if (triggerChangeEvent) {
-          $(this._element).toggleClass(ClassName.ACTIVE);
+        if (config === 'toggle') {
+          data[config]();
         }
-      }
-    }, {
-      key: 'dispose',
-      value: function dispose() {
-        $.removeData(this._element, DATA_KEY);
-        this._element = null;
-      }
+      });
+    };
 
-      // static
-
-    }], [{
-      key: '_jQueryInterface',
-      value: function _jQueryInterface(config) {
-        return this.each(function () {
-          var data = $(this).data(DATA_KEY);
-
-          if (!data) {
-            data = new Button(this);
-            $(this).data(DATA_KEY, data);
-          }
-
-          if (config === 'toggle') {
-            data[config]();
-          }
-        });
-      }
-    }, {
+    _createClass(Button, null, [{
       key: 'VERSION',
       get: function get() {
         return VERSION;
@@ -525,7 +803,13 @@ var Button = (function ($) {
     }]);
 
     return Button;
-  })();
+  }();
+
+  /**
+   * ------------------------------------------------------------------------
+   * Data Api implementation
+   * ------------------------------------------------------------------------
+   */
 
   $(document).on(Event.CLICK_DATA_API, Selector.DATA_TOGGLE_CARROT, function (event) {
     event.preventDefault();
@@ -556,16 +840,16 @@ var Button = (function ($) {
   };
 
   return Button;
-})(jQuery);
+}(jQuery);
 
 /**
  * --------------------------------------------------------------------------
- * Bootstrap (v4.0.0-alpha.4): carousel.js
+ * Bootstrap (v4.0.0-alpha.5): carousel.js
  * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
  * --------------------------------------------------------------------------
  */
 
-var Carousel = (function ($) {
+var Carousel = function ($) {
 
   /**
    * ------------------------------------------------------------------------
@@ -574,7 +858,7 @@ var Carousel = (function ($) {
    */
 
   var NAME = 'carousel';
-  var VERSION = '4.0.0-alpha.4';
+  var VERSION = '4.0.0-alpha.5';
   var DATA_KEY = 'bs.carousel';
   var EVENT_KEY = '.' + DATA_KEY;
   var DATA_API_KEY = '.data-api';
@@ -639,7 +923,7 @@ var Carousel = (function ($) {
    * ------------------------------------------------------------------------
    */
 
-  var Carousel = (function () {
+  var Carousel = function () {
     function Carousel(element, config) {
       _classCallCheck(this, Carousel);
 
@@ -657,344 +941,318 @@ var Carousel = (function ($) {
       this._addEventListeners();
     }
 
-    /**
-     * ------------------------------------------------------------------------
-     * Data Api implementation
-     * ------------------------------------------------------------------------
-     */
-
     // getters
 
-    _createClass(Carousel, [{
-      key: 'next',
+    // public
 
-      // public
-
-      value: function next() {
-        if (!this._isSliding) {
-          this._slide(Direction.NEXT);
-        }
+    Carousel.prototype.next = function next() {
+      if (!this._isSliding) {
+        this._slide(Direction.NEXT);
       }
-    }, {
-      key: 'nextWhenVisible',
-      value: function nextWhenVisible() {
-        // Don't call next when the page isn't visible
-        if (!document.hidden) {
-          this.next();
-        }
-      }
-    }, {
-      key: 'prev',
-      value: function prev() {
-        if (!this._isSliding) {
-          this._slide(Direction.PREVIOUS);
-        }
-      }
-    }, {
-      key: 'pause',
-      value: function pause(event) {
-        if (!event) {
-          this._isPaused = true;
-        }
+    };
 
-        if ($(this._element).find(Selector.NEXT_PREV)[0] && Util.supportsTransitionEnd()) {
-          Util.triggerTransitionEnd(this._element);
-          this.cycle(true);
-        }
+    Carousel.prototype.nextWhenVisible = function nextWhenVisible() {
+      // Don't call next when the page isn't visible
+      if (!document.hidden) {
+        this.next();
+      }
+    };
 
+    Carousel.prototype.prev = function prev() {
+      if (!this._isSliding) {
+        this._slide(Direction.PREVIOUS);
+      }
+    };
+
+    Carousel.prototype.pause = function pause(event) {
+      if (!event) {
+        this._isPaused = true;
+      }
+
+      if ($(this._element).find(Selector.NEXT_PREV)[0] && Util.supportsTransitionEnd()) {
+        Util.triggerTransitionEnd(this._element);
+        this.cycle(true);
+      }
+
+      clearInterval(this._interval);
+      this._interval = null;
+    };
+
+    Carousel.prototype.cycle = function cycle(event) {
+      if (!event) {
+        this._isPaused = false;
+      }
+
+      if (this._interval) {
         clearInterval(this._interval);
         this._interval = null;
       }
-    }, {
-      key: 'cycle',
-      value: function cycle(event) {
-        if (!event) {
-          this._isPaused = false;
-        }
 
-        if (this._interval) {
-          clearInterval(this._interval);
-          this._interval = null;
-        }
-
-        if (this._config.interval && !this._isPaused) {
-          this._interval = setInterval($.proxy(document.visibilityState ? this.nextWhenVisible : this.next, this), this._config.interval);
-        }
+      if (this._config.interval && !this._isPaused) {
+        this._interval = setInterval($.proxy(document.visibilityState ? this.nextWhenVisible : this.next, this), this._config.interval);
       }
-    }, {
-      key: 'to',
-      value: function to(index) {
-        var _this2 = this;
+    };
 
-        this._activeElement = $(this._element).find(Selector.ACTIVE_ITEM)[0];
+    Carousel.prototype.to = function to(index) {
+      var _this2 = this;
 
-        var activeIndex = this._getItemIndex(this._activeElement);
+      this._activeElement = $(this._element).find(Selector.ACTIVE_ITEM)[0];
 
-        if (index > this._items.length - 1 || index < 0) {
-          return;
-        }
+      var activeIndex = this._getItemIndex(this._activeElement);
 
-        if (this._isSliding) {
-          $(this._element).one(Event.SLID, function () {
-            return _this2.to(index);
-          });
-          return;
-        }
-
-        if (activeIndex === index) {
-          this.pause();
-          this.cycle();
-          return;
-        }
-
-        var direction = index > activeIndex ? Direction.NEXT : Direction.PREVIOUS;
-
-        this._slide(direction, this._items[index]);
-      }
-    }, {
-      key: 'dispose',
-      value: function dispose() {
-        $(this._element).off(EVENT_KEY);
-        $.removeData(this._element, DATA_KEY);
-
-        this._items = null;
-        this._config = null;
-        this._element = null;
-        this._interval = null;
-        this._isPaused = null;
-        this._isSliding = null;
-        this._activeElement = null;
-        this._indicatorsElement = null;
+      if (index > this._items.length - 1 || index < 0) {
+        return;
       }
 
-      // private
-
-    }, {
-      key: '_getConfig',
-      value: function _getConfig(config) {
-        config = $.extend({}, Default, config);
-        Util.typeCheckConfig(NAME, config, DefaultType);
-        return config;
-      }
-    }, {
-      key: '_addEventListeners',
-      value: function _addEventListeners() {
-        if (this._config.keyboard) {
-          $(this._element).on(Event.KEYDOWN, $.proxy(this._keydown, this));
-        }
-
-        if (this._config.pause === 'hover' && !('ontouchstart' in document.documentElement)) {
-          $(this._element).on(Event.MOUSEENTER, $.proxy(this.pause, this)).on(Event.MOUSELEAVE, $.proxy(this.cycle, this));
-        }
-      }
-    }, {
-      key: '_keydown',
-      value: function _keydown(event) {
-        event.preventDefault();
-
-        if (/input|textarea/i.test(event.target.tagName)) {
-          return;
-        }
-
-        switch (event.which) {
-          case ARROW_LEFT_KEYCODE:
-            this.prev();
-            break;
-          case ARROW_RIGHT_KEYCODE:
-            this.next();
-            break;
-          default:
-            return;
-        }
-      }
-    }, {
-      key: '_getItemIndex',
-      value: function _getItemIndex(element) {
-        this._items = $.makeArray($(element).parent().find(Selector.ITEM));
-        return this._items.indexOf(element);
-      }
-    }, {
-      key: '_getItemByDirection',
-      value: function _getItemByDirection(direction, activeElement) {
-        var isNextDirection = direction === Direction.NEXT;
-        var isPrevDirection = direction === Direction.PREVIOUS;
-        var activeIndex = this._getItemIndex(activeElement);
-        var lastItemIndex = this._items.length - 1;
-        var isGoingToWrap = isPrevDirection && activeIndex === 0 || isNextDirection && activeIndex === lastItemIndex;
-
-        if (isGoingToWrap && !this._config.wrap) {
-          return activeElement;
-        }
-
-        var delta = direction === Direction.PREVIOUS ? -1 : 1;
-        var itemIndex = (activeIndex + delta) % this._items.length;
-
-        return itemIndex === -1 ? this._items[this._items.length - 1] : this._items[itemIndex];
-      }
-    }, {
-      key: '_triggerSlideEvent',
-      value: function _triggerSlideEvent(relatedTarget, directionalClassname) {
-        var slideEvent = $.Event(Event.SLIDE, {
-          relatedTarget: relatedTarget,
-          direction: directionalClassname
+      if (this._isSliding) {
+        $(this._element).one(Event.SLID, function () {
+          return _this2.to(index);
         });
-
-        $(this._element).trigger(slideEvent);
-
-        return slideEvent;
+        return;
       }
-    }, {
-      key: '_setActiveIndicatorElement',
-      value: function _setActiveIndicatorElement(element) {
-        if (this._indicatorsElement) {
-          $(this._indicatorsElement).find(Selector.ACTIVE).removeClass(ClassName.ACTIVE);
 
-          var nextIndicator = this._indicatorsElement.children[this._getItemIndex(element)];
+      if (activeIndex === index) {
+        this.pause();
+        this.cycle();
+        return;
+      }
 
-          if (nextIndicator) {
-            $(nextIndicator).addClass(ClassName.ACTIVE);
-          }
+      var direction = index > activeIndex ? Direction.NEXT : Direction.PREVIOUS;
+
+      this._slide(direction, this._items[index]);
+    };
+
+    Carousel.prototype.dispose = function dispose() {
+      $(this._element).off(EVENT_KEY);
+      $.removeData(this._element, DATA_KEY);
+
+      this._items = null;
+      this._config = null;
+      this._element = null;
+      this._interval = null;
+      this._isPaused = null;
+      this._isSliding = null;
+      this._activeElement = null;
+      this._indicatorsElement = null;
+    };
+
+    // private
+
+    Carousel.prototype._getConfig = function _getConfig(config) {
+      config = $.extend({}, Default, config);
+      Util.typeCheckConfig(NAME, config, DefaultType);
+      return config;
+    };
+
+    Carousel.prototype._addEventListeners = function _addEventListeners() {
+      if (this._config.keyboard) {
+        $(this._element).on(Event.KEYDOWN, $.proxy(this._keydown, this));
+      }
+
+      if (this._config.pause === 'hover' && !('ontouchstart' in document.documentElement)) {
+        $(this._element).on(Event.MOUSEENTER, $.proxy(this.pause, this)).on(Event.MOUSELEAVE, $.proxy(this.cycle, this));
+      }
+    };
+
+    Carousel.prototype._keydown = function _keydown(event) {
+      event.preventDefault();
+
+      if (/input|textarea/i.test(event.target.tagName)) {
+        return;
+      }
+
+      switch (event.which) {
+        case ARROW_LEFT_KEYCODE:
+          this.prev();
+          break;
+        case ARROW_RIGHT_KEYCODE:
+          this.next();
+          break;
+        default:
+          return;
+      }
+    };
+
+    Carousel.prototype._getItemIndex = function _getItemIndex(element) {
+      this._items = $.makeArray($(element).parent().find(Selector.ITEM));
+      return this._items.indexOf(element);
+    };
+
+    Carousel.prototype._getItemByDirection = function _getItemByDirection(direction, activeElement) {
+      var isNextDirection = direction === Direction.NEXT;
+      var isPrevDirection = direction === Direction.PREVIOUS;
+      var activeIndex = this._getItemIndex(activeElement);
+      var lastItemIndex = this._items.length - 1;
+      var isGoingToWrap = isPrevDirection && activeIndex === 0 || isNextDirection && activeIndex === lastItemIndex;
+
+      if (isGoingToWrap && !this._config.wrap) {
+        return activeElement;
+      }
+
+      var delta = direction === Direction.PREVIOUS ? -1 : 1;
+      var itemIndex = (activeIndex + delta) % this._items.length;
+
+      return itemIndex === -1 ? this._items[this._items.length - 1] : this._items[itemIndex];
+    };
+
+    Carousel.prototype._triggerSlideEvent = function _triggerSlideEvent(relatedTarget, directionalClassname) {
+      var slideEvent = $.Event(Event.SLIDE, {
+        relatedTarget: relatedTarget,
+        direction: directionalClassname
+      });
+
+      $(this._element).trigger(slideEvent);
+
+      return slideEvent;
+    };
+
+    Carousel.prototype._setActiveIndicatorElement = function _setActiveIndicatorElement(element) {
+      if (this._indicatorsElement) {
+        $(this._indicatorsElement).find(Selector.ACTIVE).removeClass(ClassName.ACTIVE);
+
+        var nextIndicator = this._indicatorsElement.children[this._getItemIndex(element)];
+
+        if (nextIndicator) {
+          $(nextIndicator).addClass(ClassName.ACTIVE);
         }
       }
-    }, {
-      key: '_slide',
-      value: function _slide(direction, element) {
-        var _this3 = this;
+    };
 
-        var activeElement = $(this._element).find(Selector.ACTIVE_ITEM)[0];
-        var nextElement = element || activeElement && this._getItemByDirection(direction, activeElement);
+    Carousel.prototype._slide = function _slide(direction, element) {
+      var _this3 = this;
 
-        var isCycling = Boolean(this._interval);
+      var activeElement = $(this._element).find(Selector.ACTIVE_ITEM)[0];
+      var nextElement = element || activeElement && this._getItemByDirection(direction, activeElement);
 
-        var directionalClassName = direction === Direction.NEXT ? ClassName.LEFT : ClassName.RIGHT;
+      var isCycling = Boolean(this._interval);
 
-        if (nextElement && $(nextElement).hasClass(ClassName.ACTIVE)) {
-          this._isSliding = false;
-          return;
-        }
+      var directionalClassName = direction === Direction.NEXT ? ClassName.LEFT : ClassName.RIGHT;
 
-        var slideEvent = this._triggerSlideEvent(nextElement, directionalClassName);
-        if (slideEvent.isDefaultPrevented()) {
-          return;
-        }
+      if (nextElement && $(nextElement).hasClass(ClassName.ACTIVE)) {
+        this._isSliding = false;
+        return;
+      }
 
-        if (!activeElement || !nextElement) {
-          // some weirdness is happening, so we bail
-          return;
-        }
+      var slideEvent = this._triggerSlideEvent(nextElement, directionalClassName);
+      if (slideEvent.isDefaultPrevented()) {
+        return;
+      }
 
-        this._isSliding = true;
+      if (!activeElement || !nextElement) {
+        // some weirdness is happening, so we bail
+        return;
+      }
 
-        if (isCycling) {
-          this.pause();
-        }
+      this._isSliding = true;
 
-        this._setActiveIndicatorElement(nextElement);
+      if (isCycling) {
+        this.pause();
+      }
 
-        var slidEvent = $.Event(Event.SLID, {
-          relatedTarget: nextElement,
-          direction: directionalClassName
-        });
+      this._setActiveIndicatorElement(nextElement);
 
-        if (Util.supportsTransitionEnd() && $(this._element).hasClass(ClassName.SLIDE)) {
+      var slidEvent = $.Event(Event.SLID, {
+        relatedTarget: nextElement,
+        direction: directionalClassName
+      });
 
-          $(nextElement).addClass(direction);
+      if (Util.supportsTransitionEnd() && $(this._element).hasClass(ClassName.SLIDE)) {
 
-          Util.reflow(nextElement);
+        $(nextElement).addClass(direction);
 
-          $(activeElement).addClass(directionalClassName);
-          $(nextElement).addClass(directionalClassName);
+        Util.reflow(nextElement);
 
-          $(activeElement).one(Util.TRANSITION_END, function () {
-            $(nextElement).removeClass(directionalClassName).removeClass(direction);
+        $(activeElement).addClass(directionalClassName);
+        $(nextElement).addClass(directionalClassName);
 
-            $(nextElement).addClass(ClassName.ACTIVE);
+        $(activeElement).one(Util.TRANSITION_END, function () {
+          $(nextElement).removeClass(directionalClassName).removeClass(direction);
 
-            $(activeElement).removeClass(ClassName.ACTIVE).removeClass(direction).removeClass(directionalClassName);
-
-            _this3._isSliding = false;
-
-            setTimeout(function () {
-              return $(_this3._element).trigger(slidEvent);
-            }, 0);
-          }).emulateTransitionEnd(TRANSITION_DURATION);
-        } else {
-          $(activeElement).removeClass(ClassName.ACTIVE);
           $(nextElement).addClass(ClassName.ACTIVE);
 
-          this._isSliding = false;
-          $(this._element).trigger(slidEvent);
-        }
+          $(activeElement).removeClass(ClassName.ACTIVE).removeClass(direction).removeClass(directionalClassName);
 
-        if (isCycling) {
-          this.cycle();
-        }
+          _this3._isSliding = false;
+
+          setTimeout(function () {
+            return $(_this3._element).trigger(slidEvent);
+          }, 0);
+        }).emulateTransitionEnd(TRANSITION_DURATION);
+      } else {
+        $(activeElement).removeClass(ClassName.ACTIVE);
+        $(nextElement).addClass(ClassName.ACTIVE);
+
+        this._isSliding = false;
+        $(this._element).trigger(slidEvent);
       }
 
-      // static
-
-    }], [{
-      key: '_jQueryInterface',
-      value: function _jQueryInterface(config) {
-        return this.each(function () {
-          var data = $(this).data(DATA_KEY);
-          var _config = $.extend({}, Default, $(this).data());
-
-          if (typeof config === 'object') {
-            $.extend(_config, config);
-          }
-
-          var action = typeof config === 'string' ? config : _config.slide;
-
-          if (!data) {
-            data = new Carousel(this, _config);
-            $(this).data(DATA_KEY, data);
-          }
-
-          if (typeof config === 'number') {
-            data.to(config);
-          } else if (typeof action === 'string') {
-            if (data[action] === undefined) {
-              throw new Error('No method named "' + action + '"');
-            }
-            data[action]();
-          } else if (_config.interval) {
-            data.pause();
-            data.cycle();
-          }
-        });
+      if (isCycling) {
+        this.cycle();
       }
-    }, {
-      key: '_dataApiClickHandler',
-      value: function _dataApiClickHandler(event) {
-        var selector = Util.getSelectorFromElement(this);
+    };
 
-        if (!selector) {
-          return;
+    // static
+
+    Carousel._jQueryInterface = function _jQueryInterface(config) {
+      return this.each(function () {
+        var data = $(this).data(DATA_KEY);
+        var _config = $.extend({}, Default, $(this).data());
+
+        if ((typeof config === 'undefined' ? 'undefined' : _typeof(config)) === 'object') {
+          $.extend(_config, config);
         }
 
-        var target = $(selector)[0];
+        var action = typeof config === 'string' ? config : _config.slide;
 
-        if (!target || !$(target).hasClass(ClassName.CAROUSEL)) {
-          return;
+        if (!data) {
+          data = new Carousel(this, _config);
+          $(this).data(DATA_KEY, data);
         }
 
-        var config = $.extend({}, $(target).data(), $(this).data());
-        var slideIndex = this.getAttribute('data-slide-to');
-
-        if (slideIndex) {
-          config.interval = false;
+        if (typeof config === 'number') {
+          data.to(config);
+        } else if (typeof action === 'string') {
+          if (data[action] === undefined) {
+            throw new Error('No method named "' + action + '"');
+          }
+          data[action]();
+        } else if (_config.interval) {
+          data.pause();
+          data.cycle();
         }
+      });
+    };
 
-        Carousel._jQueryInterface.call($(target), config);
+    Carousel._dataApiClickHandler = function _dataApiClickHandler(event) {
+      var selector = Util.getSelectorFromElement(this);
 
-        if (slideIndex) {
-          $(target).data(DATA_KEY).to(slideIndex);
-        }
-
-        event.preventDefault();
+      if (!selector) {
+        return;
       }
-    }, {
+
+      var target = $(selector)[0];
+
+      if (!target || !$(target).hasClass(ClassName.CAROUSEL)) {
+        return;
+      }
+
+      var config = $.extend({}, $(target).data(), $(this).data());
+      var slideIndex = this.getAttribute('data-slide-to');
+
+      if (slideIndex) {
+        config.interval = false;
+      }
+
+      Carousel._jQueryInterface.call($(target), config);
+
+      if (slideIndex) {
+        $(target).data(DATA_KEY).to(slideIndex);
+      }
+
+      event.preventDefault();
+    };
+
+    _createClass(Carousel, null, [{
       key: 'VERSION',
       get: function get() {
         return VERSION;
@@ -1007,7 +1265,13 @@ var Carousel = (function ($) {
     }]);
 
     return Carousel;
-  })();
+  }();
+
+  /**
+   * ------------------------------------------------------------------------
+   * Data Api implementation
+   * ------------------------------------------------------------------------
+   */
 
   $(document).on(Event.CLICK_DATA_API, Selector.DATA_SLIDE, Carousel._dataApiClickHandler);
 
@@ -1032,16 +1296,16 @@ var Carousel = (function ($) {
   };
 
   return Carousel;
-})(jQuery);
+}(jQuery);
 
 /**
  * --------------------------------------------------------------------------
- * Bootstrap (v4.0.0-alpha.4): collapse.js
+ * Bootstrap (v4.0.0-alpha.5): collapse.js
  * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
  * --------------------------------------------------------------------------
  */
 
-var Collapse = (function ($) {
+var Collapse = function ($) {
 
   /**
    * ------------------------------------------------------------------------
@@ -1050,7 +1314,7 @@ var Collapse = (function ($) {
    */
 
   var NAME = 'collapse';
-  var VERSION = '4.0.0-alpha.4';
+  var VERSION = '4.0.0-alpha.5';
   var DATA_KEY = 'bs.collapse';
   var EVENT_KEY = '.' + DATA_KEY;
   var DATA_API_KEY = '.data-api';
@@ -1088,7 +1352,7 @@ var Collapse = (function ($) {
   };
 
   var Selector = {
-    ACTIVES: '.panel > .in, .panel > .collapsing',
+    ACTIVES: '.card > .in, .card > .collapsing',
     DATA_TOGGLE: '[data-toggle="collapse"]'
   };
 
@@ -1098,7 +1362,7 @@ var Collapse = (function ($) {
    * ------------------------------------------------------------------------
    */
 
-  var Collapse = (function () {
+  var Collapse = function () {
     function Collapse(element, config) {
       _classCallCheck(this, Collapse);
 
@@ -1118,240 +1382,220 @@ var Collapse = (function ($) {
       }
     }
 
-    /**
-     * ------------------------------------------------------------------------
-     * Data Api implementation
-     * ------------------------------------------------------------------------
-     */
-
     // getters
 
-    _createClass(Collapse, [{
-      key: 'toggle',
+    // public
 
-      // public
+    Collapse.prototype.toggle = function toggle() {
+      if ($(this._element).hasClass(ClassName.IN)) {
+        this.hide();
+      } else {
+        this.show();
+      }
+    };
 
-      value: function toggle() {
-        if ($(this._element).hasClass(ClassName.IN)) {
-          this.hide();
-        } else {
-          this.show();
+    Collapse.prototype.show = function show() {
+      var _this4 = this;
+
+      if (this._isTransitioning || $(this._element).hasClass(ClassName.IN)) {
+        return;
+      }
+
+      var actives = void 0;
+      var activesData = void 0;
+
+      if (this._parent) {
+        actives = $.makeArray($(Selector.ACTIVES));
+        if (!actives.length) {
+          actives = null;
         }
       }
-    }, {
-      key: 'show',
-      value: function show() {
-        var _this4 = this;
 
-        if (this._isTransitioning || $(this._element).hasClass(ClassName.IN)) {
+      if (actives) {
+        activesData = $(actives).data(DATA_KEY);
+        if (activesData && activesData._isTransitioning) {
           return;
         }
+      }
 
-        var actives = undefined;
-        var activesData = undefined;
+      var startEvent = $.Event(Event.SHOW);
+      $(this._element).trigger(startEvent);
+      if (startEvent.isDefaultPrevented()) {
+        return;
+      }
 
-        if (this._parent) {
-          actives = $.makeArray($(Selector.ACTIVES));
-          if (!actives.length) {
-            actives = null;
+      if (actives) {
+        Collapse._jQueryInterface.call($(actives), 'hide');
+        if (!activesData) {
+          $(actives).data(DATA_KEY, null);
+        }
+      }
+
+      var dimension = this._getDimension();
+
+      $(this._element).removeClass(ClassName.COLLAPSE).addClass(ClassName.COLLAPSING);
+
+      this._element.style[dimension] = 0;
+      this._element.setAttribute('aria-expanded', true);
+
+      if (this._triggerArray.length) {
+        $(this._triggerArray).removeClass(ClassName.COLLAPSED).attr('aria-expanded', true);
+      }
+
+      this.setTransitioning(true);
+
+      var complete = function complete() {
+        $(_this4._element).removeClass(ClassName.COLLAPSING).addClass(ClassName.COLLAPSE).addClass(ClassName.IN);
+
+        _this4._element.style[dimension] = '';
+
+        _this4.setTransitioning(false);
+
+        $(_this4._element).trigger(Event.SHOWN);
+      };
+
+      if (!Util.supportsTransitionEnd()) {
+        complete();
+        return;
+      }
+
+      var capitalizedDimension = dimension[0].toUpperCase() + dimension.slice(1);
+      var scrollSize = 'scroll' + capitalizedDimension;
+
+      $(this._element).one(Util.TRANSITION_END, complete).emulateTransitionEnd(TRANSITION_DURATION);
+
+      this._element.style[dimension] = this._element[scrollSize] + 'px';
+    };
+
+    Collapse.prototype.hide = function hide() {
+      var _this5 = this;
+
+      if (this._isTransitioning || !$(this._element).hasClass(ClassName.IN)) {
+        return;
+      }
+
+      var startEvent = $.Event(Event.HIDE);
+      $(this._element).trigger(startEvent);
+      if (startEvent.isDefaultPrevented()) {
+        return;
+      }
+
+      var dimension = this._getDimension();
+      var offsetDimension = dimension === Dimension.WIDTH ? 'offsetWidth' : 'offsetHeight';
+
+      this._element.style[dimension] = this._element[offsetDimension] + 'px';
+
+      Util.reflow(this._element);
+
+      $(this._element).addClass(ClassName.COLLAPSING).removeClass(ClassName.COLLAPSE).removeClass(ClassName.IN);
+
+      this._element.setAttribute('aria-expanded', false);
+
+      if (this._triggerArray.length) {
+        $(this._triggerArray).addClass(ClassName.COLLAPSED).attr('aria-expanded', false);
+      }
+
+      this.setTransitioning(true);
+
+      var complete = function complete() {
+        _this5.setTransitioning(false);
+        $(_this5._element).removeClass(ClassName.COLLAPSING).addClass(ClassName.COLLAPSE).trigger(Event.HIDDEN);
+      };
+
+      this._element.style[dimension] = '';
+
+      if (!Util.supportsTransitionEnd()) {
+        complete();
+        return;
+      }
+
+      $(this._element).one(Util.TRANSITION_END, complete).emulateTransitionEnd(TRANSITION_DURATION);
+    };
+
+    Collapse.prototype.setTransitioning = function setTransitioning(isTransitioning) {
+      this._isTransitioning = isTransitioning;
+    };
+
+    Collapse.prototype.dispose = function dispose() {
+      $.removeData(this._element, DATA_KEY);
+
+      this._config = null;
+      this._parent = null;
+      this._element = null;
+      this._triggerArray = null;
+      this._isTransitioning = null;
+    };
+
+    // private
+
+    Collapse.prototype._getConfig = function _getConfig(config) {
+      config = $.extend({}, Default, config);
+      config.toggle = Boolean(config.toggle); // coerce string values
+      Util.typeCheckConfig(NAME, config, DefaultType);
+      return config;
+    };
+
+    Collapse.prototype._getDimension = function _getDimension() {
+      var hasWidth = $(this._element).hasClass(Dimension.WIDTH);
+      return hasWidth ? Dimension.WIDTH : Dimension.HEIGHT;
+    };
+
+    Collapse.prototype._getParent = function _getParent() {
+      var _this6 = this;
+
+      var parent = $(this._config.parent)[0];
+      var selector = '[data-toggle="collapse"][data-parent="' + this._config.parent + '"]';
+
+      $(parent).find(selector).each(function (i, element) {
+        _this6._addAriaAndCollapsedClass(Collapse._getTargetFromElement(element), [element]);
+      });
+
+      return parent;
+    };
+
+    Collapse.prototype._addAriaAndCollapsedClass = function _addAriaAndCollapsedClass(element, triggerArray) {
+      if (element) {
+        var isOpen = $(element).hasClass(ClassName.IN);
+        element.setAttribute('aria-expanded', isOpen);
+
+        if (triggerArray.length) {
+          $(triggerArray).toggleClass(ClassName.COLLAPSED, !isOpen).attr('aria-expanded', isOpen);
+        }
+      }
+    };
+
+    // static
+
+    Collapse._getTargetFromElement = function _getTargetFromElement(element) {
+      var selector = Util.getSelectorFromElement(element);
+      return selector ? $(selector)[0] : null;
+    };
+
+    Collapse._jQueryInterface = function _jQueryInterface(config) {
+      return this.each(function () {
+        var $this = $(this);
+        var data = $this.data(DATA_KEY);
+        var _config = $.extend({}, Default, $this.data(), (typeof config === 'undefined' ? 'undefined' : _typeof(config)) === 'object' && config);
+
+        if (!data && _config.toggle && /show|hide/.test(config)) {
+          _config.toggle = false;
+        }
+
+        if (!data) {
+          data = new Collapse(this, _config);
+          $this.data(DATA_KEY, data);
+        }
+
+        if (typeof config === 'string') {
+          if (data[config] === undefined) {
+            throw new Error('No method named "' + config + '"');
           }
+          data[config]();
         }
+      });
+    };
 
-        if (actives) {
-          activesData = $(actives).data(DATA_KEY);
-          if (activesData && activesData._isTransitioning) {
-            return;
-          }
-        }
-
-        var startEvent = $.Event(Event.SHOW);
-        $(this._element).trigger(startEvent);
-        if (startEvent.isDefaultPrevented()) {
-          return;
-        }
-
-        if (actives) {
-          Collapse._jQueryInterface.call($(actives), 'hide');
-          if (!activesData) {
-            $(actives).data(DATA_KEY, null);
-          }
-        }
-
-        var dimension = this._getDimension();
-
-        $(this._element).removeClass(ClassName.COLLAPSE).addClass(ClassName.COLLAPSING);
-
-        this._element.style[dimension] = 0;
-        this._element.setAttribute('aria-expanded', true);
-
-        if (this._triggerArray.length) {
-          $(this._triggerArray).removeClass(ClassName.COLLAPSED).attr('aria-expanded', true);
-        }
-
-        this.setTransitioning(true);
-
-        var complete = function complete() {
-          $(_this4._element).removeClass(ClassName.COLLAPSING).addClass(ClassName.COLLAPSE).addClass(ClassName.IN);
-
-          _this4._element.style[dimension] = '';
-
-          _this4.setTransitioning(false);
-
-          $(_this4._element).trigger(Event.SHOWN);
-        };
-
-        if (!Util.supportsTransitionEnd()) {
-          complete();
-          return;
-        }
-
-        var capitalizedDimension = dimension[0].toUpperCase() + dimension.slice(1);
-        var scrollSize = 'scroll' + capitalizedDimension;
-
-        $(this._element).one(Util.TRANSITION_END, complete).emulateTransitionEnd(TRANSITION_DURATION);
-
-        this._element.style[dimension] = this._element[scrollSize] + 'px';
-      }
-    }, {
-      key: 'hide',
-      value: function hide() {
-        var _this5 = this;
-
-        if (this._isTransitioning || !$(this._element).hasClass(ClassName.IN)) {
-          return;
-        }
-
-        var startEvent = $.Event(Event.HIDE);
-        $(this._element).trigger(startEvent);
-        if (startEvent.isDefaultPrevented()) {
-          return;
-        }
-
-        var dimension = this._getDimension();
-        var offsetDimension = dimension === Dimension.WIDTH ? 'offsetWidth' : 'offsetHeight';
-
-        this._element.style[dimension] = this._element[offsetDimension] + 'px';
-
-        Util.reflow(this._element);
-
-        $(this._element).addClass(ClassName.COLLAPSING).removeClass(ClassName.COLLAPSE).removeClass(ClassName.IN);
-
-        this._element.setAttribute('aria-expanded', false);
-
-        if (this._triggerArray.length) {
-          $(this._triggerArray).addClass(ClassName.COLLAPSED).attr('aria-expanded', false);
-        }
-
-        this.setTransitioning(true);
-
-        var complete = function complete() {
-          _this5.setTransitioning(false);
-          $(_this5._element).removeClass(ClassName.COLLAPSING).addClass(ClassName.COLLAPSE).trigger(Event.HIDDEN);
-        };
-
-        this._element.style[dimension] = 0;
-
-        if (!Util.supportsTransitionEnd()) {
-          complete();
-          return;
-        }
-
-        $(this._element).one(Util.TRANSITION_END, complete).emulateTransitionEnd(TRANSITION_DURATION);
-      }
-    }, {
-      key: 'setTransitioning',
-      value: function setTransitioning(isTransitioning) {
-        this._isTransitioning = isTransitioning;
-      }
-    }, {
-      key: 'dispose',
-      value: function dispose() {
-        $.removeData(this._element, DATA_KEY);
-
-        this._config = null;
-        this._parent = null;
-        this._element = null;
-        this._triggerArray = null;
-        this._isTransitioning = null;
-      }
-
-      // private
-
-    }, {
-      key: '_getConfig',
-      value: function _getConfig(config) {
-        config = $.extend({}, Default, config);
-        config.toggle = Boolean(config.toggle); // coerce string values
-        Util.typeCheckConfig(NAME, config, DefaultType);
-        return config;
-      }
-    }, {
-      key: '_getDimension',
-      value: function _getDimension() {
-        var hasWidth = $(this._element).hasClass(Dimension.WIDTH);
-        return hasWidth ? Dimension.WIDTH : Dimension.HEIGHT;
-      }
-    }, {
-      key: '_getParent',
-      value: function _getParent() {
-        var _this6 = this;
-
-        var parent = $(this._config.parent)[0];
-        var selector = '[data-toggle="collapse"][data-parent="' + this._config.parent + '"]';
-
-        $(parent).find(selector).each(function (i, element) {
-          _this6._addAriaAndCollapsedClass(Collapse._getTargetFromElement(element), [element]);
-        });
-
-        return parent;
-      }
-    }, {
-      key: '_addAriaAndCollapsedClass',
-      value: function _addAriaAndCollapsedClass(element, triggerArray) {
-        if (element) {
-          var isOpen = $(element).hasClass(ClassName.IN);
-          element.setAttribute('aria-expanded', isOpen);
-
-          if (triggerArray.length) {
-            $(triggerArray).toggleClass(ClassName.COLLAPSED, !isOpen).attr('aria-expanded', isOpen);
-          }
-        }
-      }
-
-      // static
-
-    }], [{
-      key: '_getTargetFromElement',
-      value: function _getTargetFromElement(element) {
-        var selector = Util.getSelectorFromElement(element);
-        return selector ? $(selector)[0] : null;
-      }
-    }, {
-      key: '_jQueryInterface',
-      value: function _jQueryInterface(config) {
-        return this.each(function () {
-          var $this = $(this);
-          var data = $this.data(DATA_KEY);
-          var _config = $.extend({}, Default, $this.data(), typeof config === 'object' && config);
-
-          if (!data && _config.toggle && /show|hide/.test(config)) {
-            _config.toggle = false;
-          }
-
-          if (!data) {
-            data = new Collapse(this, _config);
-            $this.data(DATA_KEY, data);
-          }
-
-          if (typeof config === 'string') {
-            if (data[config] === undefined) {
-              throw new Error('No method named "' + config + '"');
-            }
-            data[config]();
-          }
-        });
-      }
-    }, {
+    _createClass(Collapse, null, [{
       key: 'VERSION',
       get: function get() {
         return VERSION;
@@ -1364,7 +1608,13 @@ var Collapse = (function ($) {
     }]);
 
     return Collapse;
-  })();
+  }();
+
+  /**
+   * ------------------------------------------------------------------------
+   * Data Api implementation
+   * ------------------------------------------------------------------------
+   */
 
   $(document).on(Event.CLICK_DATA_API, Selector.DATA_TOGGLE, function (event) {
     event.preventDefault();
@@ -1390,16 +1640,16 @@ var Collapse = (function ($) {
   };
 
   return Collapse;
-})(jQuery);
+}(jQuery);
 
 /**
  * --------------------------------------------------------------------------
- * Bootstrap (v4.0.0-alpha.4): dropdown.js
+ * Bootstrap (v4.0.0-alpha.5): dropdown.js
  * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
  * --------------------------------------------------------------------------
  */
 
-var Dropdown = (function ($) {
+var Dropdown = function ($) {
 
   /**
    * ------------------------------------------------------------------------
@@ -1408,7 +1658,7 @@ var Dropdown = (function ($) {
    */
 
   var NAME = 'dropdown';
-  var VERSION = '4.0.0-alpha.4';
+  var VERSION = '4.0.0-alpha.5';
   var DATA_KEY = 'bs.dropdown';
   var EVENT_KEY = '.' + DATA_KEY;
   var DATA_API_KEY = '.data-api';
@@ -1450,7 +1700,7 @@ var Dropdown = (function ($) {
    * ------------------------------------------------------------------------
    */
 
-  var Dropdown = (function () {
+  var Dropdown = function () {
     function Dropdown(element) {
       _classCallCheck(this, Dropdown);
 
@@ -1459,201 +1709,185 @@ var Dropdown = (function ($) {
       this._addEventListeners();
     }
 
-    /**
-     * ------------------------------------------------------------------------
-     * Data Api implementation
-     * ------------------------------------------------------------------------
-     */
-
     // getters
 
-    _createClass(Dropdown, [{
-      key: 'toggle',
+    // public
 
-      // public
-
-      value: function toggle() {
-        if (this.disabled || $(this).hasClass(ClassName.DISABLED)) {
-          return false;
-        }
-
-        var parent = Dropdown._getParentFromElement(this);
-        var isActive = $(parent).hasClass(ClassName.OPEN);
-
-        Dropdown._clearMenus();
-
-        if (isActive) {
-          return false;
-        }
-
-        if ('ontouchstart' in document.documentElement && !$(parent).closest(Selector.NAVBAR_NAV).length) {
-
-          // if mobile we use a backdrop because click events don't delegate
-          var dropdown = document.createElement('div');
-          dropdown.className = ClassName.BACKDROP;
-          $(dropdown).insertBefore(this);
-          $(dropdown).on('click', Dropdown._clearMenus);
-        }
-
-        var relatedTarget = { relatedTarget: this };
-        var showEvent = $.Event(Event.SHOW, relatedTarget);
-
-        $(parent).trigger(showEvent);
-
-        if (showEvent.isDefaultPrevented()) {
-          return false;
-        }
-
-        this.focus();
-        this.setAttribute('aria-expanded', 'true');
-
-        $(parent).toggleClass(ClassName.OPEN);
-        $(parent).trigger($.Event(Event.SHOWN, relatedTarget));
-
+    Dropdown.prototype.toggle = function toggle() {
+      if (this.disabled || $(this).hasClass(ClassName.DISABLED)) {
         return false;
       }
-    }, {
-      key: 'dispose',
-      value: function dispose() {
-        $.removeData(this._element, DATA_KEY);
-        $(this._element).off(EVENT_KEY);
-        this._element = null;
+
+      var parent = Dropdown._getParentFromElement(this);
+      var isActive = $(parent).hasClass(ClassName.OPEN);
+
+      Dropdown._clearMenus();
+
+      if (isActive) {
+        return false;
       }
 
-      // private
+      if ('ontouchstart' in document.documentElement && !$(parent).closest(Selector.NAVBAR_NAV).length) {
 
-    }, {
-      key: '_addEventListeners',
-      value: function _addEventListeners() {
-        $(this._element).on(Event.CLICK, this.toggle);
+        // if mobile we use a backdrop because click events don't delegate
+        var dropdown = document.createElement('div');
+        dropdown.className = ClassName.BACKDROP;
+        $(dropdown).insertBefore(this);
+        $(dropdown).on('click', Dropdown._clearMenus);
       }
 
-      // static
+      var relatedTarget = { relatedTarget: this };
+      var showEvent = $.Event(Event.SHOW, relatedTarget);
 
-    }], [{
-      key: '_jQueryInterface',
-      value: function _jQueryInterface(config) {
-        return this.each(function () {
-          var data = $(this).data(DATA_KEY);
+      $(parent).trigger(showEvent);
 
-          if (!data) {
-            $(this).data(DATA_KEY, data = new Dropdown(this));
-          }
-
-          if (typeof config === 'string') {
-            if (data[config] === undefined) {
-              throw new Error('No method named "' + config + '"');
-            }
-            data[config].call(this);
-          }
-        });
+      if (showEvent.isDefaultPrevented()) {
+        return false;
       }
-    }, {
-      key: '_clearMenus',
-      value: function _clearMenus(event) {
-        if (event && event.which === RIGHT_MOUSE_BUTTON_WHICH) {
-          return;
+
+      this.focus();
+      this.setAttribute('aria-expanded', 'true');
+
+      $(parent).toggleClass(ClassName.OPEN);
+      $(parent).trigger($.Event(Event.SHOWN, relatedTarget));
+
+      return false;
+    };
+
+    Dropdown.prototype.dispose = function dispose() {
+      $.removeData(this._element, DATA_KEY);
+      $(this._element).off(EVENT_KEY);
+      this._element = null;
+    };
+
+    // private
+
+    Dropdown.prototype._addEventListeners = function _addEventListeners() {
+      $(this._element).on(Event.CLICK, this.toggle);
+    };
+
+    // static
+
+    Dropdown._jQueryInterface = function _jQueryInterface(config) {
+      return this.each(function () {
+        var data = $(this).data(DATA_KEY);
+
+        if (!data) {
+          $(this).data(DATA_KEY, data = new Dropdown(this));
         }
 
-        var backdrop = $(Selector.BACKDROP)[0];
-        if (backdrop) {
-          backdrop.parentNode.removeChild(backdrop);
+        if (typeof config === 'string') {
+          if (data[config] === undefined) {
+            throw new Error('No method named "' + config + '"');
+          }
+          data[config].call(this);
         }
+      });
+    };
 
-        var toggles = $.makeArray($(Selector.DATA_TOGGLE));
-
-        for (var i = 0; i < toggles.length; i++) {
-          var _parent = Dropdown._getParentFromElement(toggles[i]);
-          var relatedTarget = { relatedTarget: toggles[i] };
-
-          if (!$(_parent).hasClass(ClassName.OPEN)) {
-            continue;
-          }
-
-          if (event && event.type === 'click' && /input|textarea/i.test(event.target.tagName) && $.contains(_parent, event.target)) {
-            continue;
-          }
-
-          var hideEvent = $.Event(Event.HIDE, relatedTarget);
-          $(_parent).trigger(hideEvent);
-          if (hideEvent.isDefaultPrevented()) {
-            continue;
-          }
-
-          toggles[i].setAttribute('aria-expanded', 'false');
-
-          $(_parent).removeClass(ClassName.OPEN).trigger($.Event(Event.HIDDEN, relatedTarget));
-        }
+    Dropdown._clearMenus = function _clearMenus(event) {
+      if (event && event.which === RIGHT_MOUSE_BUTTON_WHICH) {
+        return;
       }
-    }, {
-      key: '_getParentFromElement',
-      value: function _getParentFromElement(element) {
-        var parent = undefined;
-        var selector = Util.getSelectorFromElement(element);
 
-        if (selector) {
-          parent = $(selector)[0];
-        }
-
-        return parent || element.parentNode;
+      var backdrop = $(Selector.BACKDROP)[0];
+      if (backdrop) {
+        backdrop.parentNode.removeChild(backdrop);
       }
-    }, {
-      key: '_dataApiKeydownHandler',
-      value: function _dataApiKeydownHandler(event) {
-        if (!/(38|40|27|32)/.test(event.which) || /input|textarea/i.test(event.target.tagName)) {
-          return;
+
+      var toggles = $.makeArray($(Selector.DATA_TOGGLE));
+
+      for (var i = 0; i < toggles.length; i++) {
+        var parent = Dropdown._getParentFromElement(toggles[i]);
+        var relatedTarget = { relatedTarget: toggles[i] };
+
+        if (!$(parent).hasClass(ClassName.OPEN)) {
+          continue;
         }
 
-        event.preventDefault();
-        event.stopPropagation();
-
-        if (this.disabled || $(this).hasClass(ClassName.DISABLED)) {
-          return;
+        if (event && event.type === 'click' && /input|textarea/i.test(event.target.tagName) && $.contains(parent, event.target)) {
+          continue;
         }
 
-        var parent = Dropdown._getParentFromElement(this);
-        var isActive = $(parent).hasClass(ClassName.OPEN);
-
-        if (!isActive && event.which !== ESCAPE_KEYCODE || isActive && event.which === ESCAPE_KEYCODE) {
-
-          if (event.which === ESCAPE_KEYCODE) {
-            var toggle = $(parent).find(Selector.DATA_TOGGLE)[0];
-            $(toggle).trigger('focus');
-          }
-
-          $(this).trigger('click');
-          return;
+        var hideEvent = $.Event(Event.HIDE, relatedTarget);
+        $(parent).trigger(hideEvent);
+        if (hideEvent.isDefaultPrevented()) {
+          continue;
         }
 
-        var items = $.makeArray($(Selector.VISIBLE_ITEMS));
+        toggles[i].setAttribute('aria-expanded', 'false');
 
-        items = items.filter(function (item) {
-          return item.offsetWidth || item.offsetHeight;
-        });
-
-        if (!items.length) {
-          return;
-        }
-
-        var index = items.indexOf(event.target);
-
-        if (event.which === ARROW_UP_KEYCODE && index > 0) {
-          // up
-          index--;
-        }
-
-        if (event.which === ARROW_DOWN_KEYCODE && index < items.length - 1) {
-          // down
-          index++;
-        }
-
-        if (index < 0) {
-          index = 0;
-        }
-
-        items[index].focus();
+        $(parent).removeClass(ClassName.OPEN).trigger($.Event(Event.HIDDEN, relatedTarget));
       }
-    }, {
+    };
+
+    Dropdown._getParentFromElement = function _getParentFromElement(element) {
+      var parent = void 0;
+      var selector = Util.getSelectorFromElement(element);
+
+      if (selector) {
+        parent = $(selector)[0];
+      }
+
+      return parent || element.parentNode;
+    };
+
+    Dropdown._dataApiKeydownHandler = function _dataApiKeydownHandler(event) {
+      if (!/(38|40|27|32)/.test(event.which) || /input|textarea/i.test(event.target.tagName)) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      if (this.disabled || $(this).hasClass(ClassName.DISABLED)) {
+        return;
+      }
+
+      var parent = Dropdown._getParentFromElement(this);
+      var isActive = $(parent).hasClass(ClassName.OPEN);
+
+      if (!isActive && event.which !== ESCAPE_KEYCODE || isActive && event.which === ESCAPE_KEYCODE) {
+
+        if (event.which === ESCAPE_KEYCODE) {
+          var toggle = $(parent).find(Selector.DATA_TOGGLE)[0];
+          $(toggle).trigger('focus');
+        }
+
+        $(this).trigger('click');
+        return;
+      }
+
+      var items = $.makeArray($(Selector.VISIBLE_ITEMS));
+
+      items = items.filter(function (item) {
+        return item.offsetWidth || item.offsetHeight;
+      });
+
+      if (!items.length) {
+        return;
+      }
+
+      var index = items.indexOf(event.target);
+
+      if (event.which === ARROW_UP_KEYCODE && index > 0) {
+        // up
+        index--;
+      }
+
+      if (event.which === ARROW_DOWN_KEYCODE && index < items.length - 1) {
+        // down
+        index++;
+      }
+
+      if (index < 0) {
+        index = 0;
+      }
+
+      items[index].focus();
+    };
+
+    _createClass(Dropdown, null, [{
       key: 'VERSION',
       get: function get() {
         return VERSION;
@@ -1661,7 +1895,13 @@ var Dropdown = (function ($) {
     }]);
 
     return Dropdown;
-  })();
+  }();
+
+  /**
+   * ------------------------------------------------------------------------
+   * Data Api implementation
+   * ------------------------------------------------------------------------
+   */
 
   $(document).on(Event.KEYDOWN_DATA_API, Selector.DATA_TOGGLE, Dropdown._dataApiKeydownHandler).on(Event.KEYDOWN_DATA_API, Selector.ROLE_MENU, Dropdown._dataApiKeydownHandler).on(Event.KEYDOWN_DATA_API, Selector.ROLE_LISTBOX, Dropdown._dataApiKeydownHandler).on(Event.CLICK_DATA_API, Dropdown._clearMenus).on(Event.CLICK_DATA_API, Selector.DATA_TOGGLE, Dropdown.prototype.toggle).on(Event.CLICK_DATA_API, Selector.FORM_CHILD, function (e) {
     e.stopPropagation();
@@ -1681,16 +1921,16 @@ var Dropdown = (function ($) {
   };
 
   return Dropdown;
-})(jQuery);
+}(jQuery);
 
 /**
  * --------------------------------------------------------------------------
- * Bootstrap (v4.0.0-alpha.4): modal.js
+ * Bootstrap (v4.0.0-alpha.5): modal.js
  * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
  * --------------------------------------------------------------------------
  */
 
-var Modal = (function ($) {
+var Modal = function ($) {
 
   /**
    * ------------------------------------------------------------------------
@@ -1699,7 +1939,7 @@ var Modal = (function ($) {
    */
 
   var NAME = 'modal';
-  var VERSION = '4.0.0-alpha.4';
+  var VERSION = '4.0.0-alpha.5';
   var DATA_KEY = 'bs.modal';
   var EVENT_KEY = '.' + DATA_KEY;
   var DATA_API_KEY = '.data-api';
@@ -1757,7 +1997,7 @@ var Modal = (function ($) {
    * ------------------------------------------------------------------------
    */
 
-  var Modal = (function () {
+  var Modal = function () {
     function Modal(element, config) {
       _classCallCheck(this, Modal);
 
@@ -1772,382 +2012,352 @@ var Modal = (function ($) {
       this._scrollbarWidth = 0;
     }
 
-    /**
-     * ------------------------------------------------------------------------
-     * Data Api implementation
-     * ------------------------------------------------------------------------
-     */
-
     // getters
 
-    _createClass(Modal, [{
-      key: 'toggle',
+    // public
 
-      // public
+    Modal.prototype.toggle = function toggle(relatedTarget) {
+      return this._isShown ? this.hide() : this.show(relatedTarget);
+    };
 
-      value: function toggle(relatedTarget) {
-        return this._isShown ? this.hide() : this.show(relatedTarget);
-      }
-    }, {
-      key: 'show',
-      value: function show(relatedTarget) {
-        var _this7 = this;
+    Modal.prototype.show = function show(relatedTarget) {
+      var _this7 = this;
 
-        var showEvent = $.Event(Event.SHOW, {
-          relatedTarget: relatedTarget
-        });
+      var showEvent = $.Event(Event.SHOW, {
+        relatedTarget: relatedTarget
+      });
 
-        $(this._element).trigger(showEvent);
+      $(this._element).trigger(showEvent);
 
-        if (this._isShown || showEvent.isDefaultPrevented()) {
-          return;
-        }
-
-        this._isShown = true;
-
-        this._checkScrollbar();
-        this._setScrollbar();
-
-        $(document.body).addClass(ClassName.OPEN);
-
-        this._setEscapeEvent();
-        this._setResizeEvent();
-
-        $(this._element).on(Event.CLICK_DISMISS, Selector.DATA_DISMISS, $.proxy(this.hide, this));
-
-        $(this._dialog).on(Event.MOUSEDOWN_DISMISS, function () {
-          $(_this7._element).one(Event.MOUSEUP_DISMISS, function (event) {
-            if ($(event.target).is(_this7._element)) {
-              _this7._ignoreBackdropClick = true;
-            }
-          });
-        });
-
-        this._showBackdrop($.proxy(this._showElement, this, relatedTarget));
-      }
-    }, {
-      key: 'hide',
-      value: function hide(event) {
-        if (event) {
-          event.preventDefault();
-        }
-
-        var hideEvent = $.Event(Event.HIDE);
-
-        $(this._element).trigger(hideEvent);
-
-        if (!this._isShown || hideEvent.isDefaultPrevented()) {
-          return;
-        }
-
-        this._isShown = false;
-
-        this._setEscapeEvent();
-        this._setResizeEvent();
-
-        $(document).off(Event.FOCUSIN);
-
-        $(this._element).removeClass(ClassName.IN);
-
-        $(this._element).off(Event.CLICK_DISMISS);
-        $(this._dialog).off(Event.MOUSEDOWN_DISMISS);
-
-        if (Util.supportsTransitionEnd() && $(this._element).hasClass(ClassName.FADE)) {
-
-          $(this._element).one(Util.TRANSITION_END, $.proxy(this._hideModal, this)).emulateTransitionEnd(TRANSITION_DURATION);
-        } else {
-          this._hideModal();
-        }
-      }
-    }, {
-      key: 'dispose',
-      value: function dispose() {
-        $.removeData(this._element, DATA_KEY);
-
-        $(window).off(EVENT_KEY);
-        $(document).off(EVENT_KEY);
-        $(this._element).off(EVENT_KEY);
-        $(this._backdrop).off(EVENT_KEY);
-
-        this._config = null;
-        this._element = null;
-        this._dialog = null;
-        this._backdrop = null;
-        this._isShown = null;
-        this._isBodyOverflowing = null;
-        this._ignoreBackdropClick = null;
-        this._originalBodyPadding = null;
-        this._scrollbarWidth = null;
+      if (this._isShown || showEvent.isDefaultPrevented()) {
+        return;
       }
 
-      // private
+      this._isShown = true;
 
-    }, {
-      key: '_getConfig',
-      value: function _getConfig(config) {
-        config = $.extend({}, Default, config);
-        Util.typeCheckConfig(NAME, config, DefaultType);
-        return config;
-      }
-    }, {
-      key: '_showElement',
-      value: function _showElement(relatedTarget) {
-        var _this8 = this;
+      this._checkScrollbar();
+      this._setScrollbar();
 
-        var transition = Util.supportsTransitionEnd() && $(this._element).hasClass(ClassName.FADE);
+      $(document.body).addClass(ClassName.OPEN);
 
-        if (!this._element.parentNode || this._element.parentNode.nodeType !== Node.ELEMENT_NODE) {
-          // don't move modals dom position
-          document.body.appendChild(this._element);
-        }
+      this._setEscapeEvent();
+      this._setResizeEvent();
 
-        this._element.style.display = 'block';
-        this._element.removeAttribute('aria-hidden');
-        this._element.scrollTop = 0;
+      $(this._element).on(Event.CLICK_DISMISS, Selector.DATA_DISMISS, $.proxy(this.hide, this));
 
-        if (transition) {
-          Util.reflow(this._element);
-        }
-
-        $(this._element).addClass(ClassName.IN);
-
-        if (this._config.focus) {
-          this._enforceFocus();
-        }
-
-        var shownEvent = $.Event(Event.SHOWN, {
-          relatedTarget: relatedTarget
-        });
-
-        var transitionComplete = function transitionComplete() {
-          if (_this8._config.focus) {
-            _this8._element.focus();
+      $(this._dialog).on(Event.MOUSEDOWN_DISMISS, function () {
+        $(_this7._element).one(Event.MOUSEUP_DISMISS, function (event) {
+          if ($(event.target).is(_this7._element)) {
+            _this7._ignoreBackdropClick = true;
           }
-          $(_this8._element).trigger(shownEvent);
+        });
+      });
+
+      this._showBackdrop($.proxy(this._showElement, this, relatedTarget));
+    };
+
+    Modal.prototype.hide = function hide(event) {
+      if (event) {
+        event.preventDefault();
+      }
+
+      var hideEvent = $.Event(Event.HIDE);
+
+      $(this._element).trigger(hideEvent);
+
+      if (!this._isShown || hideEvent.isDefaultPrevented()) {
+        return;
+      }
+
+      this._isShown = false;
+
+      this._setEscapeEvent();
+      this._setResizeEvent();
+
+      $(document).off(Event.FOCUSIN);
+
+      $(this._element).removeClass(ClassName.IN);
+
+      $(this._element).off(Event.CLICK_DISMISS);
+      $(this._dialog).off(Event.MOUSEDOWN_DISMISS);
+
+      if (Util.supportsTransitionEnd() && $(this._element).hasClass(ClassName.FADE)) {
+
+        $(this._element).one(Util.TRANSITION_END, $.proxy(this._hideModal, this)).emulateTransitionEnd(TRANSITION_DURATION);
+      } else {
+        this._hideModal();
+      }
+    };
+
+    Modal.prototype.dispose = function dispose() {
+      $.removeData(this._element, DATA_KEY);
+
+      $(window).off(EVENT_KEY);
+      $(document).off(EVENT_KEY);
+      $(this._element).off(EVENT_KEY);
+      $(this._backdrop).off(EVENT_KEY);
+
+      this._config = null;
+      this._element = null;
+      this._dialog = null;
+      this._backdrop = null;
+      this._isShown = null;
+      this._isBodyOverflowing = null;
+      this._ignoreBackdropClick = null;
+      this._originalBodyPadding = null;
+      this._scrollbarWidth = null;
+    };
+
+    // private
+
+    Modal.prototype._getConfig = function _getConfig(config) {
+      config = $.extend({}, Default, config);
+      Util.typeCheckConfig(NAME, config, DefaultType);
+      return config;
+    };
+
+    Modal.prototype._showElement = function _showElement(relatedTarget) {
+      var _this8 = this;
+
+      var transition = Util.supportsTransitionEnd() && $(this._element).hasClass(ClassName.FADE);
+
+      if (!this._element.parentNode || this._element.parentNode.nodeType !== Node.ELEMENT_NODE) {
+        // don't move modals dom position
+        document.body.appendChild(this._element);
+      }
+
+      this._element.style.display = 'block';
+      this._element.removeAttribute('aria-hidden');
+      this._element.scrollTop = 0;
+
+      if (transition) {
+        Util.reflow(this._element);
+      }
+
+      $(this._element).addClass(ClassName.IN);
+
+      if (this._config.focus) {
+        this._enforceFocus();
+      }
+
+      var shownEvent = $.Event(Event.SHOWN, {
+        relatedTarget: relatedTarget
+      });
+
+      var transitionComplete = function transitionComplete() {
+        if (_this8._config.focus) {
+          _this8._element.focus();
+        }
+        $(_this8._element).trigger(shownEvent);
+      };
+
+      if (transition) {
+        $(this._dialog).one(Util.TRANSITION_END, transitionComplete).emulateTransitionEnd(TRANSITION_DURATION);
+      } else {
+        transitionComplete();
+      }
+    };
+
+    Modal.prototype._enforceFocus = function _enforceFocus() {
+      var _this9 = this;
+
+      $(document).off(Event.FOCUSIN) // guard against infinite focus loop
+      .on(Event.FOCUSIN, function (event) {
+        if (document !== event.target && _this9._element !== event.target && !$(_this9._element).has(event.target).length) {
+          _this9._element.focus();
+        }
+      });
+    };
+
+    Modal.prototype._setEscapeEvent = function _setEscapeEvent() {
+      var _this10 = this;
+
+      if (this._isShown && this._config.keyboard) {
+        $(this._element).on(Event.KEYDOWN_DISMISS, function (event) {
+          if (event.which === ESCAPE_KEYCODE) {
+            _this10.hide();
+          }
+        });
+      } else if (!this._isShown) {
+        $(this._element).off(Event.KEYDOWN_DISMISS);
+      }
+    };
+
+    Modal.prototype._setResizeEvent = function _setResizeEvent() {
+      if (this._isShown) {
+        $(window).on(Event.RESIZE, $.proxy(this._handleUpdate, this));
+      } else {
+        $(window).off(Event.RESIZE);
+      }
+    };
+
+    Modal.prototype._hideModal = function _hideModal() {
+      var _this11 = this;
+
+      this._element.style.display = 'none';
+      this._element.setAttribute('aria-hidden', 'true');
+      this._showBackdrop(function () {
+        $(document.body).removeClass(ClassName.OPEN);
+        _this11._resetAdjustments();
+        _this11._resetScrollbar();
+        $(_this11._element).trigger(Event.HIDDEN);
+      });
+    };
+
+    Modal.prototype._removeBackdrop = function _removeBackdrop() {
+      if (this._backdrop) {
+        $(this._backdrop).remove();
+        this._backdrop = null;
+      }
+    };
+
+    Modal.prototype._showBackdrop = function _showBackdrop(callback) {
+      var _this12 = this;
+
+      var animate = $(this._element).hasClass(ClassName.FADE) ? ClassName.FADE : '';
+
+      if (this._isShown && this._config.backdrop) {
+        var doAnimate = Util.supportsTransitionEnd() && animate;
+
+        this._backdrop = document.createElement('div');
+        this._backdrop.className = ClassName.BACKDROP;
+
+        if (animate) {
+          $(this._backdrop).addClass(animate);
+        }
+
+        $(this._backdrop).appendTo(document.body);
+
+        $(this._element).on(Event.CLICK_DISMISS, function (event) {
+          if (_this12._ignoreBackdropClick) {
+            _this12._ignoreBackdropClick = false;
+            return;
+          }
+          if (event.target !== event.currentTarget) {
+            return;
+          }
+          if (_this12._config.backdrop === 'static') {
+            _this12._element.focus();
+          } else {
+            _this12.hide();
+          }
+        });
+
+        if (doAnimate) {
+          Util.reflow(this._backdrop);
+        }
+
+        $(this._backdrop).addClass(ClassName.IN);
+
+        if (!callback) {
+          return;
+        }
+
+        if (!doAnimate) {
+          callback();
+          return;
+        }
+
+        $(this._backdrop).one(Util.TRANSITION_END, callback).emulateTransitionEnd(BACKDROP_TRANSITION_DURATION);
+      } else if (!this._isShown && this._backdrop) {
+        $(this._backdrop).removeClass(ClassName.IN);
+
+        var callbackRemove = function callbackRemove() {
+          _this12._removeBackdrop();
+          if (callback) {
+            callback();
+          }
         };
 
-        if (transition) {
-          $(this._dialog).one(Util.TRANSITION_END, transitionComplete).emulateTransitionEnd(TRANSITION_DURATION);
+        if (Util.supportsTransitionEnd() && $(this._element).hasClass(ClassName.FADE)) {
+          $(this._backdrop).one(Util.TRANSITION_END, callbackRemove).emulateTransitionEnd(BACKDROP_TRANSITION_DURATION);
         } else {
-          transitionComplete();
+          callbackRemove();
         }
+      } else if (callback) {
+        callback();
       }
-    }, {
-      key: '_enforceFocus',
-      value: function _enforceFocus() {
-        var _this9 = this;
+    };
 
-        $(document).off(Event.FOCUSIN) // guard against infinite focus loop
-        .on(Event.FOCUSIN, function (event) {
-          if (document !== event.target && _this9._element !== event.target && !$(_this9._element).has(event.target).length) {
-            _this9._element.focus();
-          }
-        });
-      }
-    }, {
-      key: '_setEscapeEvent',
-      value: function _setEscapeEvent() {
-        var _this10 = this;
+    // ----------------------------------------------------------------------
+    // the following methods are used to handle overflowing modals
+    // todo (fat): these should probably be refactored out of modal.js
+    // ----------------------------------------------------------------------
 
-        if (this._isShown && this._config.keyboard) {
-          $(this._element).on(Event.KEYDOWN_DISMISS, function (event) {
-            if (event.which === ESCAPE_KEYCODE) {
-              _this10.hide();
-            }
-          });
-        } else if (!this._isShown) {
-          $(this._element).off(Event.KEYDOWN_DISMISS);
-        }
-      }
-    }, {
-      key: '_setResizeEvent',
-      value: function _setResizeEvent() {
-        if (this._isShown) {
-          $(window).on(Event.RESIZE, $.proxy(this._handleUpdate, this));
-        } else {
-          $(window).off(Event.RESIZE);
-        }
-      }
-    }, {
-      key: '_hideModal',
-      value: function _hideModal() {
-        var _this11 = this;
+    Modal.prototype._handleUpdate = function _handleUpdate() {
+      this._adjustDialog();
+    };
 
-        this._element.style.display = 'none';
-        this._element.setAttribute('aria-hidden', 'true');
-        this._showBackdrop(function () {
-          $(document.body).removeClass(ClassName.OPEN);
-          _this11._resetAdjustments();
-          _this11._resetScrollbar();
-          $(_this11._element).trigger(Event.HIDDEN);
-        });
-      }
-    }, {
-      key: '_removeBackdrop',
-      value: function _removeBackdrop() {
-        if (this._backdrop) {
-          $(this._backdrop).remove();
-          this._backdrop = null;
-        }
-      }
-    }, {
-      key: '_showBackdrop',
-      value: function _showBackdrop(callback) {
-        var _this12 = this;
+    Modal.prototype._adjustDialog = function _adjustDialog() {
+      var isModalOverflowing = this._element.scrollHeight > document.documentElement.clientHeight;
 
-        var animate = $(this._element).hasClass(ClassName.FADE) ? ClassName.FADE : '';
-
-        if (this._isShown && this._config.backdrop) {
-          var doAnimate = Util.supportsTransitionEnd() && animate;
-
-          this._backdrop = document.createElement('div');
-          this._backdrop.className = ClassName.BACKDROP;
-
-          if (animate) {
-            $(this._backdrop).addClass(animate);
-          }
-
-          $(this._backdrop).appendTo(document.body);
-
-          $(this._element).on(Event.CLICK_DISMISS, function (event) {
-            if (_this12._ignoreBackdropClick) {
-              _this12._ignoreBackdropClick = false;
-              return;
-            }
-            if (event.target !== event.currentTarget) {
-              return;
-            }
-            if (_this12._config.backdrop === 'static') {
-              _this12._element.focus();
-            } else {
-              _this12.hide();
-            }
-          });
-
-          if (doAnimate) {
-            Util.reflow(this._backdrop);
-          }
-
-          $(this._backdrop).addClass(ClassName.IN);
-
-          if (!callback) {
-            return;
-          }
-
-          if (!doAnimate) {
-            callback();
-            return;
-          }
-
-          $(this._backdrop).one(Util.TRANSITION_END, callback).emulateTransitionEnd(BACKDROP_TRANSITION_DURATION);
-        } else if (!this._isShown && this._backdrop) {
-          $(this._backdrop).removeClass(ClassName.IN);
-
-          var callbackRemove = function callbackRemove() {
-            _this12._removeBackdrop();
-            if (callback) {
-              callback();
-            }
-          };
-
-          if (Util.supportsTransitionEnd() && $(this._element).hasClass(ClassName.FADE)) {
-            $(this._backdrop).one(Util.TRANSITION_END, callbackRemove).emulateTransitionEnd(BACKDROP_TRANSITION_DURATION);
-          } else {
-            callbackRemove();
-          }
-        } else if (callback) {
-          callback();
-        }
+      if (!this._isBodyOverflowing && isModalOverflowing) {
+        this._element.style.paddingLeft = this._scrollbarWidth + 'px';
       }
 
-      // ----------------------------------------------------------------------
-      // the following methods are used to handle overflowing modals
-      // todo (fat): these should probably be refactored out of modal.js
-      // ----------------------------------------------------------------------
-
-    }, {
-      key: '_handleUpdate',
-      value: function _handleUpdate() {
-        this._adjustDialog();
+      if (this._isBodyOverflowing && !isModalOverflowing) {
+        this._element.style.paddingRight = this._scrollbarWidth + 'px';
       }
-    }, {
-      key: '_adjustDialog',
-      value: function _adjustDialog() {
-        var isModalOverflowing = this._element.scrollHeight > document.documentElement.clientHeight;
+    };
 
-        if (!this._isBodyOverflowing && isModalOverflowing) {
-          this._element.style.paddingLeft = this._scrollbarWidth + 'px';
+    Modal.prototype._resetAdjustments = function _resetAdjustments() {
+      this._element.style.paddingLeft = '';
+      this._element.style.paddingRight = '';
+    };
+
+    Modal.prototype._checkScrollbar = function _checkScrollbar() {
+      this._isBodyOverflowing = document.body.clientWidth < window.innerWidth;
+      this._scrollbarWidth = this._getScrollbarWidth();
+    };
+
+    Modal.prototype._setScrollbar = function _setScrollbar() {
+      var bodyPadding = parseInt($(Selector.FIXED_CONTENT).css('padding-right') || 0, 10);
+
+      this._originalBodyPadding = document.body.style.paddingRight || '';
+
+      if (this._isBodyOverflowing) {
+        document.body.style.paddingRight = bodyPadding + this._scrollbarWidth + 'px';
+      }
+    };
+
+    Modal.prototype._resetScrollbar = function _resetScrollbar() {
+      document.body.style.paddingRight = this._originalBodyPadding;
+    };
+
+    Modal.prototype._getScrollbarWidth = function _getScrollbarWidth() {
+      // thx d.walsh
+      var scrollDiv = document.createElement('div');
+      scrollDiv.className = ClassName.SCROLLBAR_MEASURER;
+      document.body.appendChild(scrollDiv);
+      var scrollbarWidth = scrollDiv.offsetWidth - scrollDiv.clientWidth;
+      document.body.removeChild(scrollDiv);
+      return scrollbarWidth;
+    };
+
+    // static
+
+    Modal._jQueryInterface = function _jQueryInterface(config, relatedTarget) {
+      return this.each(function () {
+        var data = $(this).data(DATA_KEY);
+        var _config = $.extend({}, Modal.Default, $(this).data(), (typeof config === 'undefined' ? 'undefined' : _typeof(config)) === 'object' && config);
+
+        if (!data) {
+          data = new Modal(this, _config);
+          $(this).data(DATA_KEY, data);
         }
 
-        if (this._isBodyOverflowing && !isModalOverflowing) {
-          this._element.style.paddingRight = this._scrollbarWidth + 'px';
-        }
-      }
-    }, {
-      key: '_resetAdjustments',
-      value: function _resetAdjustments() {
-        this._element.style.paddingLeft = '';
-        this._element.style.paddingRight = '';
-      }
-    }, {
-      key: '_checkScrollbar',
-      value: function _checkScrollbar() {
-        this._isBodyOverflowing = document.body.clientWidth < window.innerWidth;
-        this._scrollbarWidth = this._getScrollbarWidth();
-      }
-    }, {
-      key: '_setScrollbar',
-      value: function _setScrollbar() {
-        var bodyPadding = parseInt($(Selector.FIXED_CONTENT).css('padding-right') || 0, 10);
-
-        this._originalBodyPadding = document.body.style.paddingRight || '';
-
-        if (this._isBodyOverflowing) {
-          document.body.style.paddingRight = bodyPadding + this._scrollbarWidth + 'px';
-        }
-      }
-    }, {
-      key: '_resetScrollbar',
-      value: function _resetScrollbar() {
-        document.body.style.paddingRight = this._originalBodyPadding;
-      }
-    }, {
-      key: '_getScrollbarWidth',
-      value: function _getScrollbarWidth() {
-        // thx d.walsh
-        var scrollDiv = document.createElement('div');
-        scrollDiv.className = ClassName.SCROLLBAR_MEASURER;
-        document.body.appendChild(scrollDiv);
-        var scrollbarWidth = scrollDiv.offsetWidth - scrollDiv.clientWidth;
-        document.body.removeChild(scrollDiv);
-        return scrollbarWidth;
-      }
-
-      // static
-
-    }], [{
-      key: '_jQueryInterface',
-      value: function _jQueryInterface(config, relatedTarget) {
-        return this.each(function () {
-          var data = $(this).data(DATA_KEY);
-          var _config = $.extend({}, Modal.Default, $(this).data(), typeof config === 'object' && config);
-
-          if (!data) {
-            data = new Modal(this, _config);
-            $(this).data(DATA_KEY, data);
+        if (typeof config === 'string') {
+          if (data[config] === undefined) {
+            throw new Error('No method named "' + config + '"');
           }
+          data[config](relatedTarget);
+        } else if (_config.show) {
+          data.show(relatedTarget);
+        }
+      });
+    };
 
-          if (typeof config === 'string') {
-            if (data[config] === undefined) {
-              throw new Error('No method named "' + config + '"');
-            }
-            data[config](relatedTarget);
-          } else if (_config.show) {
-            data.show(relatedTarget);
-          }
-        });
-      }
-    }, {
+    _createClass(Modal, null, [{
       key: 'VERSION',
       get: function get() {
         return VERSION;
@@ -2160,12 +2370,18 @@ var Modal = (function ($) {
     }]);
 
     return Modal;
-  })();
+  }();
+
+  /**
+   * ------------------------------------------------------------------------
+   * Data Api implementation
+   * ------------------------------------------------------------------------
+   */
 
   $(document).on(Event.CLICK_DATA_API, Selector.DATA_TOGGLE, function (event) {
     var _this13 = this;
 
-    var target = undefined;
+    var target = void 0;
     var selector = Util.getSelectorFromElement(this);
 
     if (selector) {
@@ -2208,16 +2424,16 @@ var Modal = (function ($) {
   };
 
   return Modal;
-})(jQuery);
+}(jQuery);
 
 /**
  * --------------------------------------------------------------------------
- * Bootstrap (v4.0.0-alpha.4): scrollspy.js
+ * Bootstrap (v4.0.0-alpha.5): scrollspy.js
  * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
  * --------------------------------------------------------------------------
  */
 
-var ScrollSpy = (function ($) {
+var ScrollSpy = function ($) {
 
   /**
    * ------------------------------------------------------------------------
@@ -2226,7 +2442,7 @@ var ScrollSpy = (function ($) {
    */
 
   var NAME = 'scrollspy';
-  var VERSION = '4.0.0-alpha.4';
+  var VERSION = '4.0.0-alpha.5';
   var DATA_KEY = 'bs.scrollspy';
   var EVENT_KEY = '.' + DATA_KEY;
   var DATA_API_KEY = '.data-api';
@@ -2281,7 +2497,7 @@ var ScrollSpy = (function ($) {
    * ------------------------------------------------------------------------
    */
 
-  var ScrollSpy = (function () {
+  var ScrollSpy = function () {
     function ScrollSpy(element, config) {
       _classCallCheck(this, ScrollSpy);
 
@@ -2300,192 +2516,174 @@ var ScrollSpy = (function ($) {
       this._process();
     }
 
-    /**
-     * ------------------------------------------------------------------------
-     * Data Api implementation
-     * ------------------------------------------------------------------------
-     */
-
     // getters
 
-    _createClass(ScrollSpy, [{
-      key: 'refresh',
+    // public
 
-      // public
+    ScrollSpy.prototype.refresh = function refresh() {
+      var _this14 = this;
 
-      value: function refresh() {
-        var _this14 = this;
+      var autoMethod = this._scrollElement !== this._scrollElement.window ? OffsetMethod.POSITION : OffsetMethod.OFFSET;
 
-        var autoMethod = this._scrollElement !== this._scrollElement.window ? OffsetMethod.POSITION : OffsetMethod.OFFSET;
+      var offsetMethod = this._config.method === 'auto' ? autoMethod : this._config.method;
 
-        var offsetMethod = this._config.method === 'auto' ? autoMethod : this._config.method;
+      var offsetBase = offsetMethod === OffsetMethod.POSITION ? this._getScrollTop() : 0;
 
-        var offsetBase = offsetMethod === OffsetMethod.POSITION ? this._getScrollTop() : 0;
+      this._offsets = [];
+      this._targets = [];
 
-        this._offsets = [];
-        this._targets = [];
+      this._scrollHeight = this._getScrollHeight();
 
-        this._scrollHeight = this._getScrollHeight();
+      var targets = $.makeArray($(this._selector));
 
-        var targets = $.makeArray($(this._selector));
+      targets.map(function (element) {
+        var target = void 0;
+        var targetSelector = Util.getSelectorFromElement(element);
 
-        targets.map(function (element) {
-          var target = undefined;
-          var targetSelector = Util.getSelectorFromElement(element);
+        if (targetSelector) {
+          target = $(targetSelector)[0];
+        }
 
-          if (targetSelector) {
-            target = $(targetSelector)[0];
-          }
+        if (target && (target.offsetWidth || target.offsetHeight)) {
+          // todo (fat): remove sketch reliance on jQuery position/offset
+          return [$(target)[offsetMethod]().top + offsetBase, targetSelector];
+        }
+        return null;
+      }).filter(function (item) {
+        return item;
+      }).sort(function (a, b) {
+        return a[0] - b[0];
+      }).forEach(function (item) {
+        _this14._offsets.push(item[0]);
+        _this14._targets.push(item[1]);
+      });
+    };
 
-          if (target && (target.offsetWidth || target.offsetHeight)) {
-            // todo (fat): remove sketch reliance on jQuery position/offset
-            return [$(target)[offsetMethod]().top + offsetBase, targetSelector];
-          }
-          return null;
-        }).filter(function (item) {
-          return item;
-        }).sort(function (a, b) {
-          return a[0] - b[0];
-        }).forEach(function (item) {
-          _this14._offsets.push(item[0]);
-          _this14._targets.push(item[1]);
-        });
+    ScrollSpy.prototype.dispose = function dispose() {
+      $.removeData(this._element, DATA_KEY);
+      $(this._scrollElement).off(EVENT_KEY);
+
+      this._element = null;
+      this._scrollElement = null;
+      this._config = null;
+      this._selector = null;
+      this._offsets = null;
+      this._targets = null;
+      this._activeTarget = null;
+      this._scrollHeight = null;
+    };
+
+    // private
+
+    ScrollSpy.prototype._getConfig = function _getConfig(config) {
+      config = $.extend({}, Default, config);
+
+      if (typeof config.target !== 'string') {
+        var id = $(config.target).attr('id');
+        if (!id) {
+          id = Util.getUID(NAME);
+          $(config.target).attr('id', id);
+        }
+        config.target = '#' + id;
       }
-    }, {
-      key: 'dispose',
-      value: function dispose() {
-        $.removeData(this._element, DATA_KEY);
-        $(this._scrollElement).off(EVENT_KEY);
 
-        this._element = null;
-        this._scrollElement = null;
-        this._config = null;
-        this._selector = null;
-        this._offsets = null;
-        this._targets = null;
+      Util.typeCheckConfig(NAME, config, DefaultType);
+
+      return config;
+    };
+
+    ScrollSpy.prototype._getScrollTop = function _getScrollTop() {
+      return this._scrollElement === window ? this._scrollElement.scrollY : this._scrollElement.scrollTop;
+    };
+
+    ScrollSpy.prototype._getScrollHeight = function _getScrollHeight() {
+      return this._scrollElement.scrollHeight || Math.max(document.body.scrollHeight, document.documentElement.scrollHeight);
+    };
+
+    ScrollSpy.prototype._process = function _process() {
+      var scrollTop = this._getScrollTop() + this._config.offset;
+      var scrollHeight = this._getScrollHeight();
+      var maxScroll = this._config.offset + scrollHeight - this._scrollElement.offsetHeight;
+
+      if (this._scrollHeight !== scrollHeight) {
+        this.refresh();
+      }
+
+      if (scrollTop >= maxScroll) {
+        var target = this._targets[this._targets.length - 1];
+
+        if (this._activeTarget !== target) {
+          this._activate(target);
+        }
+      }
+
+      if (this._activeTarget && scrollTop < this._offsets[0]) {
         this._activeTarget = null;
-        this._scrollHeight = null;
-      }
-
-      // private
-
-    }, {
-      key: '_getConfig',
-      value: function _getConfig(config) {
-        config = $.extend({}, Default, config);
-
-        if (typeof config.target !== 'string') {
-          var id = $(config.target).attr('id');
-          if (!id) {
-            id = Util.getUID(NAME);
-            $(config.target).attr('id', id);
-          }
-          config.target = '#' + id;
-        }
-
-        Util.typeCheckConfig(NAME, config, DefaultType);
-
-        return config;
-      }
-    }, {
-      key: '_getScrollTop',
-      value: function _getScrollTop() {
-        return this._scrollElement === window ? this._scrollElement.scrollY : this._scrollElement.scrollTop;
-      }
-    }, {
-      key: '_getScrollHeight',
-      value: function _getScrollHeight() {
-        return this._scrollElement.scrollHeight || Math.max(document.body.scrollHeight, document.documentElement.scrollHeight);
-      }
-    }, {
-      key: '_process',
-      value: function _process() {
-        var scrollTop = this._getScrollTop() + this._config.offset;
-        var scrollHeight = this._getScrollHeight();
-        var maxScroll = this._config.offset + scrollHeight - this._scrollElement.offsetHeight;
-
-        if (this._scrollHeight !== scrollHeight) {
-          this.refresh();
-        }
-
-        if (scrollTop >= maxScroll) {
-          var target = this._targets[this._targets.length - 1];
-
-          if (this._activeTarget !== target) {
-            this._activate(target);
-          }
-        }
-
-        if (this._activeTarget && scrollTop < this._offsets[0]) {
-          this._activeTarget = null;
-          this._clear();
-          return;
-        }
-
-        for (var i = this._offsets.length; i--;) {
-          var isActiveTarget = this._activeTarget !== this._targets[i] && scrollTop >= this._offsets[i] && (this._offsets[i + 1] === undefined || scrollTop < this._offsets[i + 1]);
-
-          if (isActiveTarget) {
-            this._activate(this._targets[i]);
-          }
-        }
-      }
-    }, {
-      key: '_activate',
-      value: function _activate(target) {
-        this._activeTarget = target;
-
         this._clear();
+        return;
+      }
 
-        var queries = this._selector.split(',');
-        queries = queries.map(function (selector) {
-          return selector + '[data-target="' + target + '"],' + (selector + '[href="' + target + '"]');
-        });
+      for (var i = this._offsets.length; i--;) {
+        var isActiveTarget = this._activeTarget !== this._targets[i] && scrollTop >= this._offsets[i] && (this._offsets[i + 1] === undefined || scrollTop < this._offsets[i + 1]);
 
-        var $link = $(queries.join(','));
+        if (isActiveTarget) {
+          this._activate(this._targets[i]);
+        }
+      }
+    };
 
-        if ($link.hasClass(ClassName.DROPDOWN_ITEM)) {
-          $link.closest(Selector.DROPDOWN).find(Selector.DROPDOWN_TOGGLE).addClass(ClassName.ACTIVE);
-          $link.addClass(ClassName.ACTIVE);
-        } else {
-          // todo (fat) this is kinda sus...
-          // recursively add actives to tested nav-links
-          $link.parents(Selector.LI).find(Selector.NAV_LINKS).addClass(ClassName.ACTIVE);
+    ScrollSpy.prototype._activate = function _activate(target) {
+      this._activeTarget = target;
+
+      this._clear();
+
+      var queries = this._selector.split(',');
+      queries = queries.map(function (selector) {
+        return selector + '[data-target="' + target + '"],' + (selector + '[href="' + target + '"]');
+      });
+
+      var $link = $(queries.join(','));
+
+      if ($link.hasClass(ClassName.DROPDOWN_ITEM)) {
+        $link.closest(Selector.DROPDOWN).find(Selector.DROPDOWN_TOGGLE).addClass(ClassName.ACTIVE);
+        $link.addClass(ClassName.ACTIVE);
+      } else {
+        // todo (fat) this is kinda sus...
+        // recursively add actives to tested nav-links
+        $link.parents(Selector.LI).find(Selector.NAV_LINKS).addClass(ClassName.ACTIVE);
+      }
+
+      $(this._scrollElement).trigger(Event.ACTIVATE, {
+        relatedTarget: target
+      });
+    };
+
+    ScrollSpy.prototype._clear = function _clear() {
+      $(this._selector).filter(Selector.ACTIVE).removeClass(ClassName.ACTIVE);
+    };
+
+    // static
+
+    ScrollSpy._jQueryInterface = function _jQueryInterface(config) {
+      return this.each(function () {
+        var data = $(this).data(DATA_KEY);
+        var _config = (typeof config === 'undefined' ? 'undefined' : _typeof(config)) === 'object' && config || null;
+
+        if (!data) {
+          data = new ScrollSpy(this, _config);
+          $(this).data(DATA_KEY, data);
         }
 
-        $(this._scrollElement).trigger(Event.ACTIVATE, {
-          relatedTarget: target
-        });
-      }
-    }, {
-      key: '_clear',
-      value: function _clear() {
-        $(this._selector).filter(Selector.ACTIVE).removeClass(ClassName.ACTIVE);
-      }
-
-      // static
-
-    }], [{
-      key: '_jQueryInterface',
-      value: function _jQueryInterface(config) {
-        return this.each(function () {
-          var data = $(this).data(DATA_KEY);
-          var _config = typeof config === 'object' && config || null;
-
-          if (!data) {
-            data = new ScrollSpy(this, _config);
-            $(this).data(DATA_KEY, data);
+        if (typeof config === 'string') {
+          if (data[config] === undefined) {
+            throw new Error('No method named "' + config + '"');
           }
+          data[config]();
+        }
+      });
+    };
 
-          if (typeof config === 'string') {
-            if (data[config] === undefined) {
-              throw new Error('No method named "' + config + '"');
-            }
-            data[config]();
-          }
-        });
-      }
-    }, {
+    _createClass(ScrollSpy, null, [{
       key: 'VERSION',
       get: function get() {
         return VERSION;
@@ -2498,7 +2696,13 @@ var ScrollSpy = (function ($) {
     }]);
 
     return ScrollSpy;
-  })();
+  }();
+
+  /**
+   * ------------------------------------------------------------------------
+   * Data Api implementation
+   * ------------------------------------------------------------------------
+   */
 
   $(window).on(Event.LOAD_DATA_API, function () {
     var scrollSpys = $.makeArray($(Selector.DATA_SPY));
@@ -2523,16 +2727,16 @@ var ScrollSpy = (function ($) {
   };
 
   return ScrollSpy;
-})(jQuery);
+}(jQuery);
 
 /**
  * --------------------------------------------------------------------------
- * Bootstrap (v4.0.0-alpha.4): tab.js
+ * Bootstrap (v4.0.0-alpha.5): tab.js
  * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
  * --------------------------------------------------------------------------
  */
 
-var Tab = (function ($) {
+var Tab = function ($) {
 
   /**
    * ------------------------------------------------------------------------
@@ -2541,7 +2745,7 @@ var Tab = (function ($) {
    */
 
   var NAME = 'tab';
-  var VERSION = '4.0.0-alpha.4';
+  var VERSION = '4.0.0-alpha.5';
   var DATA_KEY = 'bs.tab';
   var EVENT_KEY = '.' + DATA_KEY;
   var DATA_API_KEY = '.data-api';
@@ -2582,176 +2786,162 @@ var Tab = (function ($) {
    * ------------------------------------------------------------------------
    */
 
-  var Tab = (function () {
+  var Tab = function () {
     function Tab(element) {
       _classCallCheck(this, Tab);
 
       this._element = element;
     }
 
-    /**
-     * ------------------------------------------------------------------------
-     * Data Api implementation
-     * ------------------------------------------------------------------------
-     */
-
     // getters
 
-    _createClass(Tab, [{
-      key: 'show',
+    // public
 
-      // public
+    Tab.prototype.show = function show() {
+      var _this15 = this;
 
-      value: function show() {
-        var _this15 = this;
+      if (this._element.parentNode && this._element.parentNode.nodeType === Node.ELEMENT_NODE && $(this._element).hasClass(ClassName.ACTIVE)) {
+        return;
+      }
 
-        if (this._element.parentNode && this._element.parentNode.nodeType === Node.ELEMENT_NODE && $(this._element).hasClass(ClassName.ACTIVE)) {
-          return;
-        }
+      var target = void 0;
+      var previous = void 0;
+      var ulElement = $(this._element).closest(Selector.UL)[0];
+      var selector = Util.getSelectorFromElement(this._element);
 
-        var target = undefined;
-        var previous = undefined;
-        var ulElement = $(this._element).closest(Selector.UL)[0];
-        var selector = Util.getSelectorFromElement(this._element);
+      if (ulElement) {
+        previous = $.makeArray($(ulElement).find(Selector.ACTIVE));
+        previous = previous[previous.length - 1];
+      }
 
-        if (ulElement) {
-          previous = $.makeArray($(ulElement).find(Selector.ACTIVE));
-          previous = previous[previous.length - 1];
-        }
+      var hideEvent = $.Event(Event.HIDE, {
+        relatedTarget: this._element
+      });
 
-        var hideEvent = $.Event(Event.HIDE, {
-          relatedTarget: this._element
+      var showEvent = $.Event(Event.SHOW, {
+        relatedTarget: previous
+      });
+
+      if (previous) {
+        $(previous).trigger(hideEvent);
+      }
+
+      $(this._element).trigger(showEvent);
+
+      if (showEvent.isDefaultPrevented() || hideEvent.isDefaultPrevented()) {
+        return;
+      }
+
+      if (selector) {
+        target = $(selector)[0];
+      }
+
+      this._activate(this._element, ulElement);
+
+      var complete = function complete() {
+        var hiddenEvent = $.Event(Event.HIDDEN, {
+          relatedTarget: _this15._element
         });
 
-        var showEvent = $.Event(Event.SHOW, {
+        var shownEvent = $.Event(Event.SHOWN, {
           relatedTarget: previous
         });
 
-        if (previous) {
-          $(previous).trigger(hideEvent);
-        }
+        $(previous).trigger(hiddenEvent);
+        $(_this15._element).trigger(shownEvent);
+      };
 
-        $(this._element).trigger(showEvent);
-
-        if (showEvent.isDefaultPrevented() || hideEvent.isDefaultPrevented()) {
-          return;
-        }
-
-        if (selector) {
-          target = $(selector)[0];
-        }
-
-        this._activate(this._element, ulElement);
-
-        var complete = function complete() {
-          var hiddenEvent = $.Event(Event.HIDDEN, {
-            relatedTarget: _this15._element
-          });
-
-          var shownEvent = $.Event(Event.SHOWN, {
-            relatedTarget: previous
-          });
-
-          $(previous).trigger(hiddenEvent);
-          $(_this15._element).trigger(shownEvent);
-        };
-
-        if (target) {
-          this._activate(target, target.parentNode, complete);
-        } else {
-          complete();
-        }
+      if (target) {
+        this._activate(target, target.parentNode, complete);
+      } else {
+        complete();
       }
-    }, {
-      key: 'dispose',
-      value: function dispose() {
-        $.removeClass(this._element, DATA_KEY);
-        this._element = null;
+    };
+
+    Tab.prototype.dispose = function dispose() {
+      $.removeClass(this._element, DATA_KEY);
+      this._element = null;
+    };
+
+    // private
+
+    Tab.prototype._activate = function _activate(element, container, callback) {
+      var active = $(container).find(Selector.ACTIVE_CHILD)[0];
+      var isTransitioning = callback && Util.supportsTransitionEnd() && (active && $(active).hasClass(ClassName.FADE) || Boolean($(container).find(Selector.FADE_CHILD)[0]));
+
+      var complete = $.proxy(this._transitionComplete, this, element, active, isTransitioning, callback);
+
+      if (active && isTransitioning) {
+        $(active).one(Util.TRANSITION_END, complete).emulateTransitionEnd(TRANSITION_DURATION);
+      } else {
+        complete();
       }
 
-      // private
-
-    }, {
-      key: '_activate',
-      value: function _activate(element, container, callback) {
-        var active = $(container).find(Selector.ACTIVE_CHILD)[0];
-        var isTransitioning = callback && Util.supportsTransitionEnd() && (active && $(active).hasClass(ClassName.FADE) || Boolean($(container).find(Selector.FADE_CHILD)[0]));
-
-        var complete = $.proxy(this._transitionComplete, this, element, active, isTransitioning, callback);
-
-        if (active && isTransitioning) {
-          $(active).one(Util.TRANSITION_END, complete).emulateTransitionEnd(TRANSITION_DURATION);
-        } else {
-          complete();
-        }
-
-        if (active) {
-          $(active).removeClass(ClassName.IN);
-        }
+      if (active) {
+        $(active).removeClass(ClassName.IN);
       }
-    }, {
-      key: '_transitionComplete',
-      value: function _transitionComplete(element, active, isTransitioning, callback) {
-        if (active) {
-          $(active).removeClass(ClassName.ACTIVE);
+    };
 
-          var dropdownChild = $(active).find(Selector.DROPDOWN_ACTIVE_CHILD)[0];
+    Tab.prototype._transitionComplete = function _transitionComplete(element, active, isTransitioning, callback) {
+      if (active) {
+        $(active).removeClass(ClassName.ACTIVE);
 
-          if (dropdownChild) {
-            $(dropdownChild).removeClass(ClassName.ACTIVE);
-          }
+        var dropdownChild = $(active).find(Selector.DROPDOWN_ACTIVE_CHILD)[0];
 
-          active.setAttribute('aria-expanded', false);
+        if (dropdownChild) {
+          $(dropdownChild).removeClass(ClassName.ACTIVE);
         }
 
-        $(element).addClass(ClassName.ACTIVE);
+        active.setAttribute('aria-expanded', false);
+      }
+
+      $(element).addClass(ClassName.ACTIVE);
+      element.setAttribute('aria-expanded', true);
+
+      if (isTransitioning) {
+        Util.reflow(element);
+        $(element).addClass(ClassName.IN);
+      } else {
+        $(element).removeClass(ClassName.FADE);
+      }
+
+      if (element.parentNode && $(element.parentNode).hasClass(ClassName.DROPDOWN_MENU)) {
+
+        var dropdownElement = $(element).closest(Selector.DROPDOWN)[0];
+        if (dropdownElement) {
+          $(dropdownElement).find(Selector.DROPDOWN_TOGGLE).addClass(ClassName.ACTIVE);
+        }
+
         element.setAttribute('aria-expanded', true);
-
-        if (isTransitioning) {
-          Util.reflow(element);
-          $(element).addClass(ClassName.IN);
-        } else {
-          $(element).removeClass(ClassName.FADE);
-        }
-
-        if (element.parentNode && $(element.parentNode).hasClass(ClassName.DROPDOWN_MENU)) {
-
-          var dropdownElement = $(element).closest(Selector.DROPDOWN)[0];
-          if (dropdownElement) {
-            $(dropdownElement).find(Selector.DROPDOWN_TOGGLE).addClass(ClassName.ACTIVE);
-          }
-
-          element.setAttribute('aria-expanded', true);
-        }
-
-        if (callback) {
-          callback();
-        }
       }
 
-      // static
-
-    }], [{
-      key: '_jQueryInterface',
-      value: function _jQueryInterface(config) {
-        return this.each(function () {
-          var $this = $(this);
-          var data = $this.data(DATA_KEY);
-
-          if (!data) {
-            data = data = new Tab(this);
-            $this.data(DATA_KEY, data);
-          }
-
-          if (typeof config === 'string') {
-            if (data[config] === undefined) {
-              throw new Error('No method named "' + config + '"');
-            }
-            data[config]();
-          }
-        });
+      if (callback) {
+        callback();
       }
-    }, {
+    };
+
+    // static
+
+    Tab._jQueryInterface = function _jQueryInterface(config) {
+      return this.each(function () {
+        var $this = $(this);
+        var data = $this.data(DATA_KEY);
+
+        if (!data) {
+          data = data = new Tab(this);
+          $this.data(DATA_KEY, data);
+        }
+
+        if (typeof config === 'string') {
+          if (data[config] === undefined) {
+            throw new Error('No method named "' + config + '"');
+          }
+          data[config]();
+        }
+      });
+    };
+
+    _createClass(Tab, null, [{
       key: 'VERSION',
       get: function get() {
         return VERSION;
@@ -2759,7 +2949,13 @@ var Tab = (function ($) {
     }]);
 
     return Tab;
-  })();
+  }();
+
+  /**
+   * ------------------------------------------------------------------------
+   * Data Api implementation
+   * ------------------------------------------------------------------------
+   */
 
   $(document).on(Event.CLICK_DATA_API, Selector.DATA_TOGGLE, function (event) {
     event.preventDefault();
@@ -2780,25 +2976,25 @@ var Tab = (function ($) {
   };
 
   return Tab;
-})(jQuery);
+}(jQuery);
 
 /* global Tether */
 
 /**
  * --------------------------------------------------------------------------
- * Bootstrap (v4.0.0-alpha.4): tooltip.js
+ * Bootstrap (v4.0.0-alpha.5): tooltip.js
  * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
  * --------------------------------------------------------------------------
  */
 
-var Tooltip = (function ($) {
+var Tooltip = function ($) {
 
   /**
    * Check for Tether dependency
-   * Tether - http://github.hubspot.com/tether/
+   * Tether - http://tether.io/
    */
   if (window.Tether === undefined) {
-    throw new Error('Bootstrap tooltips require Tether (http://github.hubspot.com/tether/)');
+    throw new Error('Bootstrap tooltips require Tether (http://tether.io/)');
   }
 
   /**
@@ -2808,7 +3004,7 @@ var Tooltip = (function ($) {
    */
 
   var NAME = 'tooltip';
-  var VERSION = '4.0.0-alpha.4';
+  var VERSION = '4.0.0-alpha.5';
   var DATA_KEY = 'bs.tooltip';
   var EVENT_KEY = '.' + DATA_KEY;
   var JQUERY_NO_CONFLICT = $.fn[NAME];
@@ -2817,7 +3013,7 @@ var Tooltip = (function ($) {
 
   var Default = {
     animation: true,
-    template: '<div class="tooltip" role="tooltip">' + '<div class="tooltip-arrow"></div>' + '<div class="tooltip-inner"></div></div>',
+    template: '<div class="tooltip" role="tooltip">' + '<div class="tooltip-inner"></div></div>',
     trigger: 'hover focus',
     title: '',
     delay: 0,
@@ -2894,7 +3090,7 @@ var Tooltip = (function ($) {
    * ------------------------------------------------------------------------
    */
 
-  var Tooltip = (function () {
+  var Tooltip = function () {
     function Tooltip(element, config) {
       _classCallCheck(this, Tooltip);
 
@@ -2913,439 +3109,407 @@ var Tooltip = (function ($) {
       this._setListeners();
     }
 
-    /**
-     * ------------------------------------------------------------------------
-     * jQuery
-     * ------------------------------------------------------------------------
-     */
-
     // getters
 
-    _createClass(Tooltip, [{
-      key: 'enable',
+    // public
 
-      // public
+    Tooltip.prototype.enable = function enable() {
+      this._isEnabled = true;
+    };
 
-      value: function enable() {
-        this._isEnabled = true;
-      }
-    }, {
-      key: 'disable',
-      value: function disable() {
-        this._isEnabled = false;
-      }
-    }, {
-      key: 'toggleEnabled',
-      value: function toggleEnabled() {
-        this._isEnabled = !this._isEnabled;
-      }
-    }, {
-      key: 'toggle',
-      value: function toggle(event) {
-        if (event) {
-          var dataKey = this.constructor.DATA_KEY;
-          var context = $(event.currentTarget).data(dataKey);
+    Tooltip.prototype.disable = function disable() {
+      this._isEnabled = false;
+    };
 
-          if (!context) {
-            context = new this.constructor(event.currentTarget, this._getDelegateConfig());
-            $(event.currentTarget).data(dataKey, context);
-          }
+    Tooltip.prototype.toggleEnabled = function toggleEnabled() {
+      this._isEnabled = !this._isEnabled;
+    };
 
-          context._activeTrigger.click = !context._activeTrigger.click;
+    Tooltip.prototype.toggle = function toggle(event) {
+      if (event) {
+        var dataKey = this.constructor.DATA_KEY;
+        var context = $(event.currentTarget).data(dataKey);
 
-          if (context._isWithActiveTrigger()) {
-            context._enter(null, context);
-          } else {
-            context._leave(null, context);
-          }
+        if (!context) {
+          context = new this.constructor(event.currentTarget, this._getDelegateConfig());
+          $(event.currentTarget).data(dataKey, context);
+        }
+
+        context._activeTrigger.click = !context._activeTrigger.click;
+
+        if (context._isWithActiveTrigger()) {
+          context._enter(null, context);
         } else {
-
-          if ($(this.getTipElement()).hasClass(ClassName.IN)) {
-            this._leave(null, this);
-            return;
-          }
-
-          this._enter(null, this);
+          context._leave(null, context);
         }
-      }
-    }, {
-      key: 'dispose',
-      value: function dispose() {
-        clearTimeout(this._timeout);
+      } else {
 
-        this.cleanupTether();
-
-        $.removeData(this.element, this.constructor.DATA_KEY);
-
-        $(this.element).off(this.constructor.EVENT_KEY);
-
-        if (this.tip) {
-          $(this.tip).remove();
+        if ($(this.getTipElement()).hasClass(ClassName.IN)) {
+          this._leave(null, this);
+          return;
         }
 
-        this._isEnabled = null;
-        this._timeout = null;
-        this._hoverState = null;
-        this._activeTrigger = null;
-        this._tether = null;
-
-        this.element = null;
-        this.config = null;
-        this.tip = null;
+        this._enter(null, this);
       }
-    }, {
-      key: 'show',
-      value: function show() {
-        var _this16 = this;
+    };
 
-        var showEvent = $.Event(this.constructor.Event.SHOW);
+    Tooltip.prototype.dispose = function dispose() {
+      clearTimeout(this._timeout);
 
-        if (this.isWithContent() && this._isEnabled) {
-          $(this.element).trigger(showEvent);
+      this.cleanupTether();
 
-          var isInTheDom = $.contains(this.element.ownerDocument.documentElement, this.element);
+      $.removeData(this.element, this.constructor.DATA_KEY);
 
-          if (showEvent.isDefaultPrevented() || !isInTheDom) {
-            return;
-          }
+      $(this.element).off(this.constructor.EVENT_KEY);
 
-          var tip = this.getTipElement();
-          var tipId = Util.getUID(this.constructor.NAME);
+      if (this.tip) {
+        $(this.tip).remove();
+      }
 
-          tip.setAttribute('id', tipId);
-          this.element.setAttribute('aria-describedby', tipId);
+      this._isEnabled = null;
+      this._timeout = null;
+      this._hoverState = null;
+      this._activeTrigger = null;
+      this._tether = null;
 
-          this.setContent();
+      this.element = null;
+      this.config = null;
+      this.tip = null;
+    };
 
-          if (this.config.animation) {
-            $(tip).addClass(ClassName.FADE);
-          }
+    Tooltip.prototype.show = function show() {
+      var _this16 = this;
 
-          var placement = typeof this.config.placement === 'function' ? this.config.placement.call(this, tip, this.element) : this.config.placement;
+      var showEvent = $.Event(this.constructor.Event.SHOW);
 
-          var attachment = this._getAttachment(placement);
+      if (this.isWithContent() && this._isEnabled) {
+        $(this.element).trigger(showEvent);
 
-          $(tip).data(this.constructor.DATA_KEY, this).appendTo(document.body);
+        var isInTheDom = $.contains(this.element.ownerDocument.documentElement, this.element);
 
-          $(this.element).trigger(this.constructor.Event.INSERTED);
-
-          this._tether = new Tether({
-            attachment: attachment,
-            element: tip,
-            target: this.element,
-            classes: TetherClass,
-            classPrefix: CLASS_PREFIX,
-            offset: this.config.offset,
-            constraints: this.config.constraints,
-            addTargetClasses: false
-          });
-
-          Util.reflow(tip);
-          this._tether.position();
-
-          $(tip).addClass(ClassName.IN);
-
-          var complete = function complete() {
-            var prevHoverState = _this16._hoverState;
-            _this16._hoverState = null;
-
-            $(_this16.element).trigger(_this16.constructor.Event.SHOWN);
-
-            if (prevHoverState === HoverState.OUT) {
-              _this16._leave(null, _this16);
-            }
-          };
-
-          if (Util.supportsTransitionEnd() && $(this.tip).hasClass(ClassName.FADE)) {
-            $(this.tip).one(Util.TRANSITION_END, complete).emulateTransitionEnd(Tooltip._TRANSITION_DURATION);
-            return;
-          }
-
-          complete();
+        if (showEvent.isDefaultPrevented() || !isInTheDom) {
+          return;
         }
-      }
-    }, {
-      key: 'hide',
-      value: function hide(callback) {
-        var _this17 = this;
 
         var tip = this.getTipElement();
-        var hideEvent = $.Event(this.constructor.Event.HIDE);
+        var tipId = Util.getUID(this.constructor.NAME);
+
+        tip.setAttribute('id', tipId);
+        this.element.setAttribute('aria-describedby', tipId);
+
+        this.setContent();
+
+        if (this.config.animation) {
+          $(tip).addClass(ClassName.FADE);
+        }
+
+        var placement = typeof this.config.placement === 'function' ? this.config.placement.call(this, tip, this.element) : this.config.placement;
+
+        var attachment = this._getAttachment(placement);
+
+        $(tip).data(this.constructor.DATA_KEY, this).appendTo(document.body);
+
+        $(this.element).trigger(this.constructor.Event.INSERTED);
+
+        this._tether = new Tether({
+          attachment: attachment,
+          element: tip,
+          target: this.element,
+          classes: TetherClass,
+          classPrefix: CLASS_PREFIX,
+          offset: this.config.offset,
+          constraints: this.config.constraints,
+          addTargetClasses: false
+        });
+
+        Util.reflow(tip);
+        this._tether.position();
+
+        $(tip).addClass(ClassName.IN);
+
         var complete = function complete() {
-          if (_this17._hoverState !== HoverState.IN && tip.parentNode) {
-            tip.parentNode.removeChild(tip);
-          }
+          var prevHoverState = _this16._hoverState;
+          _this16._hoverState = null;
 
-          _this17.element.removeAttribute('aria-describedby');
-          $(_this17.element).trigger(_this17.constructor.Event.HIDDEN);
-          _this17.cleanupTether();
+          $(_this16.element).trigger(_this16.constructor.Event.SHOWN);
 
-          if (callback) {
-            callback();
+          if (prevHoverState === HoverState.OUT) {
+            _this16._leave(null, _this16);
           }
         };
 
-        $(this.element).trigger(hideEvent);
-
-        if (hideEvent.isDefaultPrevented()) {
-          return;
-        }
-
-        $(tip).removeClass(ClassName.IN);
-
         if (Util.supportsTransitionEnd() && $(this.tip).hasClass(ClassName.FADE)) {
-
-          $(tip).one(Util.TRANSITION_END, complete).emulateTransitionEnd(TRANSITION_DURATION);
-        } else {
-          complete();
-        }
-
-        this._hoverState = '';
-      }
-
-      // protected
-
-    }, {
-      key: 'isWithContent',
-      value: function isWithContent() {
-        return Boolean(this.getTitle());
-      }
-    }, {
-      key: 'getTipElement',
-      value: function getTipElement() {
-        return this.tip = this.tip || $(this.config.template)[0];
-      }
-    }, {
-      key: 'setContent',
-      value: function setContent() {
-        var $tip = $(this.getTipElement());
-
-        this.setElementContent($tip.find(Selector.TOOLTIP_INNER), this.getTitle());
-
-        $tip.removeClass(ClassName.FADE).removeClass(ClassName.IN);
-
-        this.cleanupTether();
-      }
-    }, {
-      key: 'setElementContent',
-      value: function setElementContent($element, content) {
-        var html = this.config.html;
-        if (typeof content === 'object' && (content.nodeType || content.jquery)) {
-          // content is a DOM node or a jQuery
-          if (html) {
-            if (!$(content).parent().is($element)) {
-              $element.empty().append(content);
-            }
-          } else {
-            $element.text($(content).text());
-          }
-        } else {
-          $element[html ? 'html' : 'text'](content);
-        }
-      }
-    }, {
-      key: 'getTitle',
-      value: function getTitle() {
-        var title = this.element.getAttribute('data-original-title');
-
-        if (!title) {
-          title = typeof this.config.title === 'function' ? this.config.title.call(this.element) : this.config.title;
-        }
-
-        return title;
-      }
-    }, {
-      key: 'cleanupTether',
-      value: function cleanupTether() {
-        if (this._tether) {
-          this._tether.destroy();
-        }
-      }
-
-      // private
-
-    }, {
-      key: '_getAttachment',
-      value: function _getAttachment(placement) {
-        return AttachmentMap[placement.toUpperCase()];
-      }
-    }, {
-      key: '_setListeners',
-      value: function _setListeners() {
-        var _this18 = this;
-
-        var triggers = this.config.trigger.split(' ');
-
-        triggers.forEach(function (trigger) {
-          if (trigger === 'click') {
-            $(_this18.element).on(_this18.constructor.Event.CLICK, _this18.config.selector, $.proxy(_this18.toggle, _this18));
-          } else if (trigger !== Trigger.MANUAL) {
-            var eventIn = trigger === Trigger.HOVER ? _this18.constructor.Event.MOUSEENTER : _this18.constructor.Event.FOCUSIN;
-            var eventOut = trigger === Trigger.HOVER ? _this18.constructor.Event.MOUSELEAVE : _this18.constructor.Event.FOCUSOUT;
-
-            $(_this18.element).on(eventIn, _this18.config.selector, $.proxy(_this18._enter, _this18)).on(eventOut, _this18.config.selector, $.proxy(_this18._leave, _this18));
-          }
-        });
-
-        if (this.config.selector) {
-          this.config = $.extend({}, this.config, {
-            trigger: 'manual',
-            selector: ''
-          });
-        } else {
-          this._fixTitle();
-        }
-      }
-    }, {
-      key: '_fixTitle',
-      value: function _fixTitle() {
-        var titleType = typeof this.element.getAttribute('data-original-title');
-        if (this.element.getAttribute('title') || titleType !== 'string') {
-          this.element.setAttribute('data-original-title', this.element.getAttribute('title') || '');
-          this.element.setAttribute('title', '');
-        }
-      }
-    }, {
-      key: '_enter',
-      value: function _enter(event, context) {
-        var dataKey = this.constructor.DATA_KEY;
-
-        context = context || $(event.currentTarget).data(dataKey);
-
-        if (!context) {
-          context = new this.constructor(event.currentTarget, this._getDelegateConfig());
-          $(event.currentTarget).data(dataKey, context);
-        }
-
-        if (event) {
-          context._activeTrigger[event.type === 'focusin' ? Trigger.FOCUS : Trigger.HOVER] = true;
-        }
-
-        if ($(context.getTipElement()).hasClass(ClassName.IN) || context._hoverState === HoverState.IN) {
-          context._hoverState = HoverState.IN;
+          $(this.tip).one(Util.TRANSITION_END, complete).emulateTransitionEnd(Tooltip._TRANSITION_DURATION);
           return;
         }
 
-        clearTimeout(context._timeout);
+        complete();
+      }
+    };
 
+    Tooltip.prototype.hide = function hide(callback) {
+      var _this17 = this;
+
+      var tip = this.getTipElement();
+      var hideEvent = $.Event(this.constructor.Event.HIDE);
+      var complete = function complete() {
+        if (_this17._hoverState !== HoverState.IN && tip.parentNode) {
+          tip.parentNode.removeChild(tip);
+        }
+
+        _this17.element.removeAttribute('aria-describedby');
+        $(_this17.element).trigger(_this17.constructor.Event.HIDDEN);
+        _this17.cleanupTether();
+
+        if (callback) {
+          callback();
+        }
+      };
+
+      $(this.element).trigger(hideEvent);
+
+      if (hideEvent.isDefaultPrevented()) {
+        return;
+      }
+
+      $(tip).removeClass(ClassName.IN);
+
+      if (Util.supportsTransitionEnd() && $(this.tip).hasClass(ClassName.FADE)) {
+
+        $(tip).one(Util.TRANSITION_END, complete).emulateTransitionEnd(TRANSITION_DURATION);
+      } else {
+        complete();
+      }
+
+      this._hoverState = '';
+    };
+
+    // protected
+
+    Tooltip.prototype.isWithContent = function isWithContent() {
+      return Boolean(this.getTitle());
+    };
+
+    Tooltip.prototype.getTipElement = function getTipElement() {
+      return this.tip = this.tip || $(this.config.template)[0];
+    };
+
+    Tooltip.prototype.setContent = function setContent() {
+      var $tip = $(this.getTipElement());
+
+      this.setElementContent($tip.find(Selector.TOOLTIP_INNER), this.getTitle());
+
+      $tip.removeClass(ClassName.FADE).removeClass(ClassName.IN);
+
+      this.cleanupTether();
+    };
+
+    Tooltip.prototype.setElementContent = function setElementContent($element, content) {
+      var html = this.config.html;
+      if ((typeof content === 'undefined' ? 'undefined' : _typeof(content)) === 'object' && (content.nodeType || content.jquery)) {
+        // content is a DOM node or a jQuery
+        if (html) {
+          if (!$(content).parent().is($element)) {
+            $element.empty().append(content);
+          }
+        } else {
+          $element.text($(content).text());
+        }
+      } else {
+        $element[html ? 'html' : 'text'](content);
+      }
+    };
+
+    Tooltip.prototype.getTitle = function getTitle() {
+      var title = this.element.getAttribute('data-original-title');
+
+      if (!title) {
+        title = typeof this.config.title === 'function' ? this.config.title.call(this.element) : this.config.title;
+      }
+
+      return title;
+    };
+
+    Tooltip.prototype.cleanupTether = function cleanupTether() {
+      if (this._tether) {
+        this._tether.destroy();
+      }
+    };
+
+    // private
+
+    Tooltip.prototype._getAttachment = function _getAttachment(placement) {
+      return AttachmentMap[placement.toUpperCase()];
+    };
+
+    Tooltip.prototype._setListeners = function _setListeners() {
+      var _this18 = this;
+
+      var triggers = this.config.trigger.split(' ');
+
+      triggers.forEach(function (trigger) {
+        if (trigger === 'click') {
+          $(_this18.element).on(_this18.constructor.Event.CLICK, _this18.config.selector, $.proxy(_this18.toggle, _this18));
+        } else if (trigger !== Trigger.MANUAL) {
+          var eventIn = trigger === Trigger.HOVER ? _this18.constructor.Event.MOUSEENTER : _this18.constructor.Event.FOCUSIN;
+          var eventOut = trigger === Trigger.HOVER ? _this18.constructor.Event.MOUSELEAVE : _this18.constructor.Event.FOCUSOUT;
+
+          $(_this18.element).on(eventIn, _this18.config.selector, $.proxy(_this18._enter, _this18)).on(eventOut, _this18.config.selector, $.proxy(_this18._leave, _this18));
+        }
+      });
+
+      if (this.config.selector) {
+        this.config = $.extend({}, this.config, {
+          trigger: 'manual',
+          selector: ''
+        });
+      } else {
+        this._fixTitle();
+      }
+    };
+
+    Tooltip.prototype._fixTitle = function _fixTitle() {
+      var titleType = _typeof(this.element.getAttribute('data-original-title'));
+      if (this.element.getAttribute('title') || titleType !== 'string') {
+        this.element.setAttribute('data-original-title', this.element.getAttribute('title') || '');
+        this.element.setAttribute('title', '');
+      }
+    };
+
+    Tooltip.prototype._enter = function _enter(event, context) {
+      var dataKey = this.constructor.DATA_KEY;
+
+      context = context || $(event.currentTarget).data(dataKey);
+
+      if (!context) {
+        context = new this.constructor(event.currentTarget, this._getDelegateConfig());
+        $(event.currentTarget).data(dataKey, context);
+      }
+
+      if (event) {
+        context._activeTrigger[event.type === 'focusin' ? Trigger.FOCUS : Trigger.HOVER] = true;
+      }
+
+      if ($(context.getTipElement()).hasClass(ClassName.IN) || context._hoverState === HoverState.IN) {
         context._hoverState = HoverState.IN;
+        return;
+      }
 
-        if (!context.config.delay || !context.config.delay.show) {
+      clearTimeout(context._timeout);
+
+      context._hoverState = HoverState.IN;
+
+      if (!context.config.delay || !context.config.delay.show) {
+        context.show();
+        return;
+      }
+
+      context._timeout = setTimeout(function () {
+        if (context._hoverState === HoverState.IN) {
           context.show();
-          return;
         }
+      }, context.config.delay.show);
+    };
 
-        context._timeout = setTimeout(function () {
-          if (context._hoverState === HoverState.IN) {
-            context.show();
-          }
-        }, context.config.delay.show);
+    Tooltip.prototype._leave = function _leave(event, context) {
+      var dataKey = this.constructor.DATA_KEY;
+
+      context = context || $(event.currentTarget).data(dataKey);
+
+      if (!context) {
+        context = new this.constructor(event.currentTarget, this._getDelegateConfig());
+        $(event.currentTarget).data(dataKey, context);
       }
-    }, {
-      key: '_leave',
-      value: function _leave(event, context) {
-        var dataKey = this.constructor.DATA_KEY;
 
-        context = context || $(event.currentTarget).data(dataKey);
+      if (event) {
+        context._activeTrigger[event.type === 'focusout' ? Trigger.FOCUS : Trigger.HOVER] = false;
+      }
 
-        if (!context) {
-          context = new this.constructor(event.currentTarget, this._getDelegateConfig());
-          $(event.currentTarget).data(dataKey, context);
-        }
+      if (context._isWithActiveTrigger()) {
+        return;
+      }
 
-        if (event) {
-          context._activeTrigger[event.type === 'focusout' ? Trigger.FOCUS : Trigger.HOVER] = false;
-        }
+      clearTimeout(context._timeout);
 
-        if (context._isWithActiveTrigger()) {
-          return;
-        }
+      context._hoverState = HoverState.OUT;
 
-        clearTimeout(context._timeout);
+      if (!context.config.delay || !context.config.delay.hide) {
+        context.hide();
+        return;
+      }
 
-        context._hoverState = HoverState.OUT;
-
-        if (!context.config.delay || !context.config.delay.hide) {
+      context._timeout = setTimeout(function () {
+        if (context._hoverState === HoverState.OUT) {
           context.hide();
+        }
+      }, context.config.delay.hide);
+    };
+
+    Tooltip.prototype._isWithActiveTrigger = function _isWithActiveTrigger() {
+      for (var trigger in this._activeTrigger) {
+        if (this._activeTrigger[trigger]) {
+          return true;
+        }
+      }
+
+      return false;
+    };
+
+    Tooltip.prototype._getConfig = function _getConfig(config) {
+      config = $.extend({}, this.constructor.Default, $(this.element).data(), config);
+
+      if (config.delay && typeof config.delay === 'number') {
+        config.delay = {
+          show: config.delay,
+          hide: config.delay
+        };
+      }
+
+      Util.typeCheckConfig(NAME, config, this.constructor.DefaultType);
+
+      return config;
+    };
+
+    Tooltip.prototype._getDelegateConfig = function _getDelegateConfig() {
+      var config = {};
+
+      if (this.config) {
+        for (var key in this.config) {
+          if (this.constructor.Default[key] !== this.config[key]) {
+            config[key] = this.config[key];
+          }
+        }
+      }
+
+      return config;
+    };
+
+    // static
+
+    Tooltip._jQueryInterface = function _jQueryInterface(config) {
+      return this.each(function () {
+        var data = $(this).data(DATA_KEY);
+        var _config = (typeof config === 'undefined' ? 'undefined' : _typeof(config)) === 'object' ? config : null;
+
+        if (!data && /dispose|hide/.test(config)) {
           return;
         }
 
-        context._timeout = setTimeout(function () {
-          if (context._hoverState === HoverState.OUT) {
-            context.hide();
-          }
-        }, context.config.delay.hide);
-      }
-    }, {
-      key: '_isWithActiveTrigger',
-      value: function _isWithActiveTrigger() {
-        for (var trigger in this._activeTrigger) {
-          if (this._activeTrigger[trigger]) {
-            return true;
-          }
+        if (!data) {
+          data = new Tooltip(this, _config);
+          $(this).data(DATA_KEY, data);
         }
 
-        return false;
-      }
-    }, {
-      key: '_getConfig',
-      value: function _getConfig(config) {
-        config = $.extend({}, this.constructor.Default, $(this.element).data(), config);
-
-        if (config.delay && typeof config.delay === 'number') {
-          config.delay = {
-            show: config.delay,
-            hide: config.delay
-          };
+        if (typeof config === 'string') {
+          if (data[config] === undefined) {
+            throw new Error('No method named "' + config + '"');
+          }
+          data[config]();
         }
+      });
+    };
 
-        Util.typeCheckConfig(NAME, config, this.constructor.DefaultType);
-
-        return config;
-      }
-    }, {
-      key: '_getDelegateConfig',
-      value: function _getDelegateConfig() {
-        var config = {};
-
-        if (this.config) {
-          for (var key in this.config) {
-            if (this.constructor.Default[key] !== this.config[key]) {
-              config[key] = this.config[key];
-            }
-          }
-        }
-
-        return config;
-      }
-
-      // static
-
-    }], [{
-      key: '_jQueryInterface',
-      value: function _jQueryInterface(config) {
-        return this.each(function () {
-          var data = $(this).data(DATA_KEY);
-          var _config = typeof config === 'object' ? config : null;
-
-          if (!data && /destroy|hide/.test(config)) {
-            return;
-          }
-
-          if (!data) {
-            data = new Tooltip(this, _config);
-            $(this).data(DATA_KEY, data);
-          }
-
-          if (typeof config === 'string') {
-            if (data[config] === undefined) {
-              throw new Error('No method named "' + config + '"');
-            }
-            data[config]();
-          }
-        });
-      }
-    }, {
+    _createClass(Tooltip, null, [{
       key: 'VERSION',
       get: function get() {
         return VERSION;
@@ -3383,7 +3547,13 @@ var Tooltip = (function ($) {
     }]);
 
     return Tooltip;
-  })();
+  }();
+
+  /**
+   * ------------------------------------------------------------------------
+   * jQuery
+   * ------------------------------------------------------------------------
+   */
 
   $.fn[NAME] = Tooltip._jQueryInterface;
   $.fn[NAME].Constructor = Tooltip;
@@ -3393,16 +3563,16 @@ var Tooltip = (function ($) {
   };
 
   return Tooltip;
-})(jQuery);
+}(jQuery);
 
 /**
  * --------------------------------------------------------------------------
- * Bootstrap (v4.0.0-alpha.4): popover.js
+ * Bootstrap (v4.0.0-alpha.5): popover.js
  * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
  * --------------------------------------------------------------------------
  */
 
-var Popover = (function ($) {
+var Popover = function ($) {
 
   /**
    * ------------------------------------------------------------------------
@@ -3411,7 +3581,7 @@ var Popover = (function ($) {
    */
 
   var NAME = 'popover';
-  var VERSION = '4.0.0-alpha.4';
+  var VERSION = '4.0.0-alpha.5';
   var DATA_KEY = 'bs.popover';
   var EVENT_KEY = '.' + DATA_KEY;
   var JQUERY_NO_CONFLICT = $.fn[NAME];
@@ -3420,7 +3590,7 @@ var Popover = (function ($) {
     placement: 'right',
     trigger: 'click',
     content: '',
-    template: '<div class="popover" role="tooltip">' + '<div class="popover-arrow"></div>' + '<h3 class="popover-title"></h3>' + '<div class="popover-content"></div></div>'
+    template: '<div class="popover" role="tooltip">' + '<h3 class="popover-title"></h3>' + '<div class="popover-content"></div></div>'
   });
 
   var DefaultType = $.extend({}, Tooltip.DefaultType, {
@@ -3434,8 +3604,7 @@ var Popover = (function ($) {
 
   var Selector = {
     TITLE: '.popover-title',
-    CONTENT: '.popover-content',
-    ARROW: '.popover-arrow'
+    CONTENT: '.popover-content'
   };
 
   var Event = {
@@ -3457,84 +3626,71 @@ var Popover = (function ($) {
    * ------------------------------------------------------------------------
    */
 
-  var Popover = (function (_Tooltip) {
+  var Popover = function (_Tooltip) {
     _inherits(Popover, _Tooltip);
 
     function Popover() {
       _classCallCheck(this, Popover);
 
-      _get(Object.getPrototypeOf(Popover.prototype), 'constructor', this).apply(this, arguments);
+      return _possibleConstructorReturn(this, _Tooltip.apply(this, arguments));
     }
 
-    /**
-     * ------------------------------------------------------------------------
-     * jQuery
-     * ------------------------------------------------------------------------
-     */
+    // overrides
 
-    _createClass(Popover, [{
-      key: 'isWithContent',
+    Popover.prototype.isWithContent = function isWithContent() {
+      return this.getTitle() || this._getContent();
+    };
 
-      // overrides
+    Popover.prototype.getTipElement = function getTipElement() {
+      return this.tip = this.tip || $(this.config.template)[0];
+    };
 
-      value: function isWithContent() {
-        return this.getTitle() || this._getContent();
-      }
-    }, {
-      key: 'getTipElement',
-      value: function getTipElement() {
-        return this.tip = this.tip || $(this.config.template)[0];
-      }
-    }, {
-      key: 'setContent',
-      value: function setContent() {
-        var $tip = $(this.getTipElement());
+    Popover.prototype.setContent = function setContent() {
+      var $tip = $(this.getTipElement());
 
-        // we use append for html objects to maintain js events
-        this.setElementContent($tip.find(Selector.TITLE), this.getTitle());
-        this.setElementContent($tip.find(Selector.CONTENT), this._getContent());
+      // we use append for html objects to maintain js events
+      this.setElementContent($tip.find(Selector.TITLE), this.getTitle());
+      this.setElementContent($tip.find(Selector.CONTENT), this._getContent());
 
-        $tip.removeClass(ClassName.FADE).removeClass(ClassName.IN);
+      $tip.removeClass(ClassName.FADE).removeClass(ClassName.IN);
 
-        this.cleanupTether();
-      }
+      this.cleanupTether();
+    };
 
-      // private
+    // private
 
-    }, {
-      key: '_getContent',
-      value: function _getContent() {
-        return this.element.getAttribute('data-content') || (typeof this.config.content === 'function' ? this.config.content.call(this.element) : this.config.content);
-      }
+    Popover.prototype._getContent = function _getContent() {
+      return this.element.getAttribute('data-content') || (typeof this.config.content === 'function' ? this.config.content.call(this.element) : this.config.content);
+    };
 
-      // static
+    // static
 
-    }], [{
-      key: '_jQueryInterface',
-      value: function _jQueryInterface(config) {
-        return this.each(function () {
-          var data = $(this).data(DATA_KEY);
-          var _config = typeof config === 'object' ? config : null;
+    Popover._jQueryInterface = function _jQueryInterface(config) {
+      return this.each(function () {
+        var data = $(this).data(DATA_KEY);
+        var _config = (typeof config === 'undefined' ? 'undefined' : _typeof(config)) === 'object' ? config : null;
 
-          if (!data && /destroy|hide/.test(config)) {
-            return;
+        if (!data && /destroy|hide/.test(config)) {
+          return;
+        }
+
+        if (!data) {
+          data = new Popover(this, _config);
+          $(this).data(DATA_KEY, data);
+        }
+
+        if (typeof config === 'string') {
+          if (data[config] === undefined) {
+            throw new Error('No method named "' + config + '"');
           }
+          data[config]();
+        }
+      });
+    };
 
-          if (!data) {
-            data = new Popover(this, _config);
-            $(this).data(DATA_KEY, data);
-          }
-
-          if (typeof config === 'string') {
-            if (data[config] === undefined) {
-              throw new Error('No method named "' + config + '"');
-            }
-            data[config]();
-          }
-        });
-      }
-    }, {
+    _createClass(Popover, null, [{
       key: 'VERSION',
+
 
       // getters
 
@@ -3574,7 +3730,13 @@ var Popover = (function ($) {
     }]);
 
     return Popover;
-  })(Tooltip);
+  }(Tooltip);
+
+  /**
+   * ------------------------------------------------------------------------
+   * jQuery
+   * ------------------------------------------------------------------------
+   */
 
   $.fn[NAME] = Popover._jQueryInterface;
   $.fn[NAME].Constructor = Popover;
@@ -3584,423 +3746,13 @@ var Popover = (function ($) {
   };
 
   return Popover;
-})(jQuery);
-
 }(jQuery);
 
-},{}],3:[function(require,module,exports){
+}();
 
 },{}],4:[function(require,module,exports){
-(function (process){
-// Copyright Joyent, Inc. and other Node contributors.
-//
-// Permission is hereby granted, free of charge, to any person obtaining a
-// copy of this software and associated documentation files (the
-// "Software"), to deal in the Software without restriction, including
-// without limitation the rights to use, copy, modify, merge, publish,
-// distribute, sublicense, and/or sell copies of the Software, and to permit
-// persons to whom the Software is furnished to do so, subject to the
-// following conditions:
-//
-// The above copyright notice and this permission notice shall be included
-// in all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-// OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN
-// NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
-// DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
-// OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
-// USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-// resolves . and .. elements in a path array with directory names there
-// must be no slashes, empty elements, or device names (c:\) in the array
-// (so also no leading and trailing slashes - it does not distinguish
-// relative and absolute paths)
-function normalizeArray(parts, allowAboveRoot) {
-  // if the path tries to go above the root, `up` ends up > 0
-  var up = 0;
-  for (var i = parts.length - 1; i >= 0; i--) {
-    var last = parts[i];
-    if (last === '.') {
-      parts.splice(i, 1);
-    } else if (last === '..') {
-      parts.splice(i, 1);
-      up++;
-    } else if (up) {
-      parts.splice(i, 1);
-      up--;
-    }
-  }
-
-  // if the path is allowed to go above the root, restore leading ..s
-  if (allowAboveRoot) {
-    for (; up--; up) {
-      parts.unshift('..');
-    }
-  }
-
-  return parts;
-}
-
-// Split a filename into [root, dir, basename, ext], unix version
-// 'root' is just a slash, or nothing.
-var splitPathRe =
-    /^(\/?|)([\s\S]*?)((?:\.{1,2}|[^\/]+?|)(\.[^.\/]*|))(?:[\/]*)$/;
-var splitPath = function(filename) {
-  return splitPathRe.exec(filename).slice(1);
-};
-
-// path.resolve([from ...], to)
-// posix version
-exports.resolve = function() {
-  var resolvedPath = '',
-      resolvedAbsolute = false;
-
-  for (var i = arguments.length - 1; i >= -1 && !resolvedAbsolute; i--) {
-    var path = (i >= 0) ? arguments[i] : process.cwd();
-
-    // Skip empty and invalid entries
-    if (typeof path !== 'string') {
-      throw new TypeError('Arguments to path.resolve must be strings');
-    } else if (!path) {
-      continue;
-    }
-
-    resolvedPath = path + '/' + resolvedPath;
-    resolvedAbsolute = path.charAt(0) === '/';
-  }
-
-  // At this point the path should be resolved to a full absolute path, but
-  // handle relative paths to be safe (might happen when process.cwd() fails)
-
-  // Normalize the path
-  resolvedPath = normalizeArray(filter(resolvedPath.split('/'), function(p) {
-    return !!p;
-  }), !resolvedAbsolute).join('/');
-
-  return ((resolvedAbsolute ? '/' : '') + resolvedPath) || '.';
-};
-
-// path.normalize(path)
-// posix version
-exports.normalize = function(path) {
-  var isAbsolute = exports.isAbsolute(path),
-      trailingSlash = substr(path, -1) === '/';
-
-  // Normalize the path
-  path = normalizeArray(filter(path.split('/'), function(p) {
-    return !!p;
-  }), !isAbsolute).join('/');
-
-  if (!path && !isAbsolute) {
-    path = '.';
-  }
-  if (path && trailingSlash) {
-    path += '/';
-  }
-
-  return (isAbsolute ? '/' : '') + path;
-};
-
-// posix version
-exports.isAbsolute = function(path) {
-  return path.charAt(0) === '/';
-};
-
-// posix version
-exports.join = function() {
-  var paths = Array.prototype.slice.call(arguments, 0);
-  return exports.normalize(filter(paths, function(p, index) {
-    if (typeof p !== 'string') {
-      throw new TypeError('Arguments to path.join must be strings');
-    }
-    return p;
-  }).join('/'));
-};
-
-
-// path.relative(from, to)
-// posix version
-exports.relative = function(from, to) {
-  from = exports.resolve(from).substr(1);
-  to = exports.resolve(to).substr(1);
-
-  function trim(arr) {
-    var start = 0;
-    for (; start < arr.length; start++) {
-      if (arr[start] !== '') break;
-    }
-
-    var end = arr.length - 1;
-    for (; end >= 0; end--) {
-      if (arr[end] !== '') break;
-    }
-
-    if (start > end) return [];
-    return arr.slice(start, end - start + 1);
-  }
-
-  var fromParts = trim(from.split('/'));
-  var toParts = trim(to.split('/'));
-
-  var length = Math.min(fromParts.length, toParts.length);
-  var samePartsLength = length;
-  for (var i = 0; i < length; i++) {
-    if (fromParts[i] !== toParts[i]) {
-      samePartsLength = i;
-      break;
-    }
-  }
-
-  var outputParts = [];
-  for (var i = samePartsLength; i < fromParts.length; i++) {
-    outputParts.push('..');
-  }
-
-  outputParts = outputParts.concat(toParts.slice(samePartsLength));
-
-  return outputParts.join('/');
-};
-
-exports.sep = '/';
-exports.delimiter = ':';
-
-exports.dirname = function(path) {
-  var result = splitPath(path),
-      root = result[0],
-      dir = result[1];
-
-  if (!root && !dir) {
-    // No dirname whatsoever
-    return '.';
-  }
-
-  if (dir) {
-    // It has a dirname, strip trailing slash
-    dir = dir.substr(0, dir.length - 1);
-  }
-
-  return root + dir;
-};
-
-
-exports.basename = function(path, ext) {
-  var f = splitPath(path)[2];
-  // TODO: make this comparison case-insensitive on windows?
-  if (ext && f.substr(-1 * ext.length) === ext) {
-    f = f.substr(0, f.length - ext.length);
-  }
-  return f;
-};
-
-
-exports.extname = function(path) {
-  return splitPath(path)[3];
-};
-
-function filter (xs, f) {
-    if (xs.filter) return xs.filter(f);
-    var res = [];
-    for (var i = 0; i < xs.length; i++) {
-        if (f(xs[i], i, xs)) res.push(xs[i]);
-    }
-    return res;
-}
-
-// String.prototype.substr - negative index don't work in IE8
-var substr = 'ab'.substr(-1) === 'b'
-    ? function (str, start, len) { return str.substr(start, len) }
-    : function (str, start, len) {
-        if (start < 0) start = str.length + start;
-        return str.substr(start, len);
-    }
-;
-
-}).call(this,require('_process'))
-},{"_process":5}],5:[function(require,module,exports){
-// shim for using process in browser
-var process = module.exports = {};
-
-// cached from whatever global is present so that test runners that stub it
-// don't break things.  But we need to wrap it in a try catch in case it is
-// wrapped in strict mode code which doesn't define any globals.  It's inside a
-// function because try/catches deoptimize in certain engines.
-
-var cachedSetTimeout;
-var cachedClearTimeout;
-
-function defaultSetTimout() {
-    throw new Error('setTimeout has not been defined');
-}
-function defaultClearTimeout () {
-    throw new Error('clearTimeout has not been defined');
-}
-(function () {
-    try {
-        if (typeof setTimeout === 'function') {
-            cachedSetTimeout = setTimeout;
-        } else {
-            cachedSetTimeout = defaultSetTimout;
-        }
-    } catch (e) {
-        cachedSetTimeout = defaultSetTimout;
-    }
-    try {
-        if (typeof clearTimeout === 'function') {
-            cachedClearTimeout = clearTimeout;
-        } else {
-            cachedClearTimeout = defaultClearTimeout;
-        }
-    } catch (e) {
-        cachedClearTimeout = defaultClearTimeout;
-    }
-} ())
-function runTimeout(fun) {
-    if (cachedSetTimeout === setTimeout) {
-        //normal enviroments in sane situations
-        return setTimeout(fun, 0);
-    }
-    // if setTimeout wasn't available but was latter defined
-    if ((cachedSetTimeout === defaultSetTimout || !cachedSetTimeout) && setTimeout) {
-        cachedSetTimeout = setTimeout;
-        return setTimeout(fun, 0);
-    }
-    try {
-        // when when somebody has screwed with setTimeout but no I.E. maddness
-        return cachedSetTimeout(fun, 0);
-    } catch(e){
-        try {
-            // When we are in I.E. but the script has been evaled so I.E. doesn't trust the global object when called normally
-            return cachedSetTimeout.call(null, fun, 0);
-        } catch(e){
-            // same as above but when it's a version of I.E. that must have the global object for 'this', hopfully our context correct otherwise it will throw a global error
-            return cachedSetTimeout.call(this, fun, 0);
-        }
-    }
-
-
-}
-function runClearTimeout(marker) {
-    if (cachedClearTimeout === clearTimeout) {
-        //normal enviroments in sane situations
-        return clearTimeout(marker);
-    }
-    // if clearTimeout wasn't available but was latter defined
-    if ((cachedClearTimeout === defaultClearTimeout || !cachedClearTimeout) && clearTimeout) {
-        cachedClearTimeout = clearTimeout;
-        return clearTimeout(marker);
-    }
-    try {
-        // when when somebody has screwed with setTimeout but no I.E. maddness
-        return cachedClearTimeout(marker);
-    } catch (e){
-        try {
-            // When we are in I.E. but the script has been evaled so I.E. doesn't  trust the global object when called normally
-            return cachedClearTimeout.call(null, marker);
-        } catch (e){
-            // same as above but when it's a version of I.E. that must have the global object for 'this', hopfully our context correct otherwise it will throw a global error.
-            // Some versions of I.E. have different rules for clearTimeout vs setTimeout
-            return cachedClearTimeout.call(this, marker);
-        }
-    }
-
-
-
-}
-var queue = [];
-var draining = false;
-var currentQueue;
-var queueIndex = -1;
-
-function cleanUpNextTick() {
-    if (!draining || !currentQueue) {
-        return;
-    }
-    draining = false;
-    if (currentQueue.length) {
-        queue = currentQueue.concat(queue);
-    } else {
-        queueIndex = -1;
-    }
-    if (queue.length) {
-        drainQueue();
-    }
-}
-
-function drainQueue() {
-    if (draining) {
-        return;
-    }
-    var timeout = runTimeout(cleanUpNextTick);
-    draining = true;
-
-    var len = queue.length;
-    while(len) {
-        currentQueue = queue;
-        queue = [];
-        while (++queueIndex < len) {
-            if (currentQueue) {
-                currentQueue[queueIndex].run();
-            }
-        }
-        queueIndex = -1;
-        len = queue.length;
-    }
-    currentQueue = null;
-    draining = false;
-    runClearTimeout(timeout);
-}
-
-process.nextTick = function (fun) {
-    var args = new Array(arguments.length - 1);
-    if (arguments.length > 1) {
-        for (var i = 1; i < arguments.length; i++) {
-            args[i - 1] = arguments[i];
-        }
-    }
-    queue.push(new Item(fun, args));
-    if (queue.length === 1 && !draining) {
-        runTimeout(drainQueue);
-    }
-};
-
-// v8 likes predictible objects
-function Item(fun, array) {
-    this.fun = fun;
-    this.array = array;
-}
-Item.prototype.run = function () {
-    this.fun.apply(null, this.array);
-};
-process.title = 'browser';
-process.browser = true;
-process.env = {};
-process.argv = [];
-process.version = ''; // empty string to avoid regexp issues
-process.versions = {};
-
-function noop() {}
-
-process.on = noop;
-process.addListener = noop;
-process.once = noop;
-process.off = noop;
-process.removeListener = noop;
-process.removeAllListeners = noop;
-process.emit = noop;
-
-process.binding = function (name) {
-    throw new Error('process.binding is not supported');
-};
-
-process.cwd = function () { return '/' };
-process.chdir = function (dir) {
-    throw new Error('process.chdir is not supported');
-};
-process.umask = function() { return 0; };
-
-},{}],6:[function(require,module,exports){
+},{}],5:[function(require,module,exports){
 (function() {
   var $, AbstractChosen, Chosen, SelectParser, _ref,
     __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
@@ -5305,7 +5057,7 @@ process.umask = function() { return 0; };
 
 }).call(this);
 
-},{}],7:[function(require,module,exports){
+},{}],6:[function(require,module,exports){
 (function (global, factory) {
     if (typeof define === "function" && define.amd) {
         define(['module', 'select'], factory);
@@ -5526,7 +5278,7 @@ process.umask = function() { return 0; };
 
     module.exports = ClipboardAction;
 });
-},{"select":15}],8:[function(require,module,exports){
+},{"select":64}],7:[function(require,module,exports){
 (function (global, factory) {
     if (typeof define === "function" && define.amd) {
         define(['module', './clipboard-action', 'tiny-emitter', 'good-listener'], factory);
@@ -5685,7 +5437,7 @@ process.umask = function() { return 0; };
 
     module.exports = Clipboard;
 });
-},{"./clipboard-action":7,"good-listener":14,"tiny-emitter":16}],9:[function(require,module,exports){
+},{"./clipboard-action":6,"good-listener":16,"tiny-emitter":66}],8:[function(require,module,exports){
 /**
  * Module Dependencies
  */
@@ -5723,7 +5475,7 @@ function closest (el, selector, scope) {
   return matches(el, selector) ? el : null;
 }
 
-},{"component-matches-selector":10,"matches-selector":10}],10:[function(require,module,exports){
+},{"component-matches-selector":9,"matches-selector":9}],9:[function(require,module,exports){
 /**
  * Module dependencies.
  */
@@ -5775,7 +5527,7 @@ function match(el, selector) {
   return false;
 }
 
-},{"component-query":11,"query":11}],11:[function(require,module,exports){
+},{"component-query":10,"query":10}],10:[function(require,module,exports){
 function one(selector, el) {
   return el.querySelector(selector);
 }
@@ -5798,312 +5550,15 @@ exports.engine = function(obj){
   return exports;
 };
 
-},{}],12:[function(require,module,exports){
-var closest = require('component-closest');
-
-/**
- * Delegates event to a selector.
- *
- * @param {Element} element
- * @param {String} selector
- * @param {String} type
- * @param {Function} callback
- * @param {Boolean} useCapture
- * @return {Object}
- */
-function delegate(element, selector, type, callback, useCapture) {
-    var listenerFn = listener.apply(this, arguments);
-
-    element.addEventListener(type, listenerFn, useCapture);
-
-    return {
-        destroy: function() {
-            element.removeEventListener(type, listenerFn, useCapture);
-        }
-    }
-}
-
-/**
- * Finds closest match and invokes callback.
- *
- * @param {Element} element
- * @param {String} selector
- * @param {String} type
- * @param {Function} callback
- * @return {Function}
- */
-function listener(element, selector, type, callback) {
-    return function(e) {
-        e.delegateTarget = closest(e.target, selector, true);
-
-        if (e.delegateTarget) {
-            callback.call(element, e);
-        }
-    }
-}
-
-module.exports = delegate;
-
-},{"component-closest":9}],13:[function(require,module,exports){
-/**
- * Check if argument is a HTML element.
- *
- * @param {Object} value
- * @return {Boolean}
- */
-exports.node = function(value) {
-    return value !== undefined
-        && value instanceof HTMLElement
-        && value.nodeType === 1;
-};
-
-/**
- * Check if argument is a list of HTML elements.
- *
- * @param {Object} value
- * @return {Boolean}
- */
-exports.nodeList = function(value) {
-    var type = Object.prototype.toString.call(value);
-
-    return value !== undefined
-        && (type === '[object NodeList]' || type === '[object HTMLCollection]')
-        && ('length' in value)
-        && (value.length === 0 || exports.node(value[0]));
-};
-
-/**
- * Check if argument is a string.
- *
- * @param {Object} value
- * @return {Boolean}
- */
-exports.string = function(value) {
-    return typeof value === 'string'
-        || value instanceof String;
-};
-
-/**
- * Check if argument is a function.
- *
- * @param {Object} value
- * @return {Boolean}
- */
-exports.fn = function(value) {
-    var type = Object.prototype.toString.call(value);
-
-    return type === '[object Function]';
-};
-
-},{}],14:[function(require,module,exports){
-var is = require('./is');
-var delegate = require('delegate');
-
-/**
- * Validates all params and calls the right
- * listener function based on its target type.
- *
- * @param {String|HTMLElement|HTMLCollection|NodeList} target
- * @param {String} type
- * @param {Function} callback
- * @return {Object}
- */
-function listen(target, type, callback) {
-    if (!target && !type && !callback) {
-        throw new Error('Missing required arguments');
-    }
-
-    if (!is.string(type)) {
-        throw new TypeError('Second argument must be a String');
-    }
-
-    if (!is.fn(callback)) {
-        throw new TypeError('Third argument must be a Function');
-    }
-
-    if (is.node(target)) {
-        return listenNode(target, type, callback);
-    }
-    else if (is.nodeList(target)) {
-        return listenNodeList(target, type, callback);
-    }
-    else if (is.string(target)) {
-        return listenSelector(target, type, callback);
-    }
-    else {
-        throw new TypeError('First argument must be a String, HTMLElement, HTMLCollection, or NodeList');
-    }
-}
-
-/**
- * Adds an event listener to a HTML element
- * and returns a remove listener function.
- *
- * @param {HTMLElement} node
- * @param {String} type
- * @param {Function} callback
- * @return {Object}
- */
-function listenNode(node, type, callback) {
-    node.addEventListener(type, callback);
-
-    return {
-        destroy: function() {
-            node.removeEventListener(type, callback);
-        }
-    }
-}
-
-/**
- * Add an event listener to a list of HTML elements
- * and returns a remove listener function.
- *
- * @param {NodeList|HTMLCollection} nodeList
- * @param {String} type
- * @param {Function} callback
- * @return {Object}
- */
-function listenNodeList(nodeList, type, callback) {
-    Array.prototype.forEach.call(nodeList, function(node) {
-        node.addEventListener(type, callback);
-    });
-
-    return {
-        destroy: function() {
-            Array.prototype.forEach.call(nodeList, function(node) {
-                node.removeEventListener(type, callback);
-            });
-        }
-    }
-}
-
-/**
- * Add an event listener to a selector
- * and returns a remove listener function.
- *
- * @param {String} selector
- * @param {String} type
- * @param {Function} callback
- * @return {Object}
- */
-function listenSelector(selector, type, callback) {
-    return delegate(document.body, selector, type, callback);
-}
-
-module.exports = listen;
-
-},{"./is":13,"delegate":12}],15:[function(require,module,exports){
-function select(element) {
-    var selectedText;
-
-    if (element.nodeName === 'SELECT') {
-        element.focus();
-
-        selectedText = element.value;
-    }
-    else if (element.nodeName === 'INPUT' || element.nodeName === 'TEXTAREA') {
-        element.focus();
-        element.setSelectionRange(0, element.value.length);
-
-        selectedText = element.value;
-    }
-    else {
-        if (element.hasAttribute('contenteditable')) {
-            element.focus();
-        }
-
-        var selection = window.getSelection();
-        var range = document.createRange();
-
-        range.selectNodeContents(element);
-        selection.removeAllRanges();
-        selection.addRange(range);
-
-        selectedText = selection.toString();
-    }
-
-    return selectedText;
-}
-
-module.exports = select;
-
-},{}],16:[function(require,module,exports){
-function E () {
-  // Keep this empty so it's easier to inherit from
-  // (via https://github.com/lipsmack from https://github.com/scottcorgan/tiny-emitter/issues/3)
-}
-
-E.prototype = {
-  on: function (name, callback, ctx) {
-    var e = this.e || (this.e = {});
-
-    (e[name] || (e[name] = [])).push({
-      fn: callback,
-      ctx: ctx
-    });
-
-    return this;
-  },
-
-  once: function (name, callback, ctx) {
-    var self = this;
-    function listener () {
-      self.off(name, listener);
-      callback.apply(ctx, arguments);
-    };
-
-    listener._ = callback
-    return this.on(name, listener, ctx);
-  },
-
-  emit: function (name) {
-    var data = [].slice.call(arguments, 1);
-    var evtArr = ((this.e || (this.e = {}))[name] || []).slice();
-    var i = 0;
-    var len = evtArr.length;
-
-    for (i; i < len; i++) {
-      evtArr[i].fn.apply(evtArr[i].ctx, data);
-    }
-
-    return this;
-  },
-
-  off: function (name, callback) {
-    var e = this.e || (this.e = {});
-    var evts = e[name];
-    var liveEvents = [];
-
-    if (evts && callback) {
-      for (var i = 0, len = evts.length; i < len; i++) {
-        if (evts[i].fn !== callback && evts[i].fn._ !== callback)
-          liveEvents.push(evts[i]);
-      }
-    }
-
-    // Remove event from queue to prevent memory leak
-    // Suggested by https://github.com/lazd
-    // Ref: https://github.com/scottcorgan/tiny-emitter/commit/c6ebfaa9bc973b33d110a84a307742b7cf94c953#commitcomment-5024910
-
-    (liveEvents.length)
-      ? e[name] = liveEvents
-      : delete e[name];
-
-    return this;
-  }
-};
-
-module.exports = E;
-
-},{}],17:[function(require,module,exports){
-// https://d3js.org Version 4.2.7. Copyright 2016 Mike Bostock.
+},{}],11:[function(require,module,exports){
+// https://d3js.org Version 4.2.8. Copyright 2016 Mike Bostock.
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
   typeof define === 'function' && define.amd ? define(['exports'], factory) :
   (factory((global.d3 = global.d3 || {})));
 }(this, (function (exports) { 'use strict';
 
-var version = "4.2.7";
+var version = "4.2.8";
 
 var ascending = function(a, b) {
   return a < b ? -1 : a > b ? 1 : a >= b ? 0 : NaN;
@@ -14331,7 +13786,7 @@ var interrupt = function(node, name) {
 
   for (i in schedules) {
     if ((schedule = schedules[i]).name !== name) { empty = false; continue; }
-    active = schedule.state === STARTED;
+    active = schedule.state > STARTING && schedule.state < ENDING;
     schedule.state = ENDED;
     schedule.timer.stop();
     if (active) schedule.on.call("interrupt", node, node.__data__, schedule.index, schedule.group);
@@ -22410,7 +21865,3104 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 })));
 
-},{}],18:[function(require,module,exports){
+},{}],12:[function(require,module,exports){
+var closest = require('component-closest');
+
+/**
+ * Delegates event to a selector.
+ *
+ * @param {Element} element
+ * @param {String} selector
+ * @param {String} type
+ * @param {Function} callback
+ * @param {Boolean} useCapture
+ * @return {Object}
+ */
+function delegate(element, selector, type, callback, useCapture) {
+    var listenerFn = listener.apply(this, arguments);
+
+    element.addEventListener(type, listenerFn, useCapture);
+
+    return {
+        destroy: function() {
+            element.removeEventListener(type, listenerFn, useCapture);
+        }
+    }
+}
+
+/**
+ * Finds closest match and invokes callback.
+ *
+ * @param {Element} element
+ * @param {String} selector
+ * @param {String} type
+ * @param {Function} callback
+ * @return {Function}
+ */
+function listener(element, selector, type, callback) {
+    return function(e) {
+        e.delegateTarget = closest(e.target, selector, true);
+
+        if (e.delegateTarget) {
+            callback.call(element, e);
+        }
+    }
+}
+
+module.exports = delegate;
+
+},{"component-closest":8}],13:[function(require,module,exports){
+/*
+formBuilder - https://formbuilder.online/
+Version: 1.24.1
+Author: Kevin Chappell <kevin.b.chappell@gmail.com>
+*/
+'use strict';
+
+// Element.remove() polyfill
+
+if (!('remove' in Element.prototype)) {
+  Element.prototype.remove = function () {
+    if (this.parentNode) {
+      this.parentNode.removeChild(this);
+    }
+  };
+}
+
+// Event polyfill
+if (typeof Event !== 'function') {
+  (function () {
+    window.Event = function (evt) {
+      var event = document.createEvent('Event');
+      event.initEvent(evt, true, true);
+      return event;
+    };
+  })();
+}
+
+// Object.assign polyfill
+if (typeof Object.assign != 'function') {
+  Object.assign = function (target) {
+    'use strict';
+
+    if (target == null) {
+      throw new TypeError('Cannot convert undefined or null to object');
+    }
+
+    target = Object(target);
+    for (var index = 1; index < arguments.length; index++) {
+      var source = arguments[index];
+      if (source != null) {
+        for (var key in source) {
+          if (Object.prototype.hasOwnProperty.call(source, key)) {
+            target[key] = source[key];
+          }
+        }
+      }
+    }
+    return target;
+  };
+}
+'use strict';
+/**
+ *
+ */
+
+var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol ? "symbol" : typeof obj; };
+
+var fbUtils = {};
+
+// cleaner syntax for testing indexOf element
+fbUtils.inArray = function (needle, haystack) {
+  return haystack.indexOf(needle) !== -1;
+};
+
+/**
+ * Remove null or undefined values
+ * @param  {Object} attrs {attrName: attrValue}
+ * @return {Object}       Object trimmed of null or undefined values
+ */
+fbUtils.trimObj = function (attrs) {
+  var xmlRemove = [null, undefined, '', false, 'false'];
+  for (var attr in attrs) {
+    if (fbUtils.inArray(attrs[attr], xmlRemove)) {
+      delete attrs[attr];
+    } else if (Array.isArray(attrs[attr])) {
+      if (!attrs[attr].length) {
+        delete attrs[attr];
+      }
+    }
+  }
+
+  return attrs;
+};
+
+/**
+ * Test if attribute is a valid HTML attribute
+ * @param  {String} attr
+ * @return {Boolean}
+ */
+fbUtils.validAttr = function (attr) {
+  var invalid = ['values', 'enableOther', 'other', 'label',
+  // 'style',
+  'subtype'];
+  return !fbUtils.inArray(attr, invalid);
+};
+
+/**
+ * Convert an attrs object into a string
+ *
+ * @param  {Object} attrs object of attributes for markup
+ * @return {string}
+ */
+fbUtils.attrString = function (attrs) {
+  var attributes = [];
+
+  for (var attr in attrs) {
+    if (attrs.hasOwnProperty(attr) && fbUtils.validAttr(attr)) {
+      attr = fbUtils.safeAttr(attr, attrs[attr]);
+      attributes.push(attr.name + attr.value);
+    }
+  }
+  return attributes.join(' ');
+};
+
+/**
+ * Convert attributes to markup safe strings
+ * @param  {String} name  attribute name
+ * @param  {String} value attribute value
+ * @return {Object}       {attrName: attrValue}
+ */
+fbUtils.safeAttr = function (name, value) {
+  name = fbUtils.safeAttrName(name);
+
+  var valString = fbUtils.escapeAttr(value);
+
+  value = value ? '="' + valString + '"' : '';
+  return {
+    name: name,
+    value: value
+  };
+};
+
+fbUtils.safeAttrName = function (name) {
+  var safeAttr = {
+    className: 'class'
+  };
+
+  return safeAttr[name] || fbUtils.hyphenCase(name);
+};
+
+/**
+ * Convert strings into lowercase-hyphen
+ *
+ * @param  {String} str
+ * @return {String}
+ */
+fbUtils.hyphenCase = function (str) {
+  str = str.replace(/[^\w\s\-]/gi, '');
+  str = str.replace(/([A-Z])/g, function ($1) {
+    return '-' + $1.toLowerCase();
+  });
+
+  return str.replace(/\s/g, '-').replace(/^-+/g, '');
+};
+
+/**
+ * convert a hyphenated string to camelCase
+ * @param  {String} str
+ * @return {String}
+ */
+fbUtils.camelCase = function (str) {
+  return str.replace(/-([a-z])/g, function (m, w) {
+    return w.toUpperCase();
+  });
+};
+
+/**
+ * Generate markup wrapper where needed
+ *
+ * @param  {string}              tag
+ * @param  {String|Array|Object} content we wrap this
+ * @param  {Object}              attrs
+ * @return {String}
+ */
+fbUtils.markup = function (tag) {
+  var content = arguments.length <= 1 || arguments[1] === undefined ? '' : arguments[1];
+  var attrs = arguments.length <= 2 || arguments[2] === undefined ? {} : arguments[2];
+
+  var contentType = void 0,
+      field = document.createElement(tag),
+      getContentType = function getContentType(content) {
+    return Array.isArray(content) ? 'array' : typeof content === 'undefined' ? 'undefined' : _typeof(content);
+  },
+      appendContent = {
+    string: function string(content) {
+      field.innerHTML = content;
+    },
+    object: function object(content) {
+      return field.appendChild(content);
+    },
+    array: function array(content) {
+      for (var i = 0; i < content.length; i++) {
+        contentType = getContentType(content[i]);
+        appendContent[contentType](content[i]);
+      }
+    }
+  };
+
+  for (var attr in attrs) {
+    if (attrs.hasOwnProperty(attr)) {
+      var name = fbUtils.safeAttrName(attr);
+      field.setAttribute(name, attrs[attr]);
+    }
+  }
+
+  contentType = getContentType(content);
+
+  if (content) {
+    appendContent[contentType].call(this, content);
+  }
+
+  return field;
+};
+
+/**
+ * Convert html element attributes to key/value object
+ * @param  {Object} DOM element
+ * @return {Object} ex: {attrName: attrValue}
+ */
+fbUtils.parseAttrs = function (elem) {
+  var attrs = elem.attributes;
+  var data = {};
+  fbUtils.forEach(attrs, function (attr) {
+    var attrVal = attrs[attr].value;
+    if (attrVal.match(/false|true/g)) {
+      attrVal = attrVal === 'true';
+    } else if (attrVal.match(/undefined/g)) {
+      attrVal = undefined;
+    }
+
+    if (attrVal) {
+      data[attrs[attr].name] = attrVal;
+    }
+  });
+
+  return data;
+};
+
+/**
+ * Convert field options to optionData
+ * @param  {Object} DOM element
+ * @return {Array}      optionData array
+ */
+fbUtils.parseOptions = function (field) {
+  var options = field.getElementsByTagName('option'),
+      optionData = {},
+      data = [];
+
+  if (options.length) {
+    for (var i = 0; i < options.length; i++) {
+      optionData = fbUtils.parseAttrs(options[i]);
+      optionData.label = options[i].textContent;
+      data.push(optionData);
+    }
+  }
+
+  return data;
+};
+
+/**
+ * Parse XML formData
+ * @param  {String} xmlString
+ * @return {Array}            formData array
+ */
+fbUtils.parseXML = function (xmlString) {
+  var parser = new window.DOMParser();
+  var xml = parser.parseFromString(xmlString, 'text/xml'),
+      formData = [];
+
+  if (xml) {
+    var fields = xml.getElementsByTagName('field');
+    for (var i = 0; i < fields.length; i++) {
+      var fieldData = fbUtils.parseAttrs(fields[i]);
+
+      if (fields[i].children.length) {
+        fieldData.values = fbUtils.parseOptions(fields[i]);
+      }
+
+      formData.push(fieldData);
+    }
+  }
+
+  return formData;
+};
+
+/**
+ * Escape markup so it can be displayed rather than rendered
+ * @param  {String} html markup
+ * @return {String}      escaped html
+ */
+fbUtils.escapeHtml = function (html) {
+  var escapeElement = document.createElement('textarea');
+  escapeElement.textContent = html;
+  return escapeElement.innerHTML;
+};
+
+// Escape an attribute
+fbUtils.escapeAttr = function (str) {
+  var match = {
+    '"': '&quot;',
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;'
+  };
+
+  function replaceTag(tag) {
+    return match[tag] || tag;
+  }
+
+  return typeof str === 'string' ? str.replace(/["&<>]/g, replaceTag) : str;
+};
+
+// Escape attributes
+fbUtils.escapeAttrs = function (attrs) {
+  for (var attr in attrs) {
+    if (attrs.hasOwnProperty(attr)) {
+      attrs[attr] = fbUtils.escapeAttr(attrs[attr]);
+    }
+  }
+
+  return attrs;
+};
+
+// forEach that can be used on nodeList
+fbUtils.forEach = function (array, callback, scope) {
+  for (var i = 0; i < array.length; i++) {
+    callback.call(scope, i, array[i]); // passes back stuff we need
+  }
+};
+
+/**
+ * Remove duplicates from an array of elements
+ * @param  {Array} arrArg array with possible duplicates
+ * @return {Array}        array with only unique values
+ */
+fbUtils.unique = function (array) {
+  return array.filter(function (elem, pos, arr) {
+    return arr.indexOf(elem) === pos;
+  });
+};
+
+/**
+   * Generate preview markup
+   * @param  {object} fieldData
+   * @return {string}       preview markup for field
+   */
+fbUtils.fieldRender = function (fieldData, opts) {
+  var preview = arguments.length <= 2 || arguments[2] === undefined ? false : arguments[2];
+
+  var fieldMarkup = '',
+      fieldLabel = '',
+      optionsMarkup = '',
+      fieldLabelText = fieldData.label || '',
+      fieldDesc = fieldData.description || '',
+      fieldRequired = '',
+      fieldOptions = fieldData.values;
+
+  fieldData.name = preview ? fieldData.name + '-preview' : fieldData.name;
+  fieldData.id = fieldData.name;
+  fieldData.name = fieldData.multiple ? fieldData.name + '[]' : fieldData.name;
+
+  fieldData.type = fieldData.subtype || fieldData.type;
+
+  if (fieldData.required) {
+    fieldData.required = null;
+    fieldData['aria-required'] = 'true';
+    fieldRequired = '<span class="required">*</span>';
+  }
+
+  if (fieldData.type !== 'hidden') {
+    if (fieldDesc) {
+      fieldDesc = '<span class="tooltip-element" tooltip="' + fieldDesc + '">?</span>';
+    }
+    fieldLabel = '<label for="' + fieldData.id + '" class="fb-' + fieldData.type + '-label">' + fieldLabelText + ' ' + fieldRequired + ' ' + fieldDesc + '</label>';
+  }
+
+  var fieldLabelVal = fieldData.label;
+
+  delete fieldData.label;
+  delete fieldData.description;
+
+  var fieldDataString = fbUtils.attrString(fieldData);
+
+  switch (fieldData.type) {
+    case 'textarea':
+    case 'rich-text':
+      delete fieldData.type;
+      var fieldVal = fieldData.value || '';
+      fieldMarkup = fieldLabel + '<textarea ' + fieldDataString + '>' + fieldVal + '</textarea>';
+      break;
+    case 'select':
+      var optionAttrsString;
+      fieldData.type = fieldData.type.replace('-group', '');
+
+      if (fieldOptions) {
+
+        if (fieldData.placeholder) {
+          optionsMarkup += '<option disabled selected>' + fieldData.placeholder + '</option>';
+        }
+
+        for (var i = 0; i < fieldOptions.length; i++) {
+          if (!fieldOptions[i].selected || fieldData.placeholder) {
+            delete fieldOptions[i].selected;
+          }
+          if (!fieldOptions[i].label) {
+            fieldOptions[i].label = '';
+          }
+          optionAttrsString = fbUtils.attrString(fieldOptions[i]);
+          optionsMarkup += '<option ' + optionAttrsString + '>' + fieldOptions[i].label + '</option>';
+        }
+      }
+
+      fieldMarkup = fieldLabel + '<select ' + fieldDataString + '>' + optionsMarkup + '</select>';
+      break;
+    case 'checkbox-group':
+    case 'radio-group':
+      var optionAttrs = void 0;
+      fieldData.type = fieldData.type.replace('-group', '');
+
+      if (fieldData.type === 'checkbox') {
+        fieldData.name = fieldData.name + '[]';
+      }
+
+      if (fieldOptions) {
+        var _optionAttrsString = void 0;
+
+        for (var _i = 0; _i < fieldOptions.length; _i++) {
+          optionAttrs = Object.assign({ value: '', label: '' }, fieldData, fieldOptions[_i]);
+
+          if (optionAttrs.selected) {
+            delete optionAttrs.selected;
+            optionAttrs.checked = null;
+          }
+
+          optionAttrs.id = fieldData.id + '-' + _i;
+          _optionAttrsString = fbUtils.attrString(optionAttrs);
+          optionsMarkup += '<input ' + _optionAttrsString + ' /> <label for="' + optionAttrs.id + '">' + optionAttrs.label + '</label><br>';
+        }
+
+        if (fieldData.other) {
+          var otherOptionAttrs = {
+            id: fieldData.id + '-' + 'other',
+            className: fieldData.className + ' other-option',
+            onclick: 'fbUtils.otherOptionCB(\'' + fieldData.id + '-other\')'
+          };
+
+          _optionAttrsString = fbUtils.attrString(Object.assign({}, fieldData, otherOptionAttrs));
+
+          optionsMarkup += '<input ' + _optionAttrsString + ' /> <label for="' + otherOptionAttrs.id + '">' + opts.messages.other + '</label> <input type="text" name="' + fieldData.name + '" id="' + otherOptionAttrs.id + '-value" style="display:none;" />';
+        }
+      }
+      fieldMarkup = fieldLabel + '<div class="' + fieldData.type + '-group">' + optionsMarkup + '</div>';
+      break;
+    case 'text':
+    case 'password':
+    case 'email':
+    case 'number':
+    case 'file':
+    case 'hidden':
+    case 'date':
+    case 'tel':
+    case 'autocomplete':
+      fieldMarkup = fieldLabel + ' <input ' + fieldDataString + '>';
+      break;
+    case 'color':
+      fieldMarkup = fieldLabel + ' <input ' + fieldDataString + '> ' + opts.messages.selectColor;
+      break;
+    case 'button':
+    case 'submit':
+      fieldMarkup = '<button ' + fieldDataString + '>' + fieldLabelVal + '</button>';
+      break;
+    case 'checkbox':
+      fieldMarkup = '<input ' + fieldDataString + '> ' + fieldLabel;
+
+      if (fieldData.toggle) {
+        setTimeout(function () {
+          $(document.getElementById(fieldData.id)).kcToggle();
+        }, 100);
+      }
+      break;
+    default:
+      fieldMarkup = '<' + fieldData.type + ' ' + fieldDataString + '>' + fieldLabelVal + '</' + fieldData.type + '>';
+  }
+
+  if (fieldData.type !== 'hidden') {
+    var className = fieldData.id ? 'fb-' + fieldData.type + ' form-group field-' + fieldData.id : '';
+    fieldMarkup = fbUtils.markup('div', fieldMarkup, {
+      className: className
+    });
+  } else {
+    fieldMarkup = fbUtils.markup('input', null, fieldData);
+  }
+
+  return fieldMarkup;
+};
+
+/**
+ * Callback for other option.
+ * Toggles the hidden text area for "other" option.
+ * @param  {String} otherId id of the "other" option input
+ */
+fbUtils.otherOptionCB = function (otherId) {
+  var otherInput = document.getElementById(otherId),
+      otherInputValue = document.getElementById(otherId + '-value');
+
+  if (otherInput.checked) {
+    otherInput.style.display = 'none';
+    otherInputValue.style.display = 'inline-block';
+  } else {
+    otherInput.style.display = 'inline-block';
+    otherInputValue.style.display = 'none';
+  }
+};
+
+/**
+ * Capitalizes a string
+ * @param  {String} str uncapitalized string
+ * @return {String} str capitalized string
+ */
+fbUtils.capitalize = function (str) {
+  return str.replace(/\b\w/g, function (m) {
+    return m.toUpperCase();
+  });
+};
+'use strict';
+
+function formBuilderHelpersFn(opts, formBuilder) {
+  'use strict';
+
+  var _helpers = {
+    doCancel: false
+  };
+  var utils = fbUtils;
+
+  formBuilder.events = formBuilderEventsFn();
+
+  /**
+   * Convert converts messy `cl#ssNames` into valid `class-names`
+   *
+   * @param  {string} str
+   * @return {string}
+   */
+  _helpers.makeClassName = function (str) {
+    str = str.replace(/[^\w\s\-]/gi, '');
+    return utils.hyphenCase(str);
+  };
+
+  /**
+   * Add a mobile class
+   *
+   * @return {string}
+   */
+  _helpers.mobileClass = function () {
+    var mobileClass = '';
+    (function (a) {
+      if (/(android|bb\d+|meego).+mobile|avantgo|bada\/|blackberry|blazer|compal|elaine|fennec|hiptop|iemobile|ip(hone|od)|iris|kindle|lge |maemo|midp|mmp|mobile.+firefox|netfront|opera m(ob|in)i|palm( os)?|phone|p(ixi|re)\/|plucker|pocket|psp|series(4|6)0|symbian|treo|up\.(browser|link)|vodafone|wap|windows ce|xda|xiino/i.test(a) || /1207|6310|6590|3gso|4thp|50[1-6]i|770s|802s|a wa|abac|ac(er|oo|s\-)|ai(ko|rn)|al(av|ca|co)|amoi|an(ex|ny|yw)|aptu|ar(ch|go)|as(te|us)|attw|au(di|\-m|r |s )|avan|be(ck|ll|nq)|bi(lb|rd)|bl(ac|az)|br(e|v)w|bumb|bw\-(n|u)|c55\/|capi|ccwa|cdm\-|cell|chtm|cldc|cmd\-|co(mp|nd)|craw|da(it|ll|ng)|dbte|dc\-s|devi|dica|dmob|do(c|p)o|ds(12|\-d)|el(49|ai)|em(l2|ul)|er(ic|k0)|esl8|ez([4-7]0|os|wa|ze)|fetc|fly(\-|_)|g1 u|g560|gene|gf\-5|g\-mo|go(\.w|od)|gr(ad|un)|haie|hcit|hd\-(m|p|t)|hei\-|hi(pt|ta)|hp( i|ip)|hs\-c|ht(c(\-| |_|a|g|p|s|t)|tp)|hu(aw|tc)|i\-(20|go|ma)|i230|iac( |\-|\/)|ibro|idea|ig01|ikom|im1k|inno|ipaq|iris|ja(t|v)a|jbro|jemu|jigs|kddi|keji|kgt( |\/)|klon|kpt |kwc\-|kyo(c|k)|le(no|xi)|lg( g|\/(k|l|u)|50|54|\-[a-w])|libw|lynx|m1\-w|m3ga|m50\/|ma(te|ui|xo)|mc(01|21|ca)|m\-cr|me(rc|ri)|mi(o8|oa|ts)|mmef|mo(01|02|bi|de|do|t(\-| |o|v)|zz)|mt(50|p1|v )|mwbp|mywa|n10[0-2]|n20[2-3]|n30(0|2)|n50(0|2|5)|n7(0(0|1)|10)|ne((c|m)\-|on|tf|wf|wg|wt)|nok(6|i)|nzph|o2im|op(ti|wv)|oran|owg1|p800|pan(a|d|t)|pdxg|pg(13|\-([1-8]|c))|phil|pire|pl(ay|uc)|pn\-2|po(ck|rt|se)|prox|psio|pt\-g|qa\-a|qc(07|12|21|32|60|\-[2-7]|i\-)|qtek|r380|r600|raks|rim9|ro(ve|zo)|s55\/|sa(ge|ma|mm|ms|ny|va)|sc(01|h\-|oo|p\-)|sdk\/|se(c(\-|0|1)|47|mc|nd|ri)|sgh\-|shar|sie(\-|m)|sk\-0|sl(45|id)|sm(al|ar|b3|it|t5)|so(ft|ny)|sp(01|h\-|v\-|v )|sy(01|mb)|t2(18|50)|t6(00|10|18)|ta(gt|lk)|tcl\-|tdg\-|tel(i|m)|tim\-|t\-mo|to(pl|sh)|ts(70|m\-|m3|m5)|tx\-9|up(\.b|g1|si)|utst|v400|v750|veri|vi(rg|te)|vk(40|5[0-3]|\-v)|vm40|voda|vulc|vx(52|53|60|61|70|80|81|83|85|98)|w3c(\-| )|webc|whit|wi(g |nc|nw)|wmlb|wonu|x700|yas\-|your|zeto|zte\-/i.test(a.substr(0, 4))) {
+        mobileClass = ' fb-mobile';
+      }
+    })(navigator.userAgent || navigator.vendor || window.opera);
+    return mobileClass;
+  };
+
+  /**
+   * Callback for when a drag begins
+   *
+   * @param  {Object} event
+   * @param  {Object} ui
+   */
+  _helpers.startMoving = function (event, ui) {
+    ui.item.show().addClass('moving');
+    _helpers.startIndex = $('li', this).index(ui.item);
+  };
+
+  /**
+   * Callback for when a drag ends
+   *
+   * @param  {Object} event
+   * @param  {Object} ui
+   */
+  _helpers.stopMoving = function (event, ui) {
+    ui.item.removeClass('moving');
+    if (_helpers.doCancel) {
+      $(ui.sender).sortable('cancel');
+      $(this).sortable('cancel');
+    }
+    _helpers.save();
+    _helpers.doCancel = false;
+  };
+
+  /**
+   * jQuery UI sortable beforeStop callback used for both lists.
+   * Logic for canceling the sort or drop.
+   */
+  _helpers.beforeStop = function (event, ui) {
+    var form = document.getElementById(opts.formID),
+        lastIndex = form.children.length - 1,
+        cancelArray = [];
+    _helpers.stopIndex = ui.placeholder.index() - 1;
+
+    if (!opts.sortableControls && ui.item.parent().hasClass('frmb-control')) {
+      cancelArray.push(true);
+    }
+
+    if (opts.prepend) {
+      cancelArray.push(_helpers.stopIndex === 0);
+    }
+
+    if (opts.append) {
+      cancelArray.push(_helpers.stopIndex + 1 === lastIndex);
+    }
+
+    _helpers.doCancel = cancelArray.some(function (elem) {
+      return elem === true;
+    });
+  };
+
+  /**
+   * Make strings safe to be used as classes
+   *
+   * @param  {string} str string to be converted
+   * @return {string}     converter string
+   */
+  _helpers.safename = function (str) {
+    return str.replace(/\s/g, '-').replace(/[^a-zA-Z0-9\-]/g, '').toLowerCase();
+  };
+
+  /**
+   * Strips non-numbers from a number only input
+   *
+   * @param  {string} str string with possible number
+   * @return {string}     string without numbers
+   */
+  _helpers.forceNumber = function (str) {
+    return str.replace(/[^0-9]/g, '');
+  };
+
+  /**
+   * hide and show mouse tracking tooltips, only used for disabled
+   * fields in the editor.
+   *
+   * @todo   remove or refactor to make better use
+   * @param  {Object} tt jQuery option with nexted tooltip
+   * @return {void}
+   */
+  _helpers.initTooltip = function (tt) {
+    var tooltip = tt.find('.tooltip');
+    tt.mouseenter(function () {
+      if (tooltip.outerWidth() > 200) {
+        tooltip.addClass('max-width');
+      }
+      tooltip.css('left', tt.width() + 14);
+      tooltip.stop(true, true).fadeIn('fast');
+    }).mouseleave(function () {
+      tt.find('.tooltip').stop(true, true).fadeOut('fast');
+    });
+    tooltip.hide();
+  };
+
+  /**
+   * Attempts to get element type and subtype
+   *
+   * @param  {Object} $field
+   * @return {Object}
+   */
+  _helpers.getTypes = function ($field) {
+    var types = {
+      type: $field.attr('type')
+    },
+        subtype = $('.fld-subtype', $field).val();
+
+    if (subtype !== types.type) {
+      types.subtype = subtype;
+    }
+
+    return types;
+  };
+
+  /**
+   * Get option data for a field
+   * @param  {Object} field jQuery field object
+   * @return {Array}        Array of option values
+   */
+  _helpers.fieldOptionData = function (field) {
+    var options = [];
+
+    $('.sortable-options li', field).each(function () {
+      var $option = $(this),
+          selected = $('.option-selected', $option).is(':checked'),
+          attrs = {
+        label: $('.option-label', $option).val(),
+        value: $('.option-value', $option).val()
+      };
+
+      if (selected) {
+        attrs.selected = selected;
+      }
+
+      options.push(attrs);
+    });
+
+    return options;
+  };
+
+  /**
+   * XML save
+   *
+   * @param  {Object} form sortableFields node
+   */
+  _helpers.xmlSave = function (form) {
+
+    var formData = _helpers.prepData(form),
+        xml = ['<form-template>\n\t<fields>'];
+
+    utils.forEach(formData, function (fieldIndex, field) {
+      var fieldContent = null;
+
+      // Handle options
+      if (field.type.match(/(select|checkbox-group|radio-group)/)) {
+        var optionData = field.values,
+            options = [];
+
+        for (var i = 0; i < optionData.length; i++) {
+          var option = utils.markup('option', optionData[i].label, optionData[i]).outerHTML;
+          options.push('\n\t\t\t' + option);
+        }
+        options.push('\n\t\t');
+
+        fieldContent = options.join('');
+        delete field.values;
+      }
+
+      var xmlField = utils.markup('field', fieldContent, field);
+      xml.push('\n\t\t' + xmlField.outerHTML);
+    });
+
+    xml.push('\n\t</fields>\n</form-template>');
+
+    return xml.join('');
+  };
+
+  _helpers.prepData = function (form) {
+    var formData = [];
+
+    if (form.childNodes.length !== 0) {
+      // build data object
+      utils.forEach(form.childNodes, function (index, field) {
+        var $field = $(field);
+
+        if (!$field.hasClass('disabled')) {
+          var match;
+          var multipleField;
+
+          (function () {
+            var fieldData = _helpers.getTypes($field),
+                roleVals = $('.roles-field:checked', field).map(function () {
+              return this.value;
+            }).get();
+
+            $('[class*="fld-"]', field).each(function () {
+              var name = utils.camelCase(this.name);
+              fieldData[name] = this.type === 'checkbox' ? this.checked : this.value;
+            });
+
+            if (roleVals.length) {
+              fieldData.role = roleVals.join(',');
+            }
+
+            fieldData.className = fieldData.className || fieldData.class; // backwards compatibility
+
+            match = /(?:^|\s)btn-(.*?)(?:\s|$)/g.exec(fieldData.className);
+
+            if (match) {
+              fieldData.style = match[1];
+            }
+
+            fieldData = utils.trimObj(fieldData);
+            fieldData = utils.escapeAttrs(fieldData);
+
+            multipleField = fieldData.type.match(/(select|checkbox-group|radio-group)/);
+
+
+            if (multipleField) {
+              fieldData.values = _helpers.fieldOptionData($field);
+            }
+
+            formData.push(fieldData);
+          })();
+        }
+      });
+    }
+
+    return formData;
+  };
+
+  _helpers.jsonSave = function (form) {
+    return window.JSON.stringify(_helpers.prepData(form), null, '\t');
+  };
+
+  _helpers.getData = function (formData) {
+
+    var data = formData || opts.formData;
+
+    if (!data) {
+      return false;
+    }
+
+    var setData = {
+      xml: function xml(formData) {
+        return utils.parseXML(formData);
+      },
+      json: function json(formData) {
+        return window.JSON.parse(formData);
+      }
+    };
+
+    formBuilder.formData = setData[opts.dataType](data) || [];
+
+    return formBuilder.formData;
+  };
+
+  /**
+   * Saves and returns formData
+   * @return {XML|JSON}
+   */
+  _helpers.save = function () {
+    var form = document.getElementById(opts.formID);
+
+    var doSave = {
+      xml: _helpers.xmlSave,
+      json: _helpers.jsonSave
+    };
+
+    // save action for current `dataType`
+    formBuilder.formData = doSave[opts.dataType](form);
+
+    //trigger formSaved event
+    document.dispatchEvent(formBuilder.events.formSaved);
+    return formBuilder.formData;
+  };
+
+  /**
+   * increments the field ids with support for multiple editors
+   * @param  {String} id field ID
+   * @return {String}    incremented field ID
+   */
+  _helpers.incrementId = function (id) {
+    var split = id.lastIndexOf('-'),
+        newFieldNumber = parseInt(id.substring(split + 1)) + 1,
+        baseString = id.substring(0, split);
+
+    return baseString + '-' + newFieldNumber;
+  };
+
+  /**
+   * Collect field attribute values and call fieldPreview to generate preview
+   * @param  {Object} field jQuery wrapped dom object @todo, remove jQuery dependency
+   */
+  _helpers.updatePreview = function (field) {
+    var fieldClass = field.attr('class');
+    if (fieldClass.indexOf('ui-sortable-handle') !== -1) {
+      return;
+    }
+
+    var fieldType = $(field).attr('type'),
+        $prevHolder = $('.prev-holder', field),
+        previewData = {
+      type: fieldType
+    },
+        preview;
+
+    $('[class*="fld-"]', field).each(function () {
+      var name = utils.camelCase(this.name);
+      previewData[name] = this.type === 'checkbox' ? this.checked : this.value;
+    });
+
+    var style = $('.btn-style', field).val();
+    if (style) {
+      previewData.style = style;
+    }
+
+    if (fieldType.match(/(select|checkbox-group|radio-group)/)) {
+      previewData.values = [];
+      previewData.multiple = $('[name="multiple"]', field).is(':checked');
+
+      $('.sortable-options li', field).each(function () {
+        var option = {};
+        option.selected = $('.option-selected', this).is(':checked');
+        option.value = $('.option-value', this).val();
+        option.label = $('.option-label', this).val();
+        previewData.values.push(option);
+      });
+    }
+
+    previewData = utils.trimObj(previewData);
+
+    previewData.className = _helpers.classNames(field, previewData);
+    $('.fld-className', field).val(previewData.className);
+
+    field.data('fieldData', previewData);
+    preview = utils.fieldRender(previewData, opts, true);
+
+    $prevHolder.html(preview);
+
+    $('input[toggle]', $prevHolder).kcToggle();
+  };
+
+  _helpers.debounce = function (func) {
+    var wait = arguments.length <= 1 || arguments[1] === undefined ? 250 : arguments[1];
+    var immediate = arguments.length <= 2 || arguments[2] === undefined ? false : arguments[2];
+
+    var timeout;
+    return function () {
+      var context = this,
+          args = arguments;
+      var later = function later() {
+        timeout = null;
+        if (!immediate) {
+          func.apply(context, args);
+        }
+      };
+      var callNow = immediate && !timeout;
+      clearTimeout(timeout);
+      timeout = setTimeout(later, wait);
+      if (callNow) {
+        func.apply(context, args);
+      }
+    };
+  };
+
+  /**
+   * Display a custom tooltip for disabled fields.
+   *
+   * @param  {Object} field
+   */
+  _helpers.disabledTT = {
+    className: 'frmb-tt',
+    add: function add(field) {
+      var title = opts.messages.fieldNonEditable;
+
+      if (title) {
+        var tt = utils.markup('p', title, { className: _helpers.disabledTT.className });
+        field.append(tt);
+      }
+    },
+    remove: function remove(field) {
+      $('.frmb-tt', field).remove();
+    }
+  };
+
+  _helpers.classNames = function (field, previewData) {
+    var i = void 0,
+        type = previewData.type,
+        style = previewData.style;
+    var className = field[0].querySelector('.fld-className').value;
+    var classes = className.split(' ');
+    var types = {
+      button: 'btn',
+      submit: 'btn'
+    };
+
+    var primaryType = types[type];
+
+    if (primaryType) {
+      if (style) {
+        for (i = 0; i < classes.length; i++) {
+          var re = new RegExp('(?:^|\s)' + primaryType + '-(.*?)(?:\s|$)+', 'g');
+          var match = classes[i].match(re);
+          if (match) {
+            classes.splice(i, 1);
+          }
+        }
+        classes.push(primaryType + '-' + style);
+      }
+      classes.push(primaryType);
+    }
+
+    // reverse the array to put custom classes at end, remove any duplicates, convert to string, remove whitespace
+    return utils.unique(classes).join(' ').trim();
+  };
+
+  /**
+   * Closes and open dialog
+   *
+   * @param  {Object} overlay Existing overlay if there is one
+   * @param  {Object} dialog  Existing dialog
+   * @return {Event}          Triggers modalClosed event
+   */
+  _helpers.closeConfirm = function (overlay, dialog) {
+    overlay = overlay || document.getElementsByClassName('form-builder-overlay')[0];
+    dialog = dialog || document.getElementsByClassName('form-builder-dialog')[0];
+    overlay.classList.remove('visible');
+    dialog.remove();
+    overlay.remove();
+    document.dispatchEvent(formBuilder.events.modalClosed);
+  };
+
+  /**
+   * Returns the layout data based on controlPosition option
+   * @param  {String} controlPosition 'left' or 'right'
+   * @return {Object}
+   */
+  _helpers.editorLayout = function (controlPosition) {
+    var layoutMap = {
+      left: {
+        stage: 'pull-right',
+        controls: 'pull-left'
+      },
+      right: {
+        stage: 'pull-left',
+        controls: 'pull-right'
+      }
+    };
+
+    return layoutMap[controlPosition] ? layoutMap[controlPosition] : '';
+  };
+
+  /**
+   * Adds overlay to the page. Used for modals.
+   * @return {Object}
+   */
+  _helpers.showOverlay = function () {
+    var overlay = utils.markup('div', null, {
+      className: 'form-builder-overlay'
+    });
+    document.body.appendChild(overlay);
+    overlay.classList.add('visible');
+
+    overlay.onclick = function () {
+      _helpers.closeConfirm(overlay);
+    };
+
+    return overlay;
+  };
+
+  /**
+   * Custom confirmation dialog
+   *
+   * @param  {Object}  message   Content to be displayed in the dialog
+   * @param  {Func}  yesAction callback to fire if they confirm
+   * @param  {Boolean} coords    location to put the dialog
+   * @param  {String}  className Custom class to be added to the dialog
+   * @return {Object}            Reference to the modal
+   */
+  _helpers.confirm = function (message, yesAction) {
+    var coords = arguments.length <= 2 || arguments[2] === undefined ? false : arguments[2];
+    var className = arguments.length <= 3 || arguments[3] === undefined ? '' : arguments[3];
+
+    var overlay = _helpers.showOverlay();
+    var yes = utils.markup('button', opts.messages.yes, { className: 'yes btn btn-success btn-sm' }),
+        no = utils.markup('button', opts.messages.no, { className: 'no btn btn-danger btn-sm' });
+
+    no.onclick = function () {
+      _helpers.closeConfirm(overlay);
+    };
+
+    yes.onclick = function () {
+      yesAction();
+      _helpers.closeConfirm(overlay);
+    };
+
+    var btnWrap = utils.markup('div', [no, yes], { className: 'button-wrap' });
+
+    className = 'form-builder-dialog ' + className;
+
+    var miniModal = utils.markup('div', [message, btnWrap], { className: className });
+    if (!coords) {
+      coords = {
+        pageX: Math.max(document.documentElement.clientWidth, window.innerWidth || 0) / 2,
+        pageY: Math.max(document.documentElement.clientHeight, window.innerHeight || 0) / 2
+      };
+      miniModal.style.position = 'fixed';
+    } else {
+      miniModal.classList.add('positioned');
+    }
+
+    miniModal.style.left = coords.pageX + 'px';
+    miniModal.style.top = coords.pageY + 'px';
+
+    document.body.appendChild(miniModal);
+
+    yes.focus();
+    return miniModal;
+  };
+
+  /**
+   * Popup dialog the does not require confirmation.
+   * @param  {String|DOM|Array}  content
+   * @param  {Boolean} coords    false if no coords are provided. Without coordinates
+   *                             the popup will appear center screen.
+   * @param  {String}  className classname to be added to the dialog
+   * @return {Object}            dom
+   */
+  _helpers.dialog = function (content) {
+    var coords = arguments.length <= 1 || arguments[1] === undefined ? false : arguments[1];
+    var className = arguments.length <= 2 || arguments[2] === undefined ? '' : arguments[2];
+
+    _helpers.showOverlay();
+
+    className = 'form-builder-dialog ' + className;
+
+    var miniModal = utils.markup('div', content, { className: className });
+    if (!coords) {
+      coords = {
+        pageX: Math.max(document.documentElement.clientWidth, window.innerWidth || 0) / 2,
+        pageY: Math.max(document.documentElement.clientHeight, window.innerHeight || 0) / 2
+      };
+      miniModal.style.position = 'fixed';
+    } else {
+      miniModal.classList.add('positioned');
+    }
+
+    miniModal.style.left = coords.pageX + 'px';
+    miniModal.style.top = coords.pageY + 'px';
+
+    document.body.appendChild(miniModal);
+
+    document.dispatchEvent(formBuilder.events.modalOpened);
+
+    if (className.indexOf('data-dialog') !== -1) {
+      document.dispatchEvent(formBuilder.events.viewData);
+    }
+
+    return miniModal;
+  };
+
+  /**
+   * Removes all fields from the form
+   */
+  _helpers.removeAllfields = function () {
+    var form = document.getElementById(opts.formID);
+    var fields = form.querySelectorAll('li.form-field');
+    var $fields = $(fields);
+    var markEmptyArray = [];
+
+    if (!fields.length) {
+      return false;
+    }
+
+    if (opts.prepend) {
+      markEmptyArray.push(true);
+    }
+
+    if (opts.append) {
+      markEmptyArray.push(true);
+    }
+
+    if (!markEmptyArray.some(function (elem) {
+      return elem === true;
+    })) {
+      form.parentElement.classList.add('empty');
+      form.parentElement.dataset.content = opts.messages.getStarted;
+    }
+
+    form.classList.add('removing');
+
+    var outerHeight = 0;
+    $fields.each(function () {
+      outerHeight += $(this).outerHeight() + 3;
+    });
+
+    fields[0].style.marginTop = -outerHeight + 'px';
+
+    setTimeout(function () {
+      $fields.remove();
+      document.getElementById(opts.formID).classList.remove('removing');
+      _helpers.save();
+    }, 400);
+  };
+
+  /**
+   * If user re-orders the elements their order should be saved.
+   *
+   * @param {Object} $cbUL our list of elements
+   */
+  _helpers.setFieldOrder = function ($cbUL) {
+    if (!opts.sortableControls) {
+      return false;
+    }
+    var fieldOrder = {};
+    $cbUL.children().each(function (index, element) {
+      fieldOrder[index] = $(element).data('attrs').type;
+    });
+    if (window.sessionStorage) {
+      window.sessionStorage.setItem('fieldOrder', window.JSON.stringify(fieldOrder));
+    }
+  };
+
+  /**
+   * Reorder the controls if the user has previously ordered them.
+   *
+   * @param  {Array} frmbFields
+   * @return {Array}
+   */
+  _helpers.orderFields = function (frmbFields) {
+    var fieldOrder = false;
+
+    if (window.sessionStorage) {
+      if (opts.sortableControls) {
+        fieldOrder = window.sessionStorage.getItem('fieldOrder');
+      } else {
+        window.sessionStorage.removeItem('fieldOrder');
+      }
+    }
+
+    if (!fieldOrder) {
+      var controlOrder = opts.controlOrder.concat(frmbFields.map(function (field) {
+        return field.attrs.type;
+      }));
+      fieldOrder = utils.unique(controlOrder);
+    } else {
+      fieldOrder = window.JSON.parse(fieldOrder);
+      fieldOrder = Object.keys(fieldOrder).map(function (i) {
+        return fieldOrder[i];
+      });
+    }
+
+    var newOrderFields = [];
+
+    fieldOrder.forEach(function (fieldType) {
+      var field = frmbFields.filter(function (field) {
+        return field.attrs.type === fieldType;
+      })[0];
+      newOrderFields.push(field);
+    });
+
+    return newOrderFields.filter(Boolean);
+  };
+
+  /**
+   * Close fields being editing
+   * @param  {Object} stage
+   */
+  _helpers.closeAllEdit = function (stage) {
+    var fields = $('> li.editing', stage),
+        toggleBtns = $('.toggle-form', stage),
+        editModes = $('.frm-holder', fields);
+
+    toggleBtns.removeClass('open');
+    fields.removeClass('editing');
+    editModes.hide();
+    $('.prev-holder', fields).show();
+  };
+
+  /**
+   * Toggles the edit mode for the given field
+   * @param  {String} fieldId
+   */
+  _helpers.toggleEdit = function (fieldId) {
+    var field = document.getElementById(fieldId),
+        toggleBtn = $('.toggle-form', field),
+        editMode = $('.frm-holder', field);
+    field.classList.toggle('editing');
+    toggleBtn.toggleClass('open');
+    $('.prev-holder', field).slideToggle(250);
+    editMode.slideToggle(250);
+  };
+
+  /**
+   * Controls follow scroll to the bottom of the editor
+   * @param  {Object} $sortableFields
+   * @param  {Object} cbUL
+   */
+  _helpers.stickyControls = function ($sortableFields, cbUL) {
+
+    var $cbWrap = $(cbUL).parent(),
+        $stageWrap = $sortableFields.parent(),
+        cbWidth = $cbWrap.width(),
+        cbPosition = cbUL.getBoundingClientRect();
+
+    $(window).scroll(function () {
+
+      var scrollTop = $(this).scrollTop();
+
+      if (scrollTop > $stageWrap.offset().top) {
+
+        var cbStyle = {
+          position: 'fixed',
+          width: cbWidth,
+          top: 0,
+          bottom: 'auto',
+          right: 'auto',
+          left: cbPosition.left
+        };
+
+        var cbOffset = $cbWrap.offset(),
+            stageOffset = $stageWrap.offset(),
+            cbBottom = cbOffset.top + $cbWrap.height(),
+            stageBottom = stageOffset.top + $stageWrap.height();
+
+        if (cbBottom > stageBottom && cbOffset.top !== stageOffset.top) {
+          $cbWrap.css({
+            position: 'absolute',
+            top: 'auto',
+            bottom: 0,
+            right: 0,
+            left: 'auto'
+          });
+        }
+
+        if (cbBottom < stageBottom || cbBottom === stageBottom && cbOffset.top > scrollTop) {
+          $cbWrap.css(cbStyle);
+        }
+      } else {
+        cbUL.parentElement.removeAttribute('style');
+      }
+    });
+  };
+
+  /**
+   * Open a dialog with the form's data
+   */
+  _helpers.showData = function () {
+    var data = utils.escapeHtml(formBuilder.formData),
+        code = utils.markup('code', data, { className: 'formData-' + opts.dataType }),
+        pre = utils.markup('pre', code);
+
+    _helpers.dialog(pre, null, 'data-dialog');
+  };
+
+  /**
+   * Remove a field from the stage
+   * @param  {String}  fieldID ID of the field to be removed
+   * @return {Boolean} fieldRemoved returns true if field is removed
+   */
+  _helpers.removeField = function (fieldID) {
+    var fieldRemoved = false,
+        form = document.getElementById(opts.formID),
+        fields = form.getElementsByClassName('form-field');
+
+    if (!fields.length) {
+      console.warn('No fields to remove');
+      return false;
+    }
+
+    if (!fieldID) {
+      var availableIds = [].slice.call(fields).map(function (field) {
+        return field.id;
+      });
+      console.warn('fieldID required to use `removeField` action.');
+      console.warn('Available IDs: ' + availableIds.join(', '));
+    }
+
+    var field = document.getElementById(fieldID),
+        $field = $(field);
+    if (!field) {
+      console.warn('Field not found');
+      return false;
+    }
+
+    $field.slideUp(250, function () {
+      $field.removeClass('deleting');
+      $field.remove();
+      fieldRemoved = true;
+      _helpers.save();
+      if (!form.childNodes.length) {
+        var stageWrap = form.parentElement;
+        stageWrap.classList.add('empty');
+        stageWrap.dataset.content = opts.messages.getStarted;
+      }
+    });
+
+    document.dispatchEvent(formBuilder.events.fieldRemoved);
+    return fieldRemoved;
+  };
+
+  return _helpers;
+}
+'use strict';
+
+function formBuilderEventsFn() {
+  'use strict';
+
+  var events = {};
+
+  events.loaded = new Event('loaded');
+  events.viewData = new Event('viewData');
+  events.userDeclined = new Event('userDeclined');
+  events.modalClosed = new Event('modalClosed');
+  events.modalOpened = new Event('modalOpened');
+  events.formSaved = new Event('formSaved');
+  events.fieldAdded = new Event('fieldAdded');
+  events.fieldRemoved = new Event('fieldRemoved');
+
+  return events;
+}
+'use strict';
+
+(function ($) {
+  'use strict';
+
+  var Toggle = function Toggle(element, options) {
+
+    var defaults = {
+      theme: 'fresh',
+      messages: {
+        off: 'Off',
+        on: 'On'
+      }
+    };
+
+    var opts = $.extend(defaults, options),
+        $kcToggle = $('<div class="kc-toggle"/>').insertAfter(element).append(element);
+
+    $kcToggle.toggleClass('on', element.is(':checked'));
+
+    var kctOn = '<div class="kct-on">' + opts.messages.on + '</div>',
+        kctOff = '<div class="kct-off">' + opts.messages.off + '</div>',
+        kctHandle = '<div class="kct-handle"></div>',
+        kctInner = '<div class="kct-inner">' + kctOn + kctHandle + kctOff + '</div>';
+
+    $kcToggle.append(kctInner);
+
+    $kcToggle.click(function () {
+      element.attr('checked', !element.attr('checked'));
+      $(this).toggleClass('on');
+    });
+  };
+
+  $.fn.kcToggle = function (options) {
+    var toggle = this;
+    return toggle.each(function () {
+      var element = $(this);
+      if (element.data('kcToggle')) {
+        return;
+      }
+      var kcToggle = new Toggle(element, options);
+      element.data('kcToggle', kcToggle);
+    });
+  };
+})(jQuery);
+'use strict';
+
+(function ($) {
+  var FormBuilder = function FormBuilder(options, element) {
+    var formBuilder = this;
+
+    var defaults = {
+      controlPosition: 'right',
+      controlOrder: ['autocomplete', 'button', 'checkbox', 'checkbox-group', 'date', 'file', 'header', 'hidden', 'paragraph', 'number', 'radio-group', 'select', 'text', 'textarea'],
+      dataType: 'xml',
+      // Array of fields to disable
+      disableFields: [],
+      editOnAdd: false,
+      // Uneditable fields or other content you would like to appear before and after regular fields:
+      append: false,
+      prepend: false,
+      // array of objects with fields values
+      // ex:
+      // defaultFields: [{
+      //   label: 'First Name',
+      //   name: 'first-name',
+      //   required: 'true',
+      //   description: 'Your first name',
+      //   type: 'text'
+      // }, {
+      //   label: 'Phone',
+      //   name: 'phone',
+      //   description: 'How can we reach you?',
+      //   type: 'text'
+      // }],
+      defaultFields: [],
+      inputSets: [],
+      fieldRemoveWarn: false,
+      roles: {
+        1: 'Administrator'
+      },
+      messages: {
+        addOption: 'Add Option +',
+        allFieldsRemoved: 'All fields were removed.',
+        allowSelect: 'Allow Select',
+        allowMultipleFiles: 'Allow users to upload multiple files',
+        autocomplete: 'Autocomplete',
+        button: 'Button',
+        cannotBeEmpty: 'This field cannot be empty',
+        checkboxGroup: 'Checkbox Group',
+        checkbox: 'Checkbox',
+        checkboxes: 'Checkboxes',
+        className: 'Class',
+        clearAllMessage: 'Are you sure you want to clear all fields?',
+        clearAll: 'Clear',
+        close: 'Close',
+        content: 'Content',
+        copy: 'Copy To Clipboard',
+        copyButton: '&#43;',
+        copyButtonTooltip: 'Copy',
+        dateField: 'Date Field',
+        description: 'Help Text',
+        descriptionField: 'Description',
+        devMode: 'Developer Mode',
+        editNames: 'Edit Names',
+        editorTitle: 'Form Elements',
+        editXML: 'Edit XML',
+        enableOther: 'Enable &quot;Other&quot;',
+        enableOtherMsg: 'Let users to enter an unlisted option',
+        fieldDeleteWarning: false,
+        fieldVars: 'Field Variables',
+        fieldNonEditable: 'This field cannot be edited.',
+        fieldRemoveWarning: 'Are you sure you want to remove this field?',
+        fileUpload: 'File Upload',
+        formUpdated: 'Form Updated',
+        getStarted: 'Drag a field from the right to this area',
+        header: 'Header',
+        hide: 'Edit',
+        hidden: 'Hidden Input',
+        label: 'Label',
+        labelEmpty: 'Field Label cannot be empty',
+        limitRole: 'Limit access to one or more of the following roles:',
+        mandatory: 'Mandatory',
+        maxlength: 'Max Length',
+        minOptionMessage: 'This field requires a minimum of 2 options',
+        multipleFiles: 'Multiple Files',
+        name: 'Name',
+        no: 'No',
+        number: 'Number',
+        off: 'Off',
+        on: 'On',
+        option: 'Option',
+        optional: 'optional',
+        optionLabelPlaceholder: 'Label',
+        optionValuePlaceholder: 'Value',
+        optionEmpty: 'Option value required',
+        other: 'Other',
+        paragraph: 'Paragraph',
+        placeholder: 'Placeholder',
+        placeholders: {
+          value: 'Value',
+          label: 'Label',
+          text: '',
+          textarea: '',
+          email: 'Enter you email',
+          placeholder: '',
+          className: 'space separated classes',
+          password: 'Enter your password'
+        },
+        preview: 'Preview',
+        radioGroup: 'Radio Group',
+        radio: 'Radio',
+        removeMessage: 'Remove Element',
+        removeOption: 'Remove Option',
+        remove: '&#215;',
+        required: 'Required',
+        richText: 'Rich Text Editor',
+        roles: 'Access',
+        save: 'Save',
+        selectOptions: 'Options',
+        select: 'Select',
+        selectColor: 'Select Color',
+        selectionsMessage: 'Allow Multiple Selections',
+        size: 'Size',
+        sizes: {
+          xs: 'Extra Small',
+          sm: 'Small',
+          m: 'Default',
+          lg: 'Large'
+        },
+        style: 'Style',
+        styles: {
+          btn: {
+            'default': 'Default',
+            danger: 'Danger',
+            info: 'Info',
+            primary: 'Primary',
+            success: 'Success',
+            warning: 'Warning'
+          }
+        },
+        subtype: 'Type',
+        text: 'Text Field',
+        textArea: 'Text Area',
+        toggle: 'Toggle',
+        warning: 'Warning!',
+        value: 'Value',
+        viewJSON: '{  }',
+        viewXML: '&lt;/&gt;',
+        yes: 'Yes'
+      },
+      notify: {
+        error: function error(message) {
+          return console.error(message);
+        },
+        success: function success(message) {
+          return console.log(message);
+        },
+        warning: function warning(message) {
+          return console.warn(message);
+        }
+      },
+      sortableControls: false,
+      stickyControls: false,
+      showActionButtons: true,
+      typeUserAttrs: {},
+      typeUserEvents: {},
+      prefix: 'form-builder-'
+    };
+
+    var utils = fbUtils;
+
+    defaults.messages.subtypes = function () {
+      var subtypeDefault = function subtypeDefault(subtype) {
+        return {
+          label: subtype,
+          value: subtype
+        };
+      };
+
+      return {
+        text: ['text', 'password', 'email', 'color', 'tel'].map(subtypeDefault),
+        header: ['h1', 'h2', 'h3'].map(subtypeDefault),
+        button: ['button', 'submit', 'reset'].map(subtypeDefault),
+        paragraph: ['p', 'address', 'blockquote', 'canvas', 'output'].map(subtypeDefault)
+      };
+    }();
+
+    var opts = Object.assign({}, defaults, options),
+        frmbID = 'frmb-' + $('ul[id^=frmb-]').length++;
+
+    if (options.messages) {
+      opts.messages = Object.assign({}, defaults.messages, options.messages);
+    }
+
+    opts.formID = frmbID;
+
+    formBuilder.element = element;
+
+    var $sortableFields = $('<ul/>').attr('id', frmbID).addClass('frmb');
+    var _helpers = formBuilderHelpersFn(opts, formBuilder);
+
+    formBuilder.layout = _helpers.editorLayout(opts.controlPosition);
+
+    var lastID = frmbID + '-fld-1',
+        boxID = frmbID + '-control-box';
+
+    // create array of field objects to cycle through
+    var frmbFields = [{
+      label: opts.messages.autocomplete,
+      attrs: {
+        type: 'autocomplete',
+        className: 'autocomplete',
+        name: 'autocomplete'
+      }
+    }, {
+      label: opts.messages.button,
+      attrs: {
+        type: 'button',
+        className: 'button-input',
+        name: 'button'
+      }
+    }, {
+      label: opts.messages.checkbox,
+      attrs: {
+        type: 'checkbox',
+        className: 'checkbox',
+        name: 'checkbox'
+      }
+    }, {
+      label: opts.messages.checkboxGroup,
+      attrs: {
+        type: 'checkbox-group',
+        className: 'checkbox-group',
+        name: 'checkbox-group'
+      }
+    }, {
+      label: opts.messages.dateField,
+      attrs: {
+        type: 'date',
+        className: 'calendar',
+        name: 'date-input'
+      }
+    }, {
+      label: opts.messages.fileUpload,
+      attrs: {
+        type: 'file',
+        className: 'file-input',
+        name: 'file-input'
+      }
+    }, {
+      label: opts.messages.header,
+      attrs: {
+        type: 'header',
+        className: 'header'
+      }
+    }, {
+      label: opts.messages.hidden,
+      attrs: {
+        type: 'hidden',
+        className: 'hidden-input',
+        name: 'hidden-input'
+      }
+    }, {
+      label: opts.messages.number,
+      attrs: {
+        type: 'number',
+        className: 'number',
+        name: 'number'
+      }
+    }, {
+      label: opts.messages.paragraph,
+      attrs: {
+        type: 'paragraph',
+        className: 'paragraph'
+      }
+    }, {
+      label: opts.messages.radioGroup,
+      attrs: {
+        type: 'radio-group',
+        className: 'radio-group',
+        name: 'radio-group'
+      }
+    }, {
+      label: opts.messages.select,
+      attrs: {
+        type: 'select',
+        className: 'select',
+        name: 'select'
+      }
+    }, {
+      label: opts.messages.text,
+      attrs: {
+        type: 'text',
+        className: 'text-input',
+        name: 'text-input'
+      }
+    }, {
+      label: opts.messages.textArea,
+      attrs: {
+        type: 'textarea',
+        className: 'text-area',
+        name: 'textarea'
+      }
+    }];
+
+    frmbFields = _helpers.orderFields(frmbFields);
+
+    if (opts.disableFields) {
+      // remove disabledFields
+      frmbFields = frmbFields.filter(function (field) {
+        return !utils.inArray(field.attrs.type, opts.disableFields);
+      });
+    }
+
+    // Create draggable fields for formBuilder
+    var cbUl = utils.markup('ul', null, { id: boxID, className: 'frmb-control' });
+
+    if (opts.sortableControls) {
+      cbUl.classList.add('sort-enabled');
+    }
+
+    var $cbUL = $(cbUl);
+
+    // Loop through
+    utils.forEach(frmbFields, function (i) {
+      var $field = $('<li/>', {
+        'class': 'icon-' + frmbFields[i].attrs.className,
+        'type': frmbFields[i].type,
+        'name': frmbFields[i].className,
+        'label': frmbFields[i].label
+      });
+
+      $field.data('newFieldData', frmbFields[i]);
+
+      var typeLabel = utils.markup('span', frmbFields[i].label);
+      $field.html(typeLabel).appendTo($cbUL);
+    });
+
+    if (opts.inputSets.length) {
+      $('<li/>', { 'class': 'fb-separator' }).html('<hr>').appendTo($cbUL);
+      opts.inputSets.forEach(function (set) {
+        set.name = set.name || _helpers.makeClassName(set.label);
+        var $set = $('<li/>', { 'class': 'input-set-control', type: set.name });
+        $set.html(set.label).appendTo($cbUL);
+      });
+    }
+
+    // Sortable fields
+    $sortableFields.sortable({
+      cursor: 'move',
+      opacity: 0.9,
+      revert: 150,
+      beforeStop: _helpers.beforeStop,
+      start: _helpers.startMoving,
+      stop: _helpers.stopMoving,
+      cancel: 'input, select, .disabled, .form-group, .btn',
+      placeholder: 'frmb-placeholder'
+    });
+
+    // ControlBox with different fields
+    $cbUL.sortable({
+      helper: 'clone',
+      opacity: 0.9,
+      connectWith: $sortableFields,
+      cancel: '.fb-separator',
+      cursor: 'move',
+      scroll: false,
+      placeholder: 'ui-state-highlight',
+      start: _helpers.startMoving,
+      stop: _helpers.stopMoving,
+      revert: 150,
+      beforeStop: _helpers.beforeStop,
+      distance: 3,
+      update: function update(event, ui) {
+        if (_helpers.doCancel) {
+          return false;
+        }
+        if (ui.item.parent()[0] === $sortableFields[0]) {
+          processControl(ui.item);
+          _helpers.doCancel = true;
+        } else {
+          _helpers.setFieldOrder($cbUL);
+          _helpers.doCancel = !opts.sortableControls;
+        }
+      }
+    });
+
+    var processControl = function processControl(control) {
+      if (control[0].classList.contains('input-set-control')) {
+        var inputSet = opts.inputSets.filter(function (set) {
+          return set.name === control[0].type;
+        })[0];
+        if (inputSet.showHeader) {
+          var header = {
+            type: 'header',
+            subtype: 'h2',
+            id: inputSet.name,
+            label: inputSet.label
+          };
+          prepFieldVars(header, true);
+        }
+        inputSet.fields.forEach(function (field) {
+          prepFieldVars(field, true);
+        });
+      } else {
+        prepFieldVars(control, true);
+      }
+    };
+
+    var $formWrap = $('<div/>', {
+      id: frmbID + '-form-wrap',
+      'class': 'form-wrap form-builder' + _helpers.mobileClass()
+    });
+
+    var $stageWrap = $('<div/>', {
+      id: frmbID + '-stage-wrap',
+      'class': 'stage-wrap ' + formBuilder.layout.stage
+    });
+
+    var cbWrap = $('<div/>', {
+      id: frmbID + '-cb-wrap',
+      'class': 'cb-wrap ' + formBuilder.layout.controls
+    }).append($cbUL[0]);
+
+    if (opts.showActionButtons) {
+      // Build our headers and action links
+      var viewDataText = opts.dataType === 'xml' ? opts.messages.viewXML : opts.messages.viewJSON,
+          viewData = utils.markup('button', viewDataText, {
+        id: frmbID + '-view-data',
+        type: 'button',
+        className: 'view-data btn btn-default'
+      }),
+          clearAll = utils.markup('button', opts.messages.clearAll, {
+        id: frmbID + '-clear-all',
+        type: 'button',
+        className: 'clear-all btn btn-default'
+      }),
+          saveAll = utils.markup('button', opts.messages.save, {
+        className: 'btn btn-primary ' + opts.prefix + 'save',
+        id: frmbID + '-save',
+        type: 'button'
+      }),
+          formActions = utils.markup('div', [clearAll, viewData, saveAll], {
+        className: 'form-actions btn-group'
+      });
+
+      cbWrap.append(formActions);
+    }
+
+    $stageWrap.append($sortableFields, cbWrap);
+    $stageWrap.before($formWrap);
+    $formWrap.append($stageWrap, cbWrap);
+    $(element).append($formWrap);
+
+    var saveAndUpdate = _helpers.debounce(function (evt) {
+      if (evt) {
+        if (evt.type === 'keyup' && this.name === 'className') {
+          return false;
+        }
+      }
+
+      var $field = $(this).parents('.form-field:eq(0)');
+      _helpers.updatePreview($field);
+      _helpers.save();
+    });
+
+    // Save field on change
+    $sortableFields.on('change blur keyup', '.form-elements input, .form-elements select, .form-elements textarea', saveAndUpdate);
+
+    $('li', $cbUL).click(function () {
+      _helpers.stopIndex = undefined;
+      processControl($(this));
+      _helpers.save();
+    });
+
+    // Add append and prepend options if necessary
+    var nonEditableFields = function nonEditableFields() {
+      var cancelArray = [];
+
+      if (opts.prepend && !$('.disabled.prepend', $sortableFields).length) {
+        var prependedField = utils.markup('li', opts.prepend, { className: 'disabled prepend' });
+        cancelArray.push(true);
+        $sortableFields.prepend(prependedField);
+      }
+
+      if (opts.append && !$('.disabled.append', $sortableFields).length) {
+        var appendedField = utils.markup('li', opts.append, { className: 'disabled append' });
+        cancelArray.push(true);
+        $sortableFields.append(appendedField);
+      }
+
+      if (cancelArray.some(function (elem) {
+        return elem === true;
+      })) {
+        $stageWrap.removeClass('empty');
+      }
+    };
+
+    var prepFieldVars = function prepFieldVars($field) {
+      var isNew = arguments.length <= 1 || arguments[1] === undefined ? false : arguments[1];
+
+      var field = {};
+      if ($field instanceof jQuery) {
+        var fieldData = $field.data('newFieldData');
+        if (fieldData) {
+          field = fieldData.attrs;
+          field.label = fieldData.label;
+        } else {
+          var attrs = $field[0].attributes;
+          if (!isNew) {
+            field.values = $field.children().map(function (index, elem) {
+              return {
+                label: $(elem).text(),
+                value: $(elem).attr('value'),
+                selected: Boolean($(elem).attr('selected'))
+              };
+            });
+          }
+
+          for (var i = attrs.length - 1; i >= 0; i--) {
+            field[attrs[i].name] = attrs[i].value;
+          }
+        }
+      } else {
+        field = Object.assign({}, $field);
+      }
+
+      field.name = isNew ? nameAttr(field) : field.name || nameAttr(field);
+
+      if (isNew && utils.inArray(field.type, ['text', 'number', 'file', 'select', 'textarea'])) {
+        field.className = 'form-control'; // backwards compatibility
+      } else {
+          field.className = field.class || field.className; // backwards compatibility
+        }
+
+      var match = /(?:^|\s)btn-(.*?)(?:\s|$)/g.exec(field.className);
+      if (match) {
+        field.style = match[1];
+      }
+
+      utils.escapeAttrs(field);
+
+      appendNewField(field);
+      if (isNew) {
+        document.dispatchEvent(formBuilder.events.fieldAdded);
+      }
+      $stageWrap.removeClass('empty');
+    };
+
+    // Parse saved XML template data
+    var loadFields = function loadFields() {
+      var formData = formBuilder.formData;
+      if (formData && formData.length) {
+        for (var i = 0; i < formData.length; i++) {
+          prepFieldVars(formData[i]);
+        }
+        $stageWrap.removeClass('empty');
+      } else if (opts.defaultFields && opts.defaultFields.length) {
+        // Load default fields if none are set
+        opts.defaultFields.forEach(function (field) {
+          return prepFieldVars(field);
+        });
+        $stageWrap.removeClass('empty');
+      } else if (!opts.prepend && !opts.append) {
+        $stageWrap.addClass('empty').attr('data-content', opts.messages.getStarted);
+      }
+      _helpers.save();
+
+      $('li.form-field:not(.disabled)', $sortableFields).each(function () {
+        _helpers.updatePreview($(this));
+      });
+
+      nonEditableFields();
+    };
+
+    // callback to track disabled tooltips
+    $sortableFields.on('mousemove', 'li.disabled', function (e) {
+      $('.frmb-tt', this).css({
+        left: e.offsetX - 16,
+        top: e.offsetY - 34
+      });
+    });
+
+    // callback to call disabled tooltips
+    $sortableFields.on('mouseenter', 'li.disabled', function () {
+      _helpers.disabledTT.add($(this));
+    });
+
+    // callback to call disabled tooltips
+    $sortableFields.on('mouseleave', 'li.disabled', function () {
+      _helpers.disabledTT.remove($(this));
+    });
+
+    var nameAttr = function nameAttr(field) {
+      var epoch = new Date().getTime();
+      return field.type + '-' + epoch;
+    };
+
+    /**
+     * Add data for field with options [select, checkbox-group, radio-group]
+     *
+     * @todo   refactor this nasty ~crap~ code, its actually painful to look at
+     * @param  {object} values
+     */
+    var fieldOptions = function fieldOptions(values) {
+      var optionActions = [utils.markup('a', opts.messages.addOption, { className: 'add add-opt' })],
+          fieldOptions = ['<label class="false-label">' + opts.messages.selectOptions + '</label>'],
+          isMultiple = values.multiple || values.type === 'checkbox-group';
+
+      if (!values.values || !values.values.length) {
+        values.values = [1, 2, 3].map(function (index) {
+          var label = opts.messages.option + ' ' + index;
+          var option = {
+            selected: false,
+            label: label,
+            value: utils.hyphenCase(label)
+          };
+          return option;
+        });
+        values.values[0].selected = true;
+      } else {
+        // ensure option data is has all required keys
+        values.values.forEach(function (option) {
+          return Object.assign({}, { selected: false }, option);
+        });
+      }
+
+      fieldOptions.push('<div class="sortable-options-wrap">');
+
+      fieldOptions.push('<ol class="sortable-options">');
+      utils.forEach(values.values, function (i) {
+        fieldOptions.push(selectFieldOptions(values.name, values.values[i], isMultiple));
+      });
+      fieldOptions.push('</ol>');
+      fieldOptions.push(utils.markup('div', optionActions, { className: 'option-actions' }).outerHTML);
+      fieldOptions.push('</div>');
+
+      return utils.markup('div', fieldOptions.join(''), { className: 'form-group field-options' }).outerHTML;
+    };
+
+    /**
+     * Build the editable properties for the field
+     * @param  {object} values configuration object for advanced fields
+     * @return {String}        markup for advanced fields
+     */
+    var advFields = function advFields(values) {
+      var advFields = [],
+          key,
+          optionFields = ['select', 'checkbox-group', 'radio-group'],
+          isOptionField = function () {
+        return optionFields.indexOf(values.type) !== -1;
+      }(),
+          valueField = !utils.inArray(values.type, ['header', 'paragraph', 'file'].concat(optionFields)),
+          roles = values.role !== undefined ? values.role.split(',') : [];
+
+      advFields.push(requiredField(values));
+
+      if (values.type === 'checkbox') {
+        advFields.push(boolAttribute('toggle', values, { first: opts.messages.toggle }));
+      }
+
+      advFields.push(textAttribute('label', values));
+
+      values.size = values.size || 'm';
+      values.style = values.style || 'default';
+
+      //Help Text / Description Field
+      if (!utils.inArray(values.type, ['header', 'paragraph', 'button'])) {
+        advFields.push(textAttribute('description', values));
+      }
+
+      if (opts.messages.subtypes[values.type]) {
+        var optionData = opts.messages.subtypes[values.type];
+        advFields.push(selectAttribute('subtype', values, optionData));
+      }
+
+      if (values.type === 'button') {
+        advFields.push(btnStyles(values.style, values.type));
+      }
+
+      if (values.type === 'number') {
+        advFields.push(numberAttribute('min', values));
+        advFields.push(numberAttribute('max', values));
+        advFields.push(numberAttribute('step', values));
+      }
+
+      // Placeholder
+      advFields.push(textAttribute('placeholder', values));
+
+      //TextArea Rows Attribute
+      if (values.type === 'textarea') {
+        advFields.push(numberAttribute('rows', values));
+      }
+
+      // Class
+      advFields.push(textAttribute('className', values));
+
+      advFields.push(textAttribute('name', values));
+
+      if (valueField) {
+        advFields.push(textAttribute('value', values));
+      }
+
+      if (values.type === 'file') {
+        var labels = {
+          first: opts.messages.multipleFiles,
+          second: opts.messages.allowMultipleFiles
+        };
+        advFields.push(boolAttribute('multiple', values, labels));
+      }
+
+      var rolesDisplay = values.role !== undefined ? 'style="display:block"' : '';
+      var availableRoles = ['<div class="available-roles" ' + rolesDisplay + '>'];
+      for (key in opts.roles) {
+        if (opts.roles.hasOwnProperty(key)) {
+          var checked = utils.inArray(key, roles) ? 'checked' : '',
+              roleId = 'fld-' + lastID + '-roles-' + key;
+          availableRoles.push('<input type="checkbox" name="roles[]" value="' + key + '" id="' + roleId + '" ' + checked + ' class="roles-field" /> <label for="' + roleId + '">' + opts.roles[key] + '</label><br/>');
+        }
+      }
+
+      availableRoles.push('</div>');
+
+      var accessLabels = { first: opts.messages.roles, second: opts.messages.limitRole, content: availableRoles.join('') };
+
+      advFields.push(boolAttribute('access', values, accessLabels));
+
+      if (values.type === 'checkbox-group' || values.type === 'radio-group') {
+        advFields.push(boolAttribute('other', values, { first: opts.messages.enableOther, second: opts.messages.enableOtherMsg }));
+      }
+
+      if (values.type === 'select') {
+        advFields.push(boolAttribute('multiple', values, { first: ' ', second: opts.messages.selectionsMessage }));
+      }
+
+      if (isOptionField) {
+        advFields.push(fieldOptions(values));
+      }
+
+      if (utils.inArray(values.type, ['text', 'textarea'])) {
+        advFields.push(numberAttribute('maxlength', values));
+      }
+
+      // Append custom attributes as defined in typeUserAttrs option
+      if (opts.typeUserAttrs[values.type]) {
+        advFields.push(processTypeUserAttrs(opts.typeUserAttrs[values.type], values));
+      }
+
+      return advFields.join('');
+    };
+
+    function processTypeUserAttrs(typeUserAttr, values) {
+      var advField = [];
+
+      for (var attribute in typeUserAttr) {
+        if (typeUserAttr.hasOwnProperty(attribute)) {
+          var orig = opts.messages[attribute];
+          var origValue = typeUserAttr[attribute].value;
+          typeUserAttr[attribute].value = values[attribute] || typeUserAttr[attribute].value || '';
+
+          if (typeUserAttr[attribute].label) {
+            opts.messages[attribute] = typeUserAttr[attribute].label;
+          }
+
+          if (typeUserAttr[attribute].options) {
+            advField.push(selectUserAttrs(attribute, typeUserAttr[attribute]));
+          } else {
+            advField.push(inputUserAttrs(attribute, typeUserAttr[attribute]));
+          }
+
+          opts.messages[attribute] = orig;
+          typeUserAttr[attribute].value = origValue;
+        }
+      }
+
+      return advField.join('');
+    }
+
+    function inputUserAttrs(name, attrs) {
+      var textAttrs = {
+        id: name + '-' + lastID,
+        title: attrs.description || attrs.label || name.toUpperCase(),
+        name: name,
+        type: attrs.type || 'text',
+        className: ['fld-' + name]
+      },
+          label = '<label for="' + textAttrs.id + '">' + opts.messages[name] + '</label>';
+
+      if (!utils.inArray(textAttrs.type, ['checkbox', 'checkbox-group', 'radio-group'])) {
+        textAttrs.className.push('form-control');
+      }
+
+      textAttrs = Object.assign({}, attrs, textAttrs);
+      var textInput = '<input ' + utils.attrString(textAttrs) + '>',
+          inputWrap = '<div class="input-wrap">' + textInput + '</div>';
+      return '<div class="form-group ' + name + '-wrap">' + label + inputWrap + '</div>';
+    }
+
+    function selectUserAttrs(name, options) {
+      var optis = Object.keys(options.options).map(function (val) {
+        var attrs = { value: val };
+        if (val === options.value) {
+          attrs.selected = null;
+        }
+        return '<option ' + utils.attrString(attrs) + '>' + options.options[val] + '</option>';
+      }),
+          selectAttrs = {
+        id: name + '-' + lastID,
+        title: options.description || options.label || name.toUpperCase(),
+        name: name,
+        className: 'fld-' + name + ' form-control'
+      },
+          label = '<label for="' + selectAttrs.id + '">' + opts.messages[name] + '</label>';
+
+      Object.keys(options).filter(function (prop) {
+        return !utils.inArray(prop, ['value', 'options', 'label']);
+      }).forEach(function (attr) {
+        selectAttrs[attr] = options[attr];
+      });
+
+      var select = '<select ' + utils.attrString(selectAttrs) + '>' + optis.join('') + '</select>',
+          inputWrap = '<div class="input-wrap">' + select + '</div>';
+      return '<div class="form-group ' + name + '-wrap">' + label + inputWrap + '</div>';
+    }
+
+    var boolAttribute = function boolAttribute(name, values, labels) {
+      if (opts.typeUserAttrs[values.type] && opts.typeUserAttrs[values.type][name]) {
+        return;
+      }
+
+      var label = function label(txt) {
+        return '<label for="' + name + '-' + lastID + '">' + txt + '</label>';
+      },
+          checked = values[name] !== undefined ? 'checked' : '',
+          input = '<input type="checkbox" class="fld-' + name + '" name="' + name + '" value="true" ' + checked + ' id="' + name + '-' + lastID + '"/> ',
+          left = [],
+          right = [input];
+
+      if (labels.first) {
+        left.unshift(label(labels.first));
+      }
+
+      if (labels.second) {
+        right.push(label(labels.second));
+      }
+
+      if (labels.content) {
+        right.push(labels.content);
+      }
+
+      right.unshift('<div class="input-wrap">');
+      right.push('</div>');
+
+      return '<div class="form-group ' + name + '-wrap">' + left.concat(right).join('') + '</div>';
+    };
+
+    var btnStyles = function btnStyles(style, type) {
+      var tags = {
+        button: 'btn'
+      },
+          styles = opts.messages.styles[tags[type]],
+          styleField = '';
+
+      if (styles) {
+        var styleLabel = '<label>' + opts.messages.style + '</label>';
+        styleField += '<input value="' + style + '" name="style" type="hidden" class="btn-style">';
+        styleField += '<div class="btn-group" role="group">';
+
+        Object.keys(opts.messages.styles[tags[type]]).forEach(function (element) {
+          var active = style === element ? 'active' : '';
+          styleField += '<button value="' + element + '" type="' + type + '" class="' + active + ' btn-xs ' + tags[type] + ' ' + tags[type] + '-' + element + '">' + opts.messages.styles[tags[type]][element] + '</button>';
+        });
+
+        styleField += '</div>';
+
+        styleField = '<div class="form-group style-wrap">' + styleLabel + ' ' + styleField + '</div>';
+      }
+
+      return styleField;
+    };
+
+    /**
+     * Add a number attribute to a field.
+     * @param  {String} attribute
+     * @param  {Object} values
+     * @return {String}
+     */
+    var numberAttribute = function numberAttribute(attribute, values) {
+      if (opts.typeUserAttrs[values.type] && opts.typeUserAttrs[values.type][attribute]) {
+        return;
+      }
+
+      var attrVal = values[attribute],
+          attrLabel = opts.messages[attribute] || attribute,
+          placeholder = opts.messages.placeholders[attribute],
+          inputConfig = {
+        type: 'number',
+        value: attrVal,
+        name: attribute,
+        min: '0',
+        placeholder: placeholder,
+        className: 'fld-' + attribute + ' form-control',
+        id: attribute + '-' + lastID
+      },
+          numberAttribute = '<input ' + utils.attrString(utils.trimObj(inputConfig)) + '>',
+          inputWrap = '<div class="input-wrap">' + numberAttribute + '</div>';
+
+      return '<div class="form-group ' + attribute + '-wrap"><label for="' + inputConfig.id + '">' + attrLabel + '</label> ' + inputWrap + '</div>';
+    };
+
+    var selectAttribute = function selectAttribute(attribute, values, optionData) {
+      if (opts.typeUserAttrs[values.type] && opts.typeUserAttrs[values.type][attribute]) {
+        return;
+      }
+      var selectOptions = optionData.map(function (option, i) {
+        var optionAttrs = Object.assign({
+          label: opts.messages.option + ' ' + i,
+          value: undefined
+        }, option);
+        if (option.value === values[attribute]) {
+          optionAttrs.selected = true;
+        }
+        return '<option ' + utils.attrString(utils.trimObj(optionAttrs)) + '>' + optionAttrs.label + '</option>';
+      }),
+          selectAttrs = {
+        id: attribute + '-' + lastID,
+        name: attribute,
+        className: 'fld-' + attribute + ' form-control'
+      },
+          label = '<label for="' + selectAttrs.id + '">' + (opts.messages[attribute] || utils.capitalize(attribute)) + '</label>';
+
+      var select = '<select ' + utils.attrString(selectAttrs) + '>' + selectOptions.join('') + '</select>',
+          inputWrap = '<div class="input-wrap">' + select + '</div>';
+
+      return '<div class="form-group ' + selectAttrs.name + '-wrap">' + label + inputWrap + '</div>';
+    };
+
+    /**
+     * Generate some text inputs for field attributes, **will be replaced**
+     * @param  {String} attribute
+     * @param  {Object} values
+     * @return {String}
+     */
+    var textAttribute = function textAttribute(attribute, values) {
+      if (opts.typeUserAttrs[values.type] && opts.typeUserAttrs[values.type][attribute]) {
+        return;
+      }
+
+      var placeholderFields = ['text', 'textarea', 'select'];
+
+      var noName = ['header'];
+
+      var textArea = ['paragraph'];
+
+      var attrVal = values[attribute] || '',
+          attrLabel = opts.messages[attribute];
+      if (attribute === 'label' && utils.inArray(values.type, textArea)) {
+        attrLabel = opts.messages.content;
+      }
+
+      noName = noName.concat(opts.messages.subtypes.header, textArea);
+
+      var placeholders = opts.messages.placeholders,
+          placeholder = placeholders[attribute] || '',
+          attributefield = '',
+          noMakeAttr = [];
+
+      // Field has placeholder attribute
+      if (attribute === 'placeholder' && !utils.inArray(values.type, placeholderFields)) {
+        noMakeAttr.push(true);
+      }
+
+      // Field has name attribute
+      if (attribute === 'name' && utils.inArray(values.type, noName)) {
+        noMakeAttr.push(true);
+      }
+
+      if (!noMakeAttr.some(function (elem) {
+        return elem === true;
+      })) {
+        var inputConfig = {
+          name: attribute,
+          placeholder: placeholder,
+          className: 'fld-' + attribute + ' form-control',
+          id: attribute + '-' + lastID
+        };
+        var attributeLabel = '<label for="' + inputConfig.id + '">' + attrLabel + '</label>';
+
+        if (attribute === 'label' && utils.inArray(values.type, textArea) || attribute === 'value' && values.type === 'textarea') {
+          attributefield += '<textarea ' + utils.attrString(inputConfig) + '>' + attrVal + '</textarea>';
+        } else {
+          inputConfig.value = attrVal;
+          inputConfig.type = 'text';
+          attributefield += '<input ' + utils.attrString(inputConfig) + '>';
+        }
+
+        var inputWrap = '<div class="input-wrap">' + attributefield + '</div>';
+
+        attributefield = '<div class="form-group ' + attribute + '-wrap">' + attributeLabel + ' ' + inputWrap + '</div>';
+      }
+
+      return attributefield;
+    };
+
+    var requiredField = function requiredField(values) {
+      var noRequire = ['header', 'paragraph', 'button'],
+          noMake = [],
+          requireField = '';
+
+      if (utils.inArray(values.type, noRequire)) {
+        noMake.push(true);
+      }
+      if (!noMake.some(function (elem) {
+        return elem === true;
+      })) {
+        requireField = boolAttribute('required', values, { first: opts.messages.required });
+      }
+
+      return requireField;
+    };
+
+    // Append the new field to the editor
+    var appendNewField = function appendNewField(values) {
+      var type = values.type || 'text',
+          label = values.label || opts.messages[type] || opts.messages.label,
+          delBtn = utils.markup('a', opts.messages.remove, {
+        id: 'del_' + lastID,
+        className: 'del-button btn delete-confirm',
+        title: opts.messages.removeMessage
+      }),
+          toggleBtn = utils.markup('a', null, {
+        id: lastID + '-edit',
+        className: 'toggle-form btn icon-pencil',
+        title: opts.messages.hide
+      }),
+          copyBtn = utils.markup('a', opts.messages.copyButton, {
+        id: lastID + '-copy',
+        className: 'copy-button btn icon-copy',
+        title: opts.messages.copyButtonTooltip
+      });
+
+      var liContents = utils.markup('div', [toggleBtn, copyBtn, delBtn], { className: 'field-actions' }).outerHTML;
+
+      // Field preview Label
+      liContents += '<label class="field-label">' + label + '</label>';
+
+      if (values.description) {
+        liContents += '<span class="tooltip-element" tooltip="' + values.description + '">?</span>';
+      }
+
+      var requiredDisplay = values.required ? 'style="display:inline"' : '';
+      liContents += '<span class="required-asterisk" ' + requiredDisplay + '> *</span>';
+
+      liContents += utils.markup('div', '', { className: 'prev-holder' }).outerHTML;
+      liContents += '<div id="' + lastID + '-holder" class="frm-holder">';
+      liContents += '<div class="form-elements">';
+
+      liContents += advFields(values);
+      liContents += utils.markup('a', opts.messages.close, { className: 'close-field' }).outerHTML;
+
+      liContents += '</div>';
+      liContents += '</div>';
+
+      var field = utils.markup('li', liContents, {
+        'class': type + '-field form-field',
+        'type': type,
+        id: lastID
+      }),
+          $li = $(field);
+
+      $li.data('fieldData', { attrs: values });
+      if (typeof _helpers.stopIndex !== 'undefined') {
+        $('> li', $sortableFields).eq(_helpers.stopIndex).before($li);
+      } else {
+        $sortableFields.append($li);
+      }
+
+      $('.sortable-options', $li).sortable({ update: function update() {
+          _helpers.updatePreview($li);
+        } }); // make dynamically added option fields sortable if they exist.
+
+      _helpers.updatePreview($li);
+
+      if (opts.editOnAdd) {
+        _helpers.closeAllEdit($sortableFields);
+        _helpers.toggleEdit(lastID);
+      }
+
+      if (opts.typeUserEvents[type] && opts.typeUserEvents[type].onadd) {
+        opts.typeUserEvents[type].onadd(field);
+      }
+
+      lastID = _helpers.incrementId(lastID);
+    };
+
+    // Select field html, since there may be multiple
+    var selectFieldOptions = function selectFieldOptions(name, optionData, multipleSelect) {
+      var optionInputType = {
+        selected: multipleSelect ? 'checkbox' : 'radio'
+      },
+          optionDataOrder = ['value', 'label', 'selected'],
+          optionInputs = [];
+
+      optionData = Object.assign({ selected: false, label: '', value: '' }, optionData);
+
+      for (var i = optionDataOrder.length - 1; i >= 0; i--) {
+        var prop = optionDataOrder[i];
+        if (optionData.hasOwnProperty(prop)) {
+          var attrs = {
+            type: optionInputType[prop] || 'text',
+            'class': 'option-' + prop,
+            value: optionData[prop],
+            name: name + '-option'
+          };
+
+          if (opts.messages.placeholders[prop]) {
+            attrs.placeholder = opts.messages.placeholders[prop];
+          }
+
+          if (prop === 'selected' && optionData.selected === true) {
+            attrs.checked = optionData.selected;
+          }
+
+          optionInputs.push(utils.markup('input', null, attrs));
+        }
+      }
+
+      var removeAttrs = {
+        className: 'remove btn',
+        title: opts.messages.removeMessage
+      };
+      optionInputs.push(utils.markup('a', opts.messages.remove, removeAttrs));
+
+      var field = utils.markup('li', optionInputs);
+
+      return field.outerHTML;
+    };
+
+    var cloneItem = function cloneItem(currentItem) {
+      var currentId = currentItem.attr('id'),
+          type = currentItem.attr('type'),
+          ts = new Date().getTime(),
+          cloneName = type + '-' + ts;
+
+      var $clone = currentItem.clone();
+
+      $clone.find('[id]').each(function () {
+        this.id = this.id.replace(currentId, lastID);
+      });
+
+      $clone.find('[for]').each(function () {
+        this.setAttribute('for', this.getAttribute('for').replace(currentId, lastID));
+      });
+
+      $clone.each(function () {
+        $('e:not(.form-elements)').each(function () {
+          var newName = this.getAttribute('name');
+          newName = newName.substring(0, newName.lastIndexOf('-') + 1);
+          newName = newName + ts.toString();
+          this.setAttribute('name', newName);
+        });
+      });
+
+      $clone.find('.form-elements').find(':input').each(function () {
+        if (this.getAttribute('name') === 'name') {
+          var newVal = this.getAttribute('value');
+          newVal = newVal.substring(0, newVal.lastIndexOf('-') + 1);
+          newVal = newVal + ts.toString();
+          this.setAttribute('value', newVal);
+        }
+      });
+
+      $clone.attr('id', lastID);
+      $clone.attr('name', cloneName);
+      $clone.addClass('cloned');
+      $('.sortable-options', $clone).sortable();
+
+      if (opts.typeUserEvents[type] && opts.typeUserEvents[type].onclone) {
+        opts.typeUserEvents[type].onclone($clone[0]);
+      }
+
+      lastID = _helpers.incrementId(lastID);
+      return $clone;
+    };
+
+    // ---------------------- UTILITIES ---------------------- //
+
+    // delete options
+    $sortableFields.on('click touchstart', '.remove', function (e) {
+      var $field = $(this).parents('.form-field:eq(0)');
+      e.preventDefault();
+      var optionsCount = $(this).parents('.sortable-options:eq(0)').children('li').length;
+      if (optionsCount <= 2) {
+        opts.notify.error('Error: ' + opts.messages.minOptionMessage);
+      } else {
+        $(this).parent('li').slideUp('250', function () {
+          $(this).remove();
+          _helpers.updatePreview($field);
+          _helpers.save();
+        });
+      }
+    });
+
+    // touch focus
+    $sortableFields.on('touchstart', 'input', function (e) {
+      if (e.handled !== true) {
+        if ($(this).attr('type') === 'checkbox') {
+          $(this).trigger('click');
+        } else {
+          $(this).focus();
+          var fieldVal = $(this).val();
+          $(this).val(fieldVal);
+        }
+      } else {
+        return false;
+      }
+    });
+
+    // toggle fields
+    $sortableFields.on('click touchstart', '.toggle-form, .close-field', function (e) {
+      e.stopPropagation();
+      e.preventDefault();
+      if (e.handled !== true) {
+        var targetID = $(this).parents('.form-field:eq(0)').attr('id');
+        _helpers.toggleEdit(targetID);
+        e.handled = true;
+      } else {
+        return false;
+      }
+    });
+
+    $sortableFields.on('change', '.prev-holder input, .prev-holder select', function (e) {
+      if (e.target.classList.contains('other-option')) {
+        return;
+      }
+      var field = $(e.target).closest('li.form-field')[0];
+      if (utils.inArray(field.type, ['select', 'checkbox-group', 'radio-group'])) {
+        field.querySelector('[class="option-value"][value="' + e.target.value + '"]').parentElement.childNodes[0].checked = true;
+      } else {
+        document.getElementById('value-' + field.id).value = e.target.value;
+      }
+
+      _helpers.save();
+    });
+
+    // update preview to label
+    $sortableFields.on('keyup change', '[name="label"]', function () {
+      $('.field-label', $(this).closest('li')).text($(this).val());
+    });
+
+    // remove error styling when users tries to correct mistake
+    $sortableFields.delegate('input.error', 'keyup', function () {
+      $(this).removeClass('error');
+    });
+
+    // update preview for description
+    $sortableFields.on('keyup', 'input[name="description"]', function () {
+      var $field = $(this).parents('.form-field:eq(0)');
+      var closestToolTip = $('.tooltip-element', $field);
+      var ttVal = $(this).val();
+      if (ttVal !== '') {
+        if (!closestToolTip.length) {
+          var tt = '<span class="tooltip-element" tooltip="' + ttVal + '">?</span>';
+          $('.field-label', $field).after(tt);
+        } else {
+          closestToolTip.attr('tooltip', ttVal).css('display', 'inline-block');
+        }
+      } else {
+        if (closestToolTip.length) {
+          closestToolTip.css('display', 'none');
+        }
+      }
+    });
+
+    $sortableFields.on('change', '.fld-multiple', function (e) {
+      var newType = e.target.checked ? 'checkbox' : 'radio';
+
+      $(e.target).parents('.form-elements:eq(0)').find('.sortable-options input.option-selected').each(function () {
+        this.type = newType;
+      });
+    });
+
+    // format name attribute
+    $sortableFields.on('blur', 'input.fld-name', function () {
+      this.value = _helpers.safename(this.value);
+      if (this.value === '') {
+        $(this).addClass('field-error').attr('placeholder', opts.messages.cannotBeEmpty);
+      } else {
+        $(this).removeClass('field-error');
+      }
+    });
+
+    $sortableFields.on('blur', 'input.fld-maxlength', function () {
+      this.value = _helpers.forceNumber(this.value);
+    });
+
+    // Copy field
+    $sortableFields.on('click touchstart', '.icon-copy', function (e) {
+      e.preventDefault();
+      var currentItem = $(this).parent().parent('li');
+      var $clone = cloneItem(currentItem);
+      $clone.insertAfter(currentItem);
+      _helpers.updatePreview($clone);
+      _helpers.save();
+    });
+
+    // Delete field
+    $sortableFields.on('click touchstart', '.delete-confirm', function (e) {
+      e.preventDefault();
+
+      var buttonPosition = this.getBoundingClientRect(),
+          bodyRect = document.body.getBoundingClientRect(),
+          coords = {
+        pageX: buttonPosition.left + buttonPosition.width / 2,
+        pageY: buttonPosition.top - bodyRect.top - 12
+      };
+
+      var deleteID = $(this).parents('.form-field:eq(0)').attr('id'),
+          $field = $(document.getElementById(deleteID));
+
+      document.addEventListener('modalClosed', function () {
+        $field.removeClass('deleting');
+      }, false);
+
+      // Check if user is sure they want to remove the field
+      if (opts.fieldRemoveWarn) {
+        var warnH3 = utils.markup('h3', opts.messages.warning),
+            warnMessage = utils.markup('p', opts.messages.fieldRemoveWarning);
+        _helpers.confirm([warnH3, warnMessage], function () {
+          return _helpers.removeField(deleteID);
+        }, coords);
+        $field.addClass('deleting');
+      } else {
+        _helpers.removeField(deleteID);
+      }
+    });
+
+    // Update button style selection
+    $sortableFields.on('click', '.style-wrap button', function () {
+      var styleVal = $(this).val(),
+          $parent = $(this).parent(),
+          $btnStyle = $parent.prev('.btn-style');
+      $btnStyle.val(styleVal);
+      $(this).siblings('.btn').removeClass('active');
+      $(this).addClass('active');
+      saveAndUpdate.call($parent);
+    });
+
+    // Attach a callback to toggle required asterisk
+    $sortableFields.on('click', 'input.fld-required', function () {
+      var requiredAsterisk = $(this).parents('li.form-field').find('.required-asterisk');
+      requiredAsterisk.toggle();
+    });
+
+    // Attach a callback to toggle roles visibility
+    $sortableFields.on('click', 'input.fld-access', function () {
+      var roles = $(this).parents('li.form-field').find('div.available-roles'),
+          enableRolesCB = $(this);
+      roles.slideToggle(250, function () {
+        if (!enableRolesCB.is(':checked')) {
+          $('input[type="checkbox"]', roles).removeAttr('checked');
+        }
+      });
+    });
+
+    // Attach a callback to add new options
+    $sortableFields.on('click', '.add-opt', function (e) {
+      e.preventDefault();
+      var $optionWrap = $(this).parents('.field-options:eq(0)'),
+          $multiple = $('[name="multiple"]', $optionWrap),
+          $firstOption = $('.option-selected:eq(0)', $optionWrap),
+          isMultiple = false;
+
+      if ($multiple.length) {
+        isMultiple = $multiple.prop('checked');
+      } else {
+        isMultiple = $firstOption.attr('type') === 'checkbox';
+      }
+
+      var name = $firstOption.attr('name');
+
+      $('.sortable-options', $optionWrap).append(selectFieldOptions(name, false, isMultiple));
+    });
+
+    $sortableFields.on('mouseover mouseout', '.remove, .del-button', function () {
+      $(this).parents('li:eq(0)').toggleClass('delete');
+    });
+
+    if (opts.showActionButtons) {
+      // View XML
+      var xmlButton = $(document.getElementById(frmbID + '-view-data'));
+      xmlButton.click(function (e) {
+        e.preventDefault();
+        _helpers.showData();
+      });
+
+      // Clear all fields in form editor
+      var clearButton = $(document.getElementById(frmbID + '-clear-all'));
+      clearButton.click(function () {
+        var fields = $('li.form-field');
+        var buttonPosition = this.getBoundingClientRect(),
+            bodyRect = document.body.getBoundingClientRect(),
+            coords = {
+          pageX: buttonPosition.left + buttonPosition.width / 2,
+          pageY: buttonPosition.top - bodyRect.top - 12
+        };
+
+        if (fields.length) {
+          _helpers.confirm(opts.messages.clearAllMessage, function () {
+            _helpers.removeAllfields();
+            opts.notify.success(opts.messages.allFieldsRemoved);
+            _helpers.save();
+          }, coords);
+        } else {
+          _helpers.dialog('There are no fields to clear', { pageX: coords.pageX, pageY: coords.pageY });
+        }
+      });
+
+      // Save Idea Template
+      $(document.getElementById(frmbID + '-save')).click(function (e) {
+        e.preventDefault();
+        _helpers.save();
+      });
+    }
+
+    _helpers.getData();
+    loadFields();
+
+    $sortableFields.css('min-height', $cbUL.height());
+
+    // If option set, controls will remain in view in editor
+    if (opts.stickyControls) {
+      _helpers.stickyControls($sortableFields, cbUl);
+    }
+
+    document.dispatchEvent(formBuilder.events.loaded);
+
+    // Make actions accessible
+    formBuilder.actions = {
+      clearFields: _helpers.removeAllfields,
+      showData: _helpers.showData,
+      save: _helpers.save,
+      addField: function addField(field, index) {
+        _helpers.stopIndex = $sortableFields[0].children.length ? index : undefined;
+        prepFieldVars(field);
+        document.dispatchEvent(formBuilder.events.fieldAdded);
+      },
+      removeField: _helpers.removeField,
+      setData: function setData(formData) {
+        _helpers.removeAllfields();
+        _helpers.getData(formData);
+        loadFields();
+      }
+    };
+
+    return formBuilder;
+  };
+
+  $.fn.formBuilder = function (options) {
+    options = options || {};
+    return this.each(function () {
+      var formBuilder = new FormBuilder(options, this);
+      $(this).data('formBuilder', formBuilder);
+
+      return formBuilder;
+    });
+  };
+})(jQuery);
+},{}],14:[function(require,module,exports){
+/*
+formBuilder - https://formbuilder.online/
+Version: 1.24.1
+Author: Kevin Chappell <kevin.b.chappell@gmail.com>
+*/
+"use strict";function FormRenderFn(e,t){var n=fbUtils,r=this,a={destroyTemplate:!0,container:!1,dataType:"xml",formData:!1,messages:{formRendered:"Form Rendered",noFormData:"No form data.",other:"Other",selectColor:"Select Color"},onRender:function(){},render:!0,notify:{error:function(e){return console.error(e)},success:function(e){return console.log(e)},warning:function(e){return console.warn(e)}}},i=$.extend(!0,a,e);!function(){if(!i.formData)return!1;var e={xml:function(e){return n.parseXML(e)},json:function(e){return window.JSON.parse(e)}};i.formData=e[i.dataType](i.formData)||!1}(),Element.prototype.appendFormFields=function(e){var t=this;e.forEach(function(e){return t.appendChild(e)})},Element.prototype.emptyContainer=function(){for(var e=this;e.lastChild;)e.removeChild(e.lastChild)};var o=function(){i.onRender&&i.onRender()},l=function(e){var t=Object.assign({},e);return t.className=e.className||e["class"]||null,delete t["class"],e.values&&(e.values=e.values.map(function(e){return n.trimObj(e)})),n.trimObj(t)},s=[];if(i.formData){for(var c=0;c<i.formData.length;c++){var f=l(i.formData[c]);s.push(n.fieldRender(f,i))}if(i.render){if(i.container){var u=n.markup("div",s,{className:"rendered-form"});i.container=i.container instanceof jQuery?i.container[0]:i.container,i.container.emptyContainer(),i.container.appendChild(u)}else t&&(t.emptyContainer(),t.appendFormFields(s));o(),i.notify.success(i.messages.formRendered)}else r.markup=s.map(function(e){return e.innerHTML}).join("")}else{var d=n.markup("div",i.messages.noFormData,{className:"no-form-data"});s.push(d),i.notify.error(i.messages.noFormData)}return r}"remove"in Element.prototype||(Element.prototype.remove=function(){this.parentNode&&this.parentNode.removeChild(this)}),"function"!=typeof Event&&!function(){window.Event=function(e){var t=document.createEvent("Event");return t.initEvent(e,!0,!0),t}}(),"function"!=typeof Object.assign&&(Object.assign=function(e){if(null==e)throw new TypeError("Cannot convert undefined or null to object");e=Object(e);for(var t=1;t<arguments.length;t++){var n=arguments[t];if(null!=n)for(var r in n)Object.prototype.hasOwnProperty.call(n,r)&&(e[r]=n[r])}return e}),function(e){var t=function(t,n){var r={theme:"fresh",messages:{off:"Off",on:"On"}},a=e.extend(r,n),i=e('<div class="kc-toggle"/>').insertAfter(t).append(t);i.toggleClass("on",t.is(":checked"));var o='<div class="kct-on">'+a.messages.on+"</div>",l='<div class="kct-off">'+a.messages.off+"</div>",s='<div class="kct-handle"></div>',c='<div class="kct-inner">'+o+s+l+"</div>";i.append(c),i.click(function(){t.attr("checked",!t.attr("checked")),e(this).toggleClass("on")})};e.fn.kcToggle=function(n){var r=this;return r.each(function(){var r=e(this);if(!r.data("kcToggle")){var a=new t(r,n);r.data("kcToggle",a)}})}}(jQuery);var _typeof="function"==typeof Symbol&&"symbol"==typeof Symbol.iterator?function(e){return typeof e}:function(e){return e&&"function"==typeof Symbol&&e.constructor===Symbol?"symbol":typeof e},fbUtils={};fbUtils.inArray=function(e,t){return-1!==t.indexOf(e)},fbUtils.trimObj=function(e){var t=[null,void 0,"",!1,"false"];for(var n in e)fbUtils.inArray(e[n],t)?delete e[n]:Array.isArray(e[n])&&(e[n].length||delete e[n]);return e},fbUtils.validAttr=function(e){var t=["values","enableOther","other","label","subtype"];return!fbUtils.inArray(e,t)},fbUtils.attrString=function(e){var t=[];for(var n in e)e.hasOwnProperty(n)&&fbUtils.validAttr(n)&&(n=fbUtils.safeAttr(n,e[n]),t.push(n.name+n.value));return t.join(" ")},fbUtils.safeAttr=function(e,t){e=fbUtils.safeAttrName(e);var n=fbUtils.escapeAttr(t);return t=t?'="'+n+'"':"",{name:e,value:t}},fbUtils.safeAttrName=function(e){var t={className:"class"};return t[e]||fbUtils.hyphenCase(e)},fbUtils.hyphenCase=function(e){return e=e.replace(/[^\w\s\-]/gi,""),e=e.replace(/([A-Z])/g,function(e){return"-"+e.toLowerCase()}),e.replace(/\s/g,"-").replace(/^-+/g,"")},fbUtils.camelCase=function(e){return e.replace(/-([a-z])/g,function(e,t){return t.toUpperCase()})},fbUtils.markup=function(e){var t=arguments.length<=1||void 0===arguments[1]?"":arguments[1],n=arguments.length<=2||void 0===arguments[2]?{}:arguments[2],r=void 0,a=document.createElement(e),i=function(e){return Array.isArray(e)?"array":"undefined"==typeof e?"undefined":_typeof(e)},o={string:function(e){a.innerHTML=e},object:function(e){return a.appendChild(e)},array:function(e){for(var t=0;t<e.length;t++)r=i(e[t]),o[r](e[t])}};for(var l in n)if(n.hasOwnProperty(l)){var s=fbUtils.safeAttrName(l);a.setAttribute(s,n[l])}return r=i(t),t&&o[r].call(this,t),a},fbUtils.parseAttrs=function(e){var t=e.attributes,n={};return fbUtils.forEach(t,function(e){var r=t[e].value;r.match(/false|true/g)?r="true"===r:r.match(/undefined/g)&&(r=void 0),r&&(n[t[e].name]=r)}),n},fbUtils.parseOptions=function(e){var t=e.getElementsByTagName("option"),n={},r=[];if(t.length)for(var a=0;a<t.length;a++)n=fbUtils.parseAttrs(t[a]),n.label=t[a].textContent,r.push(n);return r},fbUtils.parseXML=function(e){var t=new window.DOMParser,n=t.parseFromString(e,"text/xml"),r=[];if(n)for(var a=n.getElementsByTagName("field"),i=0;i<a.length;i++){var o=fbUtils.parseAttrs(a[i]);a[i].children.length&&(o.values=fbUtils.parseOptions(a[i])),r.push(o)}return r},fbUtils.escapeHtml=function(e){var t=document.createElement("textarea");return t.textContent=e,t.innerHTML},fbUtils.escapeAttr=function(e){function t(e){return n[e]||e}var n={'"':"&quot;","&":"&amp;","<":"&lt;",">":"&gt;"};return"string"==typeof e?e.replace(/["&<>]/g,t):e},fbUtils.escapeAttrs=function(e){for(var t in e)e.hasOwnProperty(t)&&(e[t]=fbUtils.escapeAttr(e[t]));return e},fbUtils.forEach=function(e,t,n){for(var r=0;r<e.length;r++)t.call(n,r,e[r])},fbUtils.unique=function(e){return e.filter(function(e,t,n){return n.indexOf(e)===t})},fbUtils.fieldRender=function(e,t){var n=arguments.length<=2||void 0===arguments[2]?!1:arguments[2],r="",a="",i="",o=e.label||"",l=e.description||"",s="",c=e.values;e.name=n?e.name+"-preview":e.name,e.id=e.name,e.name=e.multiple?e.name+"[]":e.name,e.type=e.subtype||e.type,e.required&&(e.required=null,e["aria-required"]="true",s='<span class="required">*</span>'),"hidden"!==e.type&&(l&&(l='<span class="tooltip-element" tooltip="'+l+'">?</span>'),a='<label for="'+e.id+'" class="fb-'+e.type+'-label">'+o+" "+s+" "+l+"</label>");var f=e.label;delete e.label,delete e.description;var u=fbUtils.attrString(e);switch(e.type){case"textarea":case"rich-text":delete e.type;var d=e.value||"";r=a+"<textarea "+u+">"+d+"</textarea>";break;case"select":var p;if(e.type=e.type.replace("-group",""),c){e.placeholder&&(i+="<option disabled selected>"+e.placeholder+"</option>");for(var m=0;m<c.length;m++)c[m].selected&&!e.placeholder||delete c[m].selected,c[m].label||(c[m].label=""),p=fbUtils.attrString(c[m]),i+="<option "+p+">"+c[m].label+"</option>"}r=a+"<select "+u+">"+i+"</select>";break;case"checkbox-group":case"radio-group":var b=void 0;if(e.type=e.type.replace("-group",""),"checkbox"===e.type&&(e.name=e.name+"[]"),c){for(var v=void 0,h=0;h<c.length;h++)b=Object.assign({value:"",label:""},e,c[h]),b.selected&&(delete b.selected,b.checked=null),b.id=e.id+"-"+h,v=fbUtils.attrString(b),i+="<input "+v+' /> <label for="'+b.id+'">'+b.label+"</label><br>";if(e.other){var y={id:e.id+"-other",className:e.className+" other-option",onclick:"fbUtils.otherOptionCB('"+e.id+"-other')"};v=fbUtils.attrString(Object.assign({},e,y)),i+="<input "+v+' /> <label for="'+y.id+'">'+t.messages.other+'</label> <input type="text" name="'+e.name+'" id="'+y.id+'-value" style="display:none;" />'}}r=a+'<div class="'+e.type+'-group">'+i+"</div>";break;case"text":case"password":case"email":case"number":case"file":case"hidden":case"date":case"tel":case"autocomplete":r=a+" <input "+u+">";break;case"color":r=a+" <input "+u+"> "+t.messages.selectColor;break;case"button":case"submit":r="<button "+u+">"+f+"</button>";break;case"checkbox":r="<input "+u+"> "+a,e.toggle&&setTimeout(function(){$(document.getElementById(e.id)).kcToggle()},100);break;default:r="<"+e.type+" "+u+">"+f+"</"+e.type+">"}if("hidden"!==e.type){var g=e.id?"fb-"+e.type+" form-group field-"+e.id:"";r=fbUtils.markup("div",r,{className:g})}else r=fbUtils.markup("input",null,e);return r},fbUtils.otherOptionCB=function(e){var t=document.getElementById(e),n=document.getElementById(e+"-value");t.checked?(t.style.display="none",n.style.display="inline-block"):(t.style.display="inline-block",n.style.display="none")},fbUtils.capitalize=function(e){return e.replace(/\b\w/g,function(e){return e.toUpperCase()})},function(e){e.fn.formRender=function(e){this.each(function(){var t=new FormRenderFn(e,this);return t})}}(jQuery);
+},{}],15:[function(require,module,exports){
+/**
+ * Check if argument is a HTML element.
+ *
+ * @param {Object} value
+ * @return {Boolean}
+ */
+exports.node = function(value) {
+    return value !== undefined
+        && value instanceof HTMLElement
+        && value.nodeType === 1;
+};
+
+/**
+ * Check if argument is a list of HTML elements.
+ *
+ * @param {Object} value
+ * @return {Boolean}
+ */
+exports.nodeList = function(value) {
+    var type = Object.prototype.toString.call(value);
+
+    return value !== undefined
+        && (type === '[object NodeList]' || type === '[object HTMLCollection]')
+        && ('length' in value)
+        && (value.length === 0 || exports.node(value[0]));
+};
+
+/**
+ * Check if argument is a string.
+ *
+ * @param {Object} value
+ * @return {Boolean}
+ */
+exports.string = function(value) {
+    return typeof value === 'string'
+        || value instanceof String;
+};
+
+/**
+ * Check if argument is a function.
+ *
+ * @param {Object} value
+ * @return {Boolean}
+ */
+exports.fn = function(value) {
+    var type = Object.prototype.toString.call(value);
+
+    return type === '[object Function]';
+};
+
+},{}],16:[function(require,module,exports){
+var is = require('./is');
+var delegate = require('delegate');
+
+/**
+ * Validates all params and calls the right
+ * listener function based on its target type.
+ *
+ * @param {String|HTMLElement|HTMLCollection|NodeList} target
+ * @param {String} type
+ * @param {Function} callback
+ * @return {Object}
+ */
+function listen(target, type, callback) {
+    if (!target && !type && !callback) {
+        throw new Error('Missing required arguments');
+    }
+
+    if (!is.string(type)) {
+        throw new TypeError('Second argument must be a String');
+    }
+
+    if (!is.fn(callback)) {
+        throw new TypeError('Third argument must be a Function');
+    }
+
+    if (is.node(target)) {
+        return listenNode(target, type, callback);
+    }
+    else if (is.nodeList(target)) {
+        return listenNodeList(target, type, callback);
+    }
+    else if (is.string(target)) {
+        return listenSelector(target, type, callback);
+    }
+    else {
+        throw new TypeError('First argument must be a String, HTMLElement, HTMLCollection, or NodeList');
+    }
+}
+
+/**
+ * Adds an event listener to a HTML element
+ * and returns a remove listener function.
+ *
+ * @param {HTMLElement} node
+ * @param {String} type
+ * @param {Function} callback
+ * @return {Object}
+ */
+function listenNode(node, type, callback) {
+    node.addEventListener(type, callback);
+
+    return {
+        destroy: function() {
+            node.removeEventListener(type, callback);
+        }
+    }
+}
+
+/**
+ * Add an event listener to a list of HTML elements
+ * and returns a remove listener function.
+ *
+ * @param {NodeList|HTMLCollection} nodeList
+ * @param {String} type
+ * @param {Function} callback
+ * @return {Object}
+ */
+function listenNodeList(nodeList, type, callback) {
+    Array.prototype.forEach.call(nodeList, function(node) {
+        node.addEventListener(type, callback);
+    });
+
+    return {
+        destroy: function() {
+            Array.prototype.forEach.call(nodeList, function(node) {
+                node.removeEventListener(type, callback);
+            });
+        }
+    }
+}
+
+/**
+ * Add an event listener to a selector
+ * and returns a remove listener function.
+ *
+ * @param {String} selector
+ * @param {String} type
+ * @param {Function} callback
+ * @return {Object}
+ */
+function listenSelector(selector, type, callback) {
+    return delegate(document.body, selector, type, callback);
+}
+
+module.exports = listen;
+
+},{"./is":15,"delegate":12}],17:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -22477,7 +25029,7 @@ exports['default'] = inst;
 module.exports = exports['default'];
 
 
-},{"./handlebars.runtime":19,"./handlebars/compiler/ast":21,"./handlebars/compiler/base":22,"./handlebars/compiler/compiler":24,"./handlebars/compiler/javascript-compiler":26,"./handlebars/compiler/visitor":29,"./handlebars/no-conflict":43}],19:[function(require,module,exports){
+},{"./handlebars.runtime":18,"./handlebars/compiler/ast":20,"./handlebars/compiler/base":21,"./handlebars/compiler/compiler":23,"./handlebars/compiler/javascript-compiler":25,"./handlebars/compiler/visitor":28,"./handlebars/no-conflict":42}],18:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -22545,7 +25097,7 @@ exports['default'] = inst;
 module.exports = exports['default'];
 
 
-},{"./handlebars/base":20,"./handlebars/exception":33,"./handlebars/no-conflict":43,"./handlebars/runtime":44,"./handlebars/safe-string":45,"./handlebars/utils":46}],20:[function(require,module,exports){
+},{"./handlebars/base":19,"./handlebars/exception":32,"./handlebars/no-conflict":42,"./handlebars/runtime":43,"./handlebars/safe-string":44,"./handlebars/utils":45}],19:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -22651,7 +25203,7 @@ exports.createFrame = _utils.createFrame;
 exports.logger = _logger2['default'];
 
 
-},{"./decorators":31,"./exception":33,"./helpers":34,"./logger":42,"./utils":46}],21:[function(require,module,exports){
+},{"./decorators":30,"./exception":32,"./helpers":33,"./logger":41,"./utils":45}],20:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -22684,7 +25236,7 @@ exports['default'] = AST;
 module.exports = exports['default'];
 
 
-},{}],22:[function(require,module,exports){
+},{}],21:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -22734,7 +25286,7 @@ function parse(input, options) {
 }
 
 
-},{"../utils":46,"./helpers":25,"./parser":27,"./whitespace-control":30}],23:[function(require,module,exports){
+},{"../utils":45,"./helpers":24,"./parser":26,"./whitespace-control":29}],22:[function(require,module,exports){
 /* global define */
 'use strict';
 
@@ -22902,7 +25454,7 @@ exports['default'] = CodeGen;
 module.exports = exports['default'];
 
 
-},{"../utils":46,"source-map":48}],24:[function(require,module,exports){
+},{"../utils":45,"source-map":47}],23:[function(require,module,exports){
 /* eslint-disable new-cap */
 
 'use strict';
@@ -23476,7 +26028,7 @@ function transformLiteralToPath(sexpr) {
 }
 
 
-},{"../exception":33,"../utils":46,"./ast":21}],25:[function(require,module,exports){
+},{"../exception":32,"../utils":45,"./ast":20}],24:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -23708,7 +26260,7 @@ function preparePartialBlock(open, program, close, locInfo) {
 }
 
 
-},{"../exception":33}],26:[function(require,module,exports){
+},{"../exception":32}],25:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -24836,7 +27388,7 @@ exports['default'] = JavaScriptCompiler;
 module.exports = exports['default'];
 
 
-},{"../base":20,"../exception":33,"../utils":46,"./code-gen":23}],27:[function(require,module,exports){
+},{"../base":19,"../exception":32,"../utils":45,"./code-gen":22}],26:[function(require,module,exports){
 /* istanbul ignore next */
 /* Jison generated parser */
 "use strict";
@@ -25576,7 +28128,7 @@ var handlebars = (function () {
 exports['default'] = handlebars;
 
 
-},{}],28:[function(require,module,exports){
+},{}],27:[function(require,module,exports){
 /* eslint-disable new-cap */
 'use strict';
 
@@ -25764,7 +28316,7 @@ PrintVisitor.prototype.HashPair = function (pair) {
 /* eslint-enable new-cap */
 
 
-},{"./visitor":29}],29:[function(require,module,exports){
+},{"./visitor":28}],28:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -25906,7 +28458,7 @@ exports['default'] = Visitor;
 module.exports = exports['default'];
 
 
-},{"../exception":33}],30:[function(require,module,exports){
+},{"../exception":32}],29:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -26129,7 +28681,7 @@ exports['default'] = WhitespaceControl;
 module.exports = exports['default'];
 
 
-},{"./visitor":29}],31:[function(require,module,exports){
+},{"./visitor":28}],30:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -26147,7 +28699,7 @@ function registerDefaultDecorators(instance) {
 }
 
 
-},{"./decorators/inline":32}],32:[function(require,module,exports){
+},{"./decorators/inline":31}],31:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -26178,7 +28730,7 @@ exports['default'] = function (instance) {
 module.exports = exports['default'];
 
 
-},{"../utils":46}],33:[function(require,module,exports){
+},{"../utils":45}],32:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -26220,7 +28772,7 @@ exports['default'] = Exception;
 module.exports = exports['default'];
 
 
-},{}],34:[function(require,module,exports){
+},{}],33:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -26268,7 +28820,7 @@ function registerDefaultHelpers(instance) {
 }
 
 
-},{"./helpers/block-helper-missing":35,"./helpers/each":36,"./helpers/helper-missing":37,"./helpers/if":38,"./helpers/log":39,"./helpers/lookup":40,"./helpers/with":41}],35:[function(require,module,exports){
+},{"./helpers/block-helper-missing":34,"./helpers/each":35,"./helpers/helper-missing":36,"./helpers/if":37,"./helpers/log":38,"./helpers/lookup":39,"./helpers/with":40}],34:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -26309,7 +28861,7 @@ exports['default'] = function (instance) {
 module.exports = exports['default'];
 
 
-},{"../utils":46}],36:[function(require,module,exports){
+},{"../utils":45}],35:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -26405,7 +28957,7 @@ exports['default'] = function (instance) {
 module.exports = exports['default'];
 
 
-},{"../exception":33,"../utils":46}],37:[function(require,module,exports){
+},{"../exception":32,"../utils":45}],36:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -26432,7 +28984,7 @@ exports['default'] = function (instance) {
 module.exports = exports['default'];
 
 
-},{"../exception":33}],38:[function(require,module,exports){
+},{"../exception":32}],37:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -26463,7 +29015,7 @@ exports['default'] = function (instance) {
 module.exports = exports['default'];
 
 
-},{"../utils":46}],39:[function(require,module,exports){
+},{"../utils":45}],38:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -26491,7 +29043,7 @@ exports['default'] = function (instance) {
 module.exports = exports['default'];
 
 
-},{}],40:[function(require,module,exports){
+},{}],39:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -26505,7 +29057,7 @@ exports['default'] = function (instance) {
 module.exports = exports['default'];
 
 
-},{}],41:[function(require,module,exports){
+},{}],40:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -26540,7 +29092,7 @@ exports['default'] = function (instance) {
 module.exports = exports['default'];
 
 
-},{"../utils":46}],42:[function(require,module,exports){
+},{"../utils":45}],41:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -26589,7 +29141,7 @@ exports['default'] = logger;
 module.exports = exports['default'];
 
 
-},{"./utils":46}],43:[function(require,module,exports){
+},{"./utils":45}],42:[function(require,module,exports){
 (function (global){
 /* global window */
 'use strict';
@@ -26613,7 +29165,7 @@ module.exports = exports['default'];
 
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],44:[function(require,module,exports){
+},{}],43:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -26907,7 +29459,7 @@ function executeDecorators(fn, prog, container, depths, data, blockParams) {
 }
 
 
-},{"./base":20,"./exception":33,"./utils":46}],45:[function(require,module,exports){
+},{"./base":19,"./exception":32,"./utils":45}],44:[function(require,module,exports){
 // Build out our basic SafeString type
 'use strict';
 
@@ -26924,7 +29476,7 @@ exports['default'] = SafeString;
 module.exports = exports['default'];
 
 
-},{}],46:[function(require,module,exports){
+},{}],45:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -27050,7 +29602,7 @@ function appendContextPath(contextPath, id) {
 }
 
 
-},{}],47:[function(require,module,exports){
+},{}],46:[function(require,module,exports){
 // USAGE:
 // var handlebars = require('handlebars');
 /* eslint-disable no-var */
@@ -27077,7 +29629,7 @@ if (typeof require !== 'undefined' && require.extensions) {
   require.extensions['.hbs'] = extension;
 }
 
-},{"../dist/cjs/handlebars":18,"../dist/cjs/handlebars/compiler/printer":28,"fs":3}],48:[function(require,module,exports){
+},{"../dist/cjs/handlebars":17,"../dist/cjs/handlebars/compiler/printer":27,"fs":4}],47:[function(require,module,exports){
 /*
  * Copyright 2009-2011 Mozilla Foundation and contributors
  * Licensed under the New BSD license. See LICENSE.txt or:
@@ -27087,7 +29639,7 @@ exports.SourceMapGenerator = require('./source-map/source-map-generator').Source
 exports.SourceMapConsumer = require('./source-map/source-map-consumer').SourceMapConsumer;
 exports.SourceNode = require('./source-map/source-node').SourceNode;
 
-},{"./source-map/source-map-consumer":55,"./source-map/source-map-generator":56,"./source-map/source-node":57}],49:[function(require,module,exports){
+},{"./source-map/source-map-consumer":54,"./source-map/source-map-generator":55,"./source-map/source-node":56}],48:[function(require,module,exports){
 /* -*- Mode: js; js-indent-level: 2; -*- */
 /*
  * Copyright 2011 Mozilla Foundation and contributors
@@ -27196,7 +29748,7 @@ define(function (require, exports, module) {
 
 });
 
-},{"./util":58,"amdefine":59}],50:[function(require,module,exports){
+},{"./util":57,"amdefine":2}],49:[function(require,module,exports){
 /* -*- Mode: js; js-indent-level: 2; -*- */
 /*
  * Copyright 2011 Mozilla Foundation and contributors
@@ -27344,7 +29896,7 @@ define(function (require, exports, module) {
 
 });
 
-},{"./base64":51,"amdefine":59}],51:[function(require,module,exports){
+},{"./base64":50,"amdefine":2}],50:[function(require,module,exports){
 /* -*- Mode: js; js-indent-level: 2; -*- */
 /*
  * Copyright 2011 Mozilla Foundation and contributors
@@ -27419,7 +29971,7 @@ define(function (require, exports, module) {
 
 });
 
-},{"amdefine":59}],52:[function(require,module,exports){
+},{"amdefine":2}],51:[function(require,module,exports){
 /* -*- Mode: js; js-indent-level: 2; -*- */
 /*
  * Copyright 2011 Mozilla Foundation and contributors
@@ -27538,7 +30090,7 @@ define(function (require, exports, module) {
 
 });
 
-},{"amdefine":59}],53:[function(require,module,exports){
+},{"amdefine":2}],52:[function(require,module,exports){
 /* -*- Mode: js; js-indent-level: 2; -*- */
 /*
  * Copyright 2014 Mozilla Foundation and contributors
@@ -27626,7 +30178,7 @@ define(function (require, exports, module) {
 
 });
 
-},{"./util":58,"amdefine":59}],54:[function(require,module,exports){
+},{"./util":57,"amdefine":2}],53:[function(require,module,exports){
 /* -*- Mode: js; js-indent-level: 2; -*- */
 /*
  * Copyright 2011 Mozilla Foundation and contributors
@@ -27748,7 +30300,7 @@ define(function (require, exports, module) {
 
 });
 
-},{"amdefine":59}],55:[function(require,module,exports){
+},{"amdefine":2}],54:[function(require,module,exports){
 /* -*- Mode: js; js-indent-level: 2; -*- */
 /*
  * Copyright 2011 Mozilla Foundation and contributors
@@ -28827,7 +31379,7 @@ define(function (require, exports, module) {
 
 });
 
-},{"./array-set":49,"./base64-vlq":50,"./binary-search":52,"./quick-sort":54,"./util":58,"amdefine":59}],56:[function(require,module,exports){
+},{"./array-set":48,"./base64-vlq":49,"./binary-search":51,"./quick-sort":53,"./util":57,"amdefine":2}],55:[function(require,module,exports){
 /* -*- Mode: js; js-indent-level: 2; -*- */
 /*
  * Copyright 2011 Mozilla Foundation and contributors
@@ -29228,7 +31780,7 @@ define(function (require, exports, module) {
 
 });
 
-},{"./array-set":49,"./base64-vlq":50,"./mapping-list":53,"./util":58,"amdefine":59}],57:[function(require,module,exports){
+},{"./array-set":48,"./base64-vlq":49,"./mapping-list":52,"./util":57,"amdefine":2}],56:[function(require,module,exports){
 /* -*- Mode: js; js-indent-level: 2; -*- */
 /*
  * Copyright 2011 Mozilla Foundation and contributors
@@ -29644,7 +32196,7 @@ define(function (require, exports, module) {
 
 });
 
-},{"./source-map-generator":56,"./util":58,"amdefine":59}],58:[function(require,module,exports){
+},{"./source-map-generator":55,"./util":57,"amdefine":2}],57:[function(require,module,exports){
 /* -*- Mode: js; js-indent-level: 2; -*- */
 /*
  * Copyright 2011 Mozilla Foundation and contributors
@@ -30016,312 +32568,7 @@ define(function (require, exports, module) {
 
 });
 
-},{"amdefine":59}],59:[function(require,module,exports){
-(function (process,__filename){
-/** vim: et:ts=4:sw=4:sts=4
- * @license amdefine 1.0.0 Copyright (c) 2011-2015, The Dojo Foundation All Rights Reserved.
- * Available via the MIT or new BSD license.
- * see: http://github.com/jrburke/amdefine for details
- */
-
-/*jslint node: true */
-/*global module, process */
-'use strict';
-
-/**
- * Creates a define for node.
- * @param {Object} module the "module" object that is defined by Node for the
- * current module.
- * @param {Function} [requireFn]. Node's require function for the current module.
- * It only needs to be passed in Node versions before 0.5, when module.require
- * did not exist.
- * @returns {Function} a define function that is usable for the current node
- * module.
- */
-function amdefine(module, requireFn) {
-    'use strict';
-    var defineCache = {},
-        loaderCache = {},
-        alreadyCalled = false,
-        path = require('path'),
-        makeRequire, stringRequire;
-
-    /**
-     * Trims the . and .. from an array of path segments.
-     * It will keep a leading path segment if a .. will become
-     * the first path segment, to help with module name lookups,
-     * which act like paths, but can be remapped. But the end result,
-     * all paths that use this function should look normalized.
-     * NOTE: this method MODIFIES the input array.
-     * @param {Array} ary the array of path segments.
-     */
-    function trimDots(ary) {
-        var i, part;
-        for (i = 0; ary[i]; i+= 1) {
-            part = ary[i];
-            if (part === '.') {
-                ary.splice(i, 1);
-                i -= 1;
-            } else if (part === '..') {
-                if (i === 1 && (ary[2] === '..' || ary[0] === '..')) {
-                    //End of the line. Keep at least one non-dot
-                    //path segment at the front so it can be mapped
-                    //correctly to disk. Otherwise, there is likely
-                    //no path mapping for a path starting with '..'.
-                    //This can still fail, but catches the most reasonable
-                    //uses of ..
-                    break;
-                } else if (i > 0) {
-                    ary.splice(i - 1, 2);
-                    i -= 2;
-                }
-            }
-        }
-    }
-
-    function normalize(name, baseName) {
-        var baseParts;
-
-        //Adjust any relative paths.
-        if (name && name.charAt(0) === '.') {
-            //If have a base name, try to normalize against it,
-            //otherwise, assume it is a top-level require that will
-            //be relative to baseUrl in the end.
-            if (baseName) {
-                baseParts = baseName.split('/');
-                baseParts = baseParts.slice(0, baseParts.length - 1);
-                baseParts = baseParts.concat(name.split('/'));
-                trimDots(baseParts);
-                name = baseParts.join('/');
-            }
-        }
-
-        return name;
-    }
-
-    /**
-     * Create the normalize() function passed to a loader plugin's
-     * normalize method.
-     */
-    function makeNormalize(relName) {
-        return function (name) {
-            return normalize(name, relName);
-        };
-    }
-
-    function makeLoad(id) {
-        function load(value) {
-            loaderCache[id] = value;
-        }
-
-        load.fromText = function (id, text) {
-            //This one is difficult because the text can/probably uses
-            //define, and any relative paths and requires should be relative
-            //to that id was it would be found on disk. But this would require
-            //bootstrapping a module/require fairly deeply from node core.
-            //Not sure how best to go about that yet.
-            throw new Error('amdefine does not implement load.fromText');
-        };
-
-        return load;
-    }
-
-    makeRequire = function (systemRequire, exports, module, relId) {
-        function amdRequire(deps, callback) {
-            if (typeof deps === 'string') {
-                //Synchronous, single module require('')
-                return stringRequire(systemRequire, exports, module, deps, relId);
-            } else {
-                //Array of dependencies with a callback.
-
-                //Convert the dependencies to modules.
-                deps = deps.map(function (depName) {
-                    return stringRequire(systemRequire, exports, module, depName, relId);
-                });
-
-                //Wait for next tick to call back the require call.
-                if (callback) {
-                    process.nextTick(function () {
-                        callback.apply(null, deps);
-                    });
-                }
-            }
-        }
-
-        amdRequire.toUrl = function (filePath) {
-            if (filePath.indexOf('.') === 0) {
-                return normalize(filePath, path.dirname(module.filename));
-            } else {
-                return filePath;
-            }
-        };
-
-        return amdRequire;
-    };
-
-    //Favor explicit value, passed in if the module wants to support Node 0.4.
-    requireFn = requireFn || function req() {
-        return module.require.apply(module, arguments);
-    };
-
-    function runFactory(id, deps, factory) {
-        var r, e, m, result;
-
-        if (id) {
-            e = loaderCache[id] = {};
-            m = {
-                id: id,
-                uri: __filename,
-                exports: e
-            };
-            r = makeRequire(requireFn, e, m, id);
-        } else {
-            //Only support one define call per file
-            if (alreadyCalled) {
-                throw new Error('amdefine with no module ID cannot be called more than once per file.');
-            }
-            alreadyCalled = true;
-
-            //Use the real variables from node
-            //Use module.exports for exports, since
-            //the exports in here is amdefine exports.
-            e = module.exports;
-            m = module;
-            r = makeRequire(requireFn, e, m, module.id);
-        }
-
-        //If there are dependencies, they are strings, so need
-        //to convert them to dependency values.
-        if (deps) {
-            deps = deps.map(function (depName) {
-                return r(depName);
-            });
-        }
-
-        //Call the factory with the right dependencies.
-        if (typeof factory === 'function') {
-            result = factory.apply(m.exports, deps);
-        } else {
-            result = factory;
-        }
-
-        if (result !== undefined) {
-            m.exports = result;
-            if (id) {
-                loaderCache[id] = m.exports;
-            }
-        }
-    }
-
-    stringRequire = function (systemRequire, exports, module, id, relId) {
-        //Split the ID by a ! so that
-        var index = id.indexOf('!'),
-            originalId = id,
-            prefix, plugin;
-
-        if (index === -1) {
-            id = normalize(id, relId);
-
-            //Straight module lookup. If it is one of the special dependencies,
-            //deal with it, otherwise, delegate to node.
-            if (id === 'require') {
-                return makeRequire(systemRequire, exports, module, relId);
-            } else if (id === 'exports') {
-                return exports;
-            } else if (id === 'module') {
-                return module;
-            } else if (loaderCache.hasOwnProperty(id)) {
-                return loaderCache[id];
-            } else if (defineCache[id]) {
-                runFactory.apply(null, defineCache[id]);
-                return loaderCache[id];
-            } else {
-                if(systemRequire) {
-                    return systemRequire(originalId);
-                } else {
-                    throw new Error('No module with ID: ' + id);
-                }
-            }
-        } else {
-            //There is a plugin in play.
-            prefix = id.substring(0, index);
-            id = id.substring(index + 1, id.length);
-
-            plugin = stringRequire(systemRequire, exports, module, prefix, relId);
-
-            if (plugin.normalize) {
-                id = plugin.normalize(id, makeNormalize(relId));
-            } else {
-                //Normalize the ID normally.
-                id = normalize(id, relId);
-            }
-
-            if (loaderCache[id]) {
-                return loaderCache[id];
-            } else {
-                plugin.load(id, makeRequire(systemRequire, exports, module, relId), makeLoad(id), {});
-
-                return loaderCache[id];
-            }
-        }
-    };
-
-    //Create a define function specific to the module asking for amdefine.
-    function define(id, deps, factory) {
-        if (Array.isArray(id)) {
-            factory = deps;
-            deps = id;
-            id = undefined;
-        } else if (typeof id !== 'string') {
-            factory = id;
-            id = deps = undefined;
-        }
-
-        if (deps && !Array.isArray(deps)) {
-            factory = deps;
-            deps = undefined;
-        }
-
-        if (!deps) {
-            deps = ['require', 'exports', 'module'];
-        }
-
-        //Set up properties for this module. If an ID, then use
-        //internal cache. If no ID, then use the external variables
-        //for this node module.
-        if (id) {
-            //Put the module in deep freeze until there is a
-            //require call for it.
-            defineCache[id] = [id, deps, factory];
-        } else {
-            runFactory(id, deps, factory);
-        }
-    }
-
-    //define.require, which has access to all the values in the
-    //cache. Useful for AMD modules that all have IDs in the file,
-    //but need to finally export a value to node based on one of those
-    //IDs.
-    define.require = function (id) {
-        if (loaderCache[id]) {
-            return loaderCache[id];
-        }
-
-        if (defineCache[id]) {
-            runFactory.apply(null, defineCache[id]);
-            return loaderCache[id];
-        }
-    };
-
-    define.amd = {};
-
-    return define;
-}
-
-module.exports = amdefine;
-
-}).call(this,require('_process'),"/../node_modules/handlebars/node_modules/source-map/node_modules/amdefine/amdefine.js")
-},{"_process":5,"path":4}],60:[function(require,module,exports){
+},{"amdefine":2}],58:[function(require,module,exports){
 jQuery.fn.extend({
 	treetable: function() {
 		var $table = $(this);
@@ -30459,7 +32706,7 @@ jQuery.fn.extend({
 });
 
 
-},{}],61:[function(require,module,exports){
+},{}],59:[function(require,module,exports){
 /*!
  * jQuery UI Widget 1.12.1
  * http://jqueryui.com
@@ -31194,7 +33441,7 @@ return $.widget;
 
 } ) );
 
-},{}],62:[function(require,module,exports){
+},{}],60:[function(require,module,exports){
 /*!
  * jQuery UI Mouse 1.12.1
  * http://jqueryui.com
@@ -31422,7 +33669,7 @@ return $.widget( "ui.mouse", {
 
 } ) );
 
-},{}],63:[function(require,module,exports){
+},{}],61:[function(require,module,exports){
 /*!
  * jQuery UI Sortable 1.12.1
  * http://jqueryui.com
@@ -32978,7 +35225,452 @@ return $.widget( "ui.sortable", $.ui.mouse, {
 
 } ) );
 
+},{}],62:[function(require,module,exports){
+(function (process){
+// Copyright Joyent, Inc. and other Node contributors.
+//
+// Permission is hereby granted, free of charge, to any person obtaining a
+// copy of this software and associated documentation files (the
+// "Software"), to deal in the Software without restriction, including
+// without limitation the rights to use, copy, modify, merge, publish,
+// distribute, sublicense, and/or sell copies of the Software, and to permit
+// persons to whom the Software is furnished to do so, subject to the
+// following conditions:
+//
+// The above copyright notice and this permission notice shall be included
+// in all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+// OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN
+// NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+// DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+// OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
+// USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+// resolves . and .. elements in a path array with directory names there
+// must be no slashes, empty elements, or device names (c:\) in the array
+// (so also no leading and trailing slashes - it does not distinguish
+// relative and absolute paths)
+function normalizeArray(parts, allowAboveRoot) {
+  // if the path tries to go above the root, `up` ends up > 0
+  var up = 0;
+  for (var i = parts.length - 1; i >= 0; i--) {
+    var last = parts[i];
+    if (last === '.') {
+      parts.splice(i, 1);
+    } else if (last === '..') {
+      parts.splice(i, 1);
+      up++;
+    } else if (up) {
+      parts.splice(i, 1);
+      up--;
+    }
+  }
+
+  // if the path is allowed to go above the root, restore leading ..s
+  if (allowAboveRoot) {
+    for (; up--; up) {
+      parts.unshift('..');
+    }
+  }
+
+  return parts;
+}
+
+// Split a filename into [root, dir, basename, ext], unix version
+// 'root' is just a slash, or nothing.
+var splitPathRe =
+    /^(\/?|)([\s\S]*?)((?:\.{1,2}|[^\/]+?|)(\.[^.\/]*|))(?:[\/]*)$/;
+var splitPath = function(filename) {
+  return splitPathRe.exec(filename).slice(1);
+};
+
+// path.resolve([from ...], to)
+// posix version
+exports.resolve = function() {
+  var resolvedPath = '',
+      resolvedAbsolute = false;
+
+  for (var i = arguments.length - 1; i >= -1 && !resolvedAbsolute; i--) {
+    var path = (i >= 0) ? arguments[i] : process.cwd();
+
+    // Skip empty and invalid entries
+    if (typeof path !== 'string') {
+      throw new TypeError('Arguments to path.resolve must be strings');
+    } else if (!path) {
+      continue;
+    }
+
+    resolvedPath = path + '/' + resolvedPath;
+    resolvedAbsolute = path.charAt(0) === '/';
+  }
+
+  // At this point the path should be resolved to a full absolute path, but
+  // handle relative paths to be safe (might happen when process.cwd() fails)
+
+  // Normalize the path
+  resolvedPath = normalizeArray(filter(resolvedPath.split('/'), function(p) {
+    return !!p;
+  }), !resolvedAbsolute).join('/');
+
+  return ((resolvedAbsolute ? '/' : '') + resolvedPath) || '.';
+};
+
+// path.normalize(path)
+// posix version
+exports.normalize = function(path) {
+  var isAbsolute = exports.isAbsolute(path),
+      trailingSlash = substr(path, -1) === '/';
+
+  // Normalize the path
+  path = normalizeArray(filter(path.split('/'), function(p) {
+    return !!p;
+  }), !isAbsolute).join('/');
+
+  if (!path && !isAbsolute) {
+    path = '.';
+  }
+  if (path && trailingSlash) {
+    path += '/';
+  }
+
+  return (isAbsolute ? '/' : '') + path;
+};
+
+// posix version
+exports.isAbsolute = function(path) {
+  return path.charAt(0) === '/';
+};
+
+// posix version
+exports.join = function() {
+  var paths = Array.prototype.slice.call(arguments, 0);
+  return exports.normalize(filter(paths, function(p, index) {
+    if (typeof p !== 'string') {
+      throw new TypeError('Arguments to path.join must be strings');
+    }
+    return p;
+  }).join('/'));
+};
+
+
+// path.relative(from, to)
+// posix version
+exports.relative = function(from, to) {
+  from = exports.resolve(from).substr(1);
+  to = exports.resolve(to).substr(1);
+
+  function trim(arr) {
+    var start = 0;
+    for (; start < arr.length; start++) {
+      if (arr[start] !== '') break;
+    }
+
+    var end = arr.length - 1;
+    for (; end >= 0; end--) {
+      if (arr[end] !== '') break;
+    }
+
+    if (start > end) return [];
+    return arr.slice(start, end - start + 1);
+  }
+
+  var fromParts = trim(from.split('/'));
+  var toParts = trim(to.split('/'));
+
+  var length = Math.min(fromParts.length, toParts.length);
+  var samePartsLength = length;
+  for (var i = 0; i < length; i++) {
+    if (fromParts[i] !== toParts[i]) {
+      samePartsLength = i;
+      break;
+    }
+  }
+
+  var outputParts = [];
+  for (var i = samePartsLength; i < fromParts.length; i++) {
+    outputParts.push('..');
+  }
+
+  outputParts = outputParts.concat(toParts.slice(samePartsLength));
+
+  return outputParts.join('/');
+};
+
+exports.sep = '/';
+exports.delimiter = ':';
+
+exports.dirname = function(path) {
+  var result = splitPath(path),
+      root = result[0],
+      dir = result[1];
+
+  if (!root && !dir) {
+    // No dirname whatsoever
+    return '.';
+  }
+
+  if (dir) {
+    // It has a dirname, strip trailing slash
+    dir = dir.substr(0, dir.length - 1);
+  }
+
+  return root + dir;
+};
+
+
+exports.basename = function(path, ext) {
+  var f = splitPath(path)[2];
+  // TODO: make this comparison case-insensitive on windows?
+  if (ext && f.substr(-1 * ext.length) === ext) {
+    f = f.substr(0, f.length - ext.length);
+  }
+  return f;
+};
+
+
+exports.extname = function(path) {
+  return splitPath(path)[3];
+};
+
+function filter (xs, f) {
+    if (xs.filter) return xs.filter(f);
+    var res = [];
+    for (var i = 0; i < xs.length; i++) {
+        if (f(xs[i], i, xs)) res.push(xs[i]);
+    }
+    return res;
+}
+
+// String.prototype.substr - negative index don't work in IE8
+var substr = 'ab'.substr(-1) === 'b'
+    ? function (str, start, len) { return str.substr(start, len) }
+    : function (str, start, len) {
+        if (start < 0) start = str.length + start;
+        return str.substr(start, len);
+    }
+;
+
+}).call(this,require('_process'))
+},{"_process":63}],63:[function(require,module,exports){
+// shim for using process in browser
+var process = module.exports = {};
+
+// cached from whatever global is present so that test runners that stub it
+// don't break things.  But we need to wrap it in a try catch in case it is
+// wrapped in strict mode code which doesn't define any globals.  It's inside a
+// function because try/catches deoptimize in certain engines.
+
+var cachedSetTimeout;
+var cachedClearTimeout;
+
+function defaultSetTimout() {
+    throw new Error('setTimeout has not been defined');
+}
+function defaultClearTimeout () {
+    throw new Error('clearTimeout has not been defined');
+}
+(function () {
+    try {
+        if (typeof setTimeout === 'function') {
+            cachedSetTimeout = setTimeout;
+        } else {
+            cachedSetTimeout = defaultSetTimout;
+        }
+    } catch (e) {
+        cachedSetTimeout = defaultSetTimout;
+    }
+    try {
+        if (typeof clearTimeout === 'function') {
+            cachedClearTimeout = clearTimeout;
+        } else {
+            cachedClearTimeout = defaultClearTimeout;
+        }
+    } catch (e) {
+        cachedClearTimeout = defaultClearTimeout;
+    }
+} ())
+function runTimeout(fun) {
+    if (cachedSetTimeout === setTimeout) {
+        //normal enviroments in sane situations
+        return setTimeout(fun, 0);
+    }
+    // if setTimeout wasn't available but was latter defined
+    if ((cachedSetTimeout === defaultSetTimout || !cachedSetTimeout) && setTimeout) {
+        cachedSetTimeout = setTimeout;
+        return setTimeout(fun, 0);
+    }
+    try {
+        // when when somebody has screwed with setTimeout but no I.E. maddness
+        return cachedSetTimeout(fun, 0);
+    } catch(e){
+        try {
+            // When we are in I.E. but the script has been evaled so I.E. doesn't trust the global object when called normally
+            return cachedSetTimeout.call(null, fun, 0);
+        } catch(e){
+            // same as above but when it's a version of I.E. that must have the global object for 'this', hopfully our context correct otherwise it will throw a global error
+            return cachedSetTimeout.call(this, fun, 0);
+        }
+    }
+
+
+}
+function runClearTimeout(marker) {
+    if (cachedClearTimeout === clearTimeout) {
+        //normal enviroments in sane situations
+        return clearTimeout(marker);
+    }
+    // if clearTimeout wasn't available but was latter defined
+    if ((cachedClearTimeout === defaultClearTimeout || !cachedClearTimeout) && clearTimeout) {
+        cachedClearTimeout = clearTimeout;
+        return clearTimeout(marker);
+    }
+    try {
+        // when when somebody has screwed with setTimeout but no I.E. maddness
+        return cachedClearTimeout(marker);
+    } catch (e){
+        try {
+            // When we are in I.E. but the script has been evaled so I.E. doesn't  trust the global object when called normally
+            return cachedClearTimeout.call(null, marker);
+        } catch (e){
+            // same as above but when it's a version of I.E. that must have the global object for 'this', hopfully our context correct otherwise it will throw a global error.
+            // Some versions of I.E. have different rules for clearTimeout vs setTimeout
+            return cachedClearTimeout.call(this, marker);
+        }
+    }
+
+
+
+}
+var queue = [];
+var draining = false;
+var currentQueue;
+var queueIndex = -1;
+
+function cleanUpNextTick() {
+    if (!draining || !currentQueue) {
+        return;
+    }
+    draining = false;
+    if (currentQueue.length) {
+        queue = currentQueue.concat(queue);
+    } else {
+        queueIndex = -1;
+    }
+    if (queue.length) {
+        drainQueue();
+    }
+}
+
+function drainQueue() {
+    if (draining) {
+        return;
+    }
+    var timeout = runTimeout(cleanUpNextTick);
+    draining = true;
+
+    var len = queue.length;
+    while(len) {
+        currentQueue = queue;
+        queue = [];
+        while (++queueIndex < len) {
+            if (currentQueue) {
+                currentQueue[queueIndex].run();
+            }
+        }
+        queueIndex = -1;
+        len = queue.length;
+    }
+    currentQueue = null;
+    draining = false;
+    runClearTimeout(timeout);
+}
+
+process.nextTick = function (fun) {
+    var args = new Array(arguments.length - 1);
+    if (arguments.length > 1) {
+        for (var i = 1; i < arguments.length; i++) {
+            args[i - 1] = arguments[i];
+        }
+    }
+    queue.push(new Item(fun, args));
+    if (queue.length === 1 && !draining) {
+        runTimeout(drainQueue);
+    }
+};
+
+// v8 likes predictible objects
+function Item(fun, array) {
+    this.fun = fun;
+    this.array = array;
+}
+Item.prototype.run = function () {
+    this.fun.apply(null, this.array);
+};
+process.title = 'browser';
+process.browser = true;
+process.env = {};
+process.argv = [];
+process.version = ''; // empty string to avoid regexp issues
+process.versions = {};
+
+function noop() {}
+
+process.on = noop;
+process.addListener = noop;
+process.once = noop;
+process.off = noop;
+process.removeListener = noop;
+process.removeAllListeners = noop;
+process.emit = noop;
+
+process.binding = function (name) {
+    throw new Error('process.binding is not supported');
+};
+
+process.cwd = function () { return '/' };
+process.chdir = function (dir) {
+    throw new Error('process.chdir is not supported');
+};
+process.umask = function() { return 0; };
+
 },{}],64:[function(require,module,exports){
+function select(element) {
+    var selectedText;
+
+    if (element.nodeName === 'SELECT') {
+        element.focus();
+
+        selectedText = element.value;
+    }
+    else if (element.nodeName === 'INPUT' || element.nodeName === 'TEXTAREA') {
+        element.focus();
+        element.setSelectionRange(0, element.value.length);
+
+        selectedText = element.value;
+    }
+    else {
+        if (element.hasAttribute('contenteditable')) {
+            element.focus();
+        }
+
+        var selection = window.getSelection();
+        var range = document.createRange();
+
+        range.selectNodeContents(element);
+        selection.removeAllRanges();
+        selection.addRange(range);
+
+        selectedText = selection.toString();
+    }
+
+    return selectedText;
+}
+
+module.exports = select;
+
+},{}],65:[function(require,module,exports){
 /*! tether 1.3.7 */
 
 (function(root, factory) {
@@ -34787,7 +37479,75 @@ return Tether;
 
 }));
 
-},{}],65:[function(require,module,exports){
+},{}],66:[function(require,module,exports){
+function E () {
+  // Keep this empty so it's easier to inherit from
+  // (via https://github.com/lipsmack from https://github.com/scottcorgan/tiny-emitter/issues/3)
+}
+
+E.prototype = {
+  on: function (name, callback, ctx) {
+    var e = this.e || (this.e = {});
+
+    (e[name] || (e[name] = [])).push({
+      fn: callback,
+      ctx: ctx
+    });
+
+    return this;
+  },
+
+  once: function (name, callback, ctx) {
+    var self = this;
+    function listener () {
+      self.off(name, listener);
+      callback.apply(ctx, arguments);
+    };
+
+    listener._ = callback
+    return this.on(name, listener, ctx);
+  },
+
+  emit: function (name) {
+    var data = [].slice.call(arguments, 1);
+    var evtArr = ((this.e || (this.e = {}))[name] || []).slice();
+    var i = 0;
+    var len = evtArr.length;
+
+    for (i; i < len; i++) {
+      evtArr[i].fn.apply(evtArr[i].ctx, data);
+    }
+
+    return this;
+  },
+
+  off: function (name, callback) {
+    var e = this.e || (this.e = {});
+    var evts = e[name];
+    var liveEvents = [];
+
+    if (evts && callback) {
+      for (var i = 0, len = evts.length; i < len; i++) {
+        if (evts[i].fn !== callback && evts[i].fn._ !== callback)
+          liveEvents.push(evts[i]);
+      }
+    }
+
+    // Remove event from queue to prevent memory leak
+    // Suggested by https://github.com/lazd
+    // Ref: https://github.com/scottcorgan/tiny-emitter/commit/c6ebfaa9bc973b33d110a84a307742b7cf94c953#commitcomment-5024910
+
+    (liveEvents.length)
+      ? e[name] = liveEvents
+      : delete e[name];
+
+    return this;
+  }
+};
+
+module.exports = E;
+
+},{}],67:[function(require,module,exports){
 (function (global){
 
 //
@@ -34804,10 +37564,12 @@ require('jquery-ui/ui/widgets/mouse');
 require('jquery-ui/ui/widgets/sortable');
 require('jquery-treetable');
 
+require('formBuilder');
+require('formBuilder/dist/form-render.min.js');
 require('chosen-js');
 require('handlebars');
 require('bootstrap');
 require('ace-builds/src-min/ace');
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"ace-builds/src-min/ace":1,"bootstrap":2,"chosen-js":6,"clipboard":8,"d3":17,"handlebars":47,"jquery-treetable":60,"jquery-ui":61,"jquery-ui/ui/widgets/mouse":62,"jquery-ui/ui/widgets/sortable":63,"tether":64}]},{},[65]);
+},{"ace-builds/src-min/ace":1,"bootstrap":3,"chosen-js":5,"clipboard":7,"d3":11,"formBuilder":13,"formBuilder/dist/form-render.min.js":14,"handlebars":46,"jquery-treetable":58,"jquery-ui":59,"jquery-ui/ui/widgets/mouse":60,"jquery-ui/ui/widgets/sortable":61,"tether":65}]},{},[67]);

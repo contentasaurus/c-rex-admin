@@ -2,6 +2,8 @@
 @import 'chosen';
 @import 'tether';
 @import 'bootstrap';
+@import '../../../node_modules/formBuilder/dist/form-builder.css';
+@import '../../../node_modules/formBuilder/dist/form-render.css';
 
 /*
  * The MIT License
@@ -395,5 +397,5 @@ select.form-control + .chosen-container-multi .chosen-results li.result-selected
 
 .avatar:hover {
 	border:2px solid #ffffff;
-	transition: all 0.3s ease-in-out 0s; 
+	transition: all 0.3s ease-in-out 0s;
 }

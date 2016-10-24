@@ -270,10 +270,10 @@ class pages_controller extends puffin\controller\action
 		$page = $this->page->read( $id );
 
 		$page_data = $this->page_data->read( $data_id );
-		$page_data['content'] = json_decode($page_data['content'], $assoc = true);
+		$page_data['content'] = json_encode( json_decode($page_data['content'], $assoc = true) );
 
 		$datatype = $this->datatype->read( $page_data['datatype_id'] );
-		$datatype['content'] = json_decode($datatype['content'], $assoc = true);
+		$datatype['content'] = json_encode( json_decode($datatype['content'], $assoc = true) );
 
 		view::add_param( 'page', $page);
 		view::add_param( 'page_data', $page_data );
@@ -284,45 +284,20 @@ class pages_controller extends puffin\controller\action
 	{
 		$params = $this->post->params( $unsanitized = true );
 
-		$datatype = $this->datatype->read( $params['datatype_id'] );
-		$datatype['content'] = json_decode($datatype['content'], $assoc = true);
-
-		$repeaters = [];
-		foreach( $datatype['content'] as $field => $attributes )
+		if( $data_id == $params['id'] )
 		{
-			if( $attributes['type'] == 'repeater' )
-			{
-				$repeaters []= $field;
-			}
+			unset( $params['id'] );
+		}
+		else
+		{
+			url::redirect($_SERVER['HTTP_REFERER']);
 		}
 
-		unset($params['datatype_id']);
+		$update = [];
+		$update['author_user_id'] = $_SESSION['user']['id'];
+		$update['content'] = json_encode($params);
 
-		#clean up the repeaters' mess
-		$new_content = [];
-		foreach( $params['content'] as $key => $values )
-		{
-			if( in_array($key, $repeaters) )
-			{
-				foreach( $params['content'][$key] as $k => $value )
-				{
-					foreach( $value as $index => $v )
-					{
-						$new_content[$key][$index][$k] = $v;
-					}
-				}
-			}
-			else
-			{
-				$new_content[$key] = $values;
-			}
-		}
-
-		$params['content'] = $new_content;
-
-		$params['content'] = json_encode($params['content']);
-
-		$result = $this->page_data->update( $data_id, $params );
+		$result = $this->page_data->update( $data_id, $update );
 
 		url::redirect($_SERVER['HTTP_REFERER']);
 	}
