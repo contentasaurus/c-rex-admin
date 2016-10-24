@@ -33,13 +33,9 @@
 			formData: '<?= $this->datatype['content'] ?>'
 		});
 
-		function fill(a)
-		{
-			for(var k in a){
-				$('[name="'+k+'"]').val(a[k]);
-			}
-		}
 
-		fill(<?= $this->page_data['content'] ?>);
+		$('form').populate(<?= $this->page_data['content'] ?>, {
+			identifier : 'name'
+		});
 	});
 </script>

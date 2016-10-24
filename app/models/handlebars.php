@@ -27,7 +27,10 @@ class handlebars
 					| LightnCandy::FLAG_NAMEDARG
 					| LightnCandy::FLAG_ELSE
 					| LightnCandy::FLAG_ADVARNAME,
-			'partials' => $this->get_partials()
+			'partials' => $this->get_partials(),
+			'partialresolver' => function ($cx, $name) {
+				return "<div style=\"padding:1em; border:1px dashed yellow; background:red; color:yellow;\">Component \"$name\" not found</div>";
+			}
 		]);
 	}
 
