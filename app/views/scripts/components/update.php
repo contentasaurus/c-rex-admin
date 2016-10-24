@@ -28,6 +28,13 @@
 			</div>
 
 			<div class="form-group">
+				<label>Priority</label>
+				<input placeholder="0" class="form-control required" 
+					name="priority" type="number" min="0" max="255"
+					value="<?= $this->component['priority'] ?>">
+			</div>
+
+			<div class="form-group">
 				<label>Wrapper</label>
 				<p class="form-control">
 					<?php $uuid = $this->component['uuid']; ?>

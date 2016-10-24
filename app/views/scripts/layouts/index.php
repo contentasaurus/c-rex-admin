@@ -70,8 +70,10 @@
 				<tr>
 					<th width="50"><br /></th>
 					<th>Name</th>
+					<th>Type</th>
 					<th>Create Date</th>
 					<th>Last Updated</th>
+					<th>Priority</th>
 					<th width="50"><br /></th>
 				</tr>
 			</thead>
@@ -84,8 +86,10 @@
 							</a>
 						</td>
 						<td><?= $script['name'] ?></td>
+						<td><?= $script['type'] ?></td>
 						<td><?= $script['created_at'] ?></td>
 						<td><?= ($script['updated_at'] != '0000-00-00 00:00:00') ? $script['updated_at'] : '--' ?></td>
+						<td><?= $script['priority'] ?></td>
 						<td>
 							<?= $this->partial('delete', [
 								'url' => '/scripts/delete/' . $script['id'],
