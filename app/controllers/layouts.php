@@ -20,22 +20,7 @@ class layouts_controller extends puffin\controller\action
 	public function index()
 	{
 		view::add_param( 'layouts', $this->page_layout->read() );
-
-		$scripts = $this->script->read();
-		$script_types = $this->script_type->read();
-
-		foreach ($scripts as $key => $script) 
-		{
-			foreach ($script_types as $script_type) 
-			{
-				if($script['script_type_id'] == $script_type['id'])
-				{
-					$scripts[$key]['type'] = $script_type['name'];
-				}
-			}
-		}
-
-		view::add_param( 'scripts', $scripts );
+		view::add_param( 'scripts',  $this->script->get() );
 	}
 
 	public function create()

@@ -6,6 +6,28 @@ class script extends pdo
 {
 	protected $table = 'scripts';
 
+	public function get()
+	{
+		$sql = "SELECT 
+					s.id,
+					s.name, 
+					t.name AS type,
+					s.created_at,
+					s.updated_at,
+					s.priority
+				FROM 
+					scripts AS s
+				LEFT JOIN 
+					script_types AS t 
+				ON 
+					t.id = s.script_type_id
+				ORDER BY 
+					s.priority 
+				ASC";
+
+		return  $this->select( $sql );
+	}
+
 	public function get_all_groups()
 	{
 		$types_model = new script_type();
