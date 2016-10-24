@@ -27,12 +27,12 @@
 				<textarea placeholder="Description" class="form-control" name="description"><?= $this->component['description'] ?></textarea>
 			</div>
 
-			<div class="form-group">
+			<!-- <div class="form-group">
 				<label>Priority</label>
-				<input placeholder="0" class="form-control required" 
+				<input placeholder="0" class="form-control required"
 					name="priority" type="number" min="0" max="255"
 					value="<?= $this->component['priority'] ?>">
-			</div>
+			</div> -->
 
 			<div class="form-group">
 				<label>Wrapper</label>
