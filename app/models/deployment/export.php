@@ -22,6 +22,7 @@ class deployment_export extends pdo
 	public function __construct()
 	{
 		$this->hbs = new handlebars();
+		$this->compiler = new deployment_compiler();
 	}
 
 	#========================================================================
@@ -52,9 +53,6 @@ class deployment_export extends pdo
 		$this->export[ $this->get_key() ]['layouts'] = $this->get_layouts();
 		$this->export[ $this->get_key() ]['scripts'] = $this->get_component_scripts();
 
-		vd($this->export);
-		die();
-
 		return $this;
 	}
 
@@ -74,10 +72,16 @@ class deployment_export extends pdo
 
 	public function get_component_scripts()
 	{
+		$this
+			->compiler
+			->run('js-head', $head_js)
+			->run('js-body', $body_js)
+			->run('css', $css);
+
 		$return = [
-			['name' => 'component.head.js', 'content' => $this->node_compile_js('head') ],
-			['name' => 'component.body.js', 'content' => $this->node_compile_js('body') ],
-			['name' => 'component.css', 'content' => $this->node_compile_scss() ],
+			['name' => 'component.head.js', 'content' => $head_js ],
+			['name' => 'component.body.js', 'content' => $body_js ],
+			['name' => 'component.css', 'content' => $css ]
 		];
 
 		return $return;
@@ -332,35 +336,17 @@ class deployment_export extends pdo
 	{
 		$this->hbs->set_partials( $this->format_components_html_for_compile() );
 
-		$js = $this->node_compile_js('head');
-		$nonblocking_js = $this->node_compile_js('body');
-		$css = $this->node_compile_scss();
+		$this
+			->compiler
+			->run('js-head', $head_js)
+			->run('js-body', $body_js)
+			->run('css', $css);
 
-		// $script_model = new script();
-		// $scripts = $script_model->get_by_type('SCSS');
-		// $scripts = $this->format_js_scripts_to_modules( $scripts );
-		// vd($scripts);
-		
-		// vd($this->format_components_scss_for_compile());
-		// vd($this->node_compile_scss());
 		$page = $this->get_version_preview($version_id);
 
-		$compiled_template = $this->compile_lightncandy( $page, $js, $css, $nonblocking_js );
+		$compiled_template = $this->compile_lightncandy( $page, $head_js, $css, $body_js );
 
 		return $this->hbs->render( $compiled_template, $this->get_data_for_preview($page['page_id']) );
-	}
-
-	public function format_js_scripts_to_modules( $scripts ) 
-	{
-		$formatted_scripts = [];
-
-		foreach ($scripts as $script) 
-		{
-			$formatted_scripts["__{$script['name']}__"] 
-				= $script['content'];
-		}
-
-		return $formatted_scripts;
 	}
 
 	public function build( $version_id = false )
@@ -417,138 +403,6 @@ class deployment_export extends pdo
 					.'{{/__cms_layout}}';
 
 		return $this->hbs->compile( $template );
-	}
-
-	public function make_components_css( $sass )
-	{
-		$scss = new scss_compiler();
-		$css = $scss->compile( $sass );
-
-		$autoprefixer = new Autoprefixer([
-			'last 2 versions',
-			'iOS 8'
-		]);
-
-		$prefixed_css = $autoprefixer->compile($css);
-
-		return $css;
-	}
-
-	public function get_components_part( $part = '' )
-	{
-		$cpart = "components_$part";
-
-		if( empty($this->$cpart) )
-		{
-			$components = $this->get_components();
-
-			$return = '';
-			foreach( $components as $component )
-			{
-				extract($component);
-				$return .= $$part;
-			}
-			$this->$cpart = $return;
-			return $return;
-		}
-		else
-		{
-			return $this->$cpart;
-		}
-	}
-
-	public function format_components_js_for_compile( $position )
-	{
-		$formatted_components = [];
-		$components = $this->get_components();
-		$key = false;
-
-		if( $position == 'head' ) $key = 'js';
-		if( $position == 'body' ) $key = 'nonblocking_js';
-		if( !$key ) return $formatted_components;
-
-		$formatted_components['__init_script__'] = '';
-
-		foreach( $components as $component )
-		{
-			$js = trim($component[$key]);
-
-			if(!empty($js)) {
-				$name = $component['name'];
-				$formatted_components[$name] = $js;
-				$formatted_components['__init_script__']
-					.= "require('{$component['name']}');";
-			}
-		}
-
-		return $formatted_components;
-	}
-
-	public function format_components_scss_for_compile()
-	{
-		$formatted_components = [];
-		$components = $this->get_components();
-		$key = 'css';
-
-		$formatted_components['init_script__'] = '';
-
-		foreach( $components as $component )
-		{
-			$scss = trim($component[$key]);
-
-			if(!empty($scss)) {
-				$name = '_'.$component['name'];
-				$formatted_components[$name] = $scss;
-				$formatted_components['init_script__']
-					.= "@import '{$component['name']}';";
-			}
-		}
-
-		return $formatted_components;
-	}
-
-	public function node_compile_js( $position )
-	{
-		$formatted_components
-			= $this->format_components_js_for_compile( $position );
-
-		$formatted_components = [
-			'options' => [
-				'compile_path' => NODE_PATH
-			],
-			'modules' => $formatted_components
-		];
-
-		$process = new node_php_process();
-		$process
-			->script_path( NODE_PATH )
-			->content( $formatted_components )
-			->run( 'js_compiler' )
-			->output( $js );
-
-		return $js;
-	}
-
-	public function node_compile_scss()
-	{
-		$formatted_components
-			= $this->format_components_scss_for_compile();
-
-		$formatted_components = [
-			'options' => [
-				'compile_path' => NODE_PATH
-			],
-			'modules' => $formatted_components
-		];
-
-		$process = new node_php_process();
-		$process
-			->script_path( NODE_PATH )
-			->content( $formatted_components )
-			->run( 'scss_compiler' )
-			->output( $scss );
-
-		return $scss;
 	}
 
 	public function format_components_html_for_compile()

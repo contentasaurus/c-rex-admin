@@ -10,7 +10,7 @@ const jsonToFiles = require('./json-to-js-files');
 const defaults = {
 	compile_path : '.',
 	compile_folder : 'temp',
-	init_script_name : '__init_script__'
+	init_script_name : 'init_script__'
 };
 var options = defaults;
 var full_script_path = '';
