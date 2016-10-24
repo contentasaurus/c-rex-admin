@@ -8,7 +8,7 @@
 
 <div class="card">
 	<div class="card-header">
-		<ul class="nav nav-tabs card-header-tabs pull-xs-left">
+		<ul class="nav nav-tabs card-header-tabs float-xs-left">
 			<li class="nav-item">
 				<a class="nav-link" href="/layouts/update/<?= $this->layout['id'] ?>">Contents</a>
 			</li>

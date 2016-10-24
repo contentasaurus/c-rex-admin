@@ -9,8 +9,8 @@
 	<div class="card-header">
 		<ul class="nav card-header-pills">
 			<li class="nav-item">
-				<a class="nav-item pull-xs-left btn btn-link disabled">Update User</a>
-				<a class="nav-item pull-xs-right btn btn-secondary" href="/users/reset/<?= $this->user['id'] ?>"><i class="fa fa-envelope"></i> Reset Password</a>
+				<a class="nav-item float-xs-left btn btn-link disabled">Update User</a>
+				<a class="nav-item float-xs-right btn btn-secondary" href="/users/reset/<?= $this->user['id'] ?>"><i class="fa fa-envelope"></i> Reset Password</a>
 			</li>
 		</ul>
 	</div>

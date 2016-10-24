@@ -1,5 +1,6 @@
 <?php
 
+use \puffin\controller as controller;
 use \puffin\message as message;
 use \puffin\model as model;
 use \puffin\view as view;
