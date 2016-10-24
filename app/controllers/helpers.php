@@ -9,6 +9,17 @@ class helpers_controller extends puffin\controller\action
 {
 	public function __construct(){}
 
+	public function __before_call()
+	{
+		if( controller::$action != 'profile' )
+		{
+			if( !permissions::is_admin() )
+			{
+				url::redirect('/');
+			}
+		}
+	}
+
 	public function __init()
 	{
 		$this->helper = new helper();
