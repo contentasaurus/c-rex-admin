@@ -4,23 +4,15 @@ use LightnCandy\LightnCandy as LightnCandy;
 
 class handlebars
 {
+	public $helpers = [];
 	private $partials = [];
 	private $layout = [];
-	// [
-	// 	'header' => '<html>{{ data }}</html>',
-	// 	'hunter2' => '<section>{{ data }}</section>'
-	// ]
 
 	public function __construct(){}
 
 	public function compile( $template )
 	{
-		// foreach( $this->get_partials() as $partial )
-		// {
-		// 	debug( htmlentities( $partial ) );
-		// }
-		// debug($template); exit;
-		return LightnCandy::compile( $template, [
+		$options = [
 			'flags' =>LightnCandy::FLAG_HANDLEBARS
 					| LightnCandy::FLAG_RENDER_DEBUG
 					| LightnCandy::FLAG_RUNTIMEPARTIAL
@@ -29,9 +21,12 @@ class handlebars
 					| LightnCandy::FLAG_ADVARNAME,
 			'partials' => $this->get_partials(),
 			'partialresolver' => function ($cx, $name) {
-				return "<div style=\"padding:1em; border:1px dashed yellow; background:red; color:yellow;\">Component \"$name\" not found</div>";
-			}
-		]);
+				return "<div style='padding:1em; border:1px dashed yellow; background:red; color:yellow;'>Component \"$name\" not found</div>";
+			},
+			'helpers' => handlebars_helper::___show_helpers()
+		];
+
+		return LightnCandy::compile( $template, $options);
 	}
 
 	public function render( $php, $data = [] )
@@ -54,6 +49,26 @@ class handlebars
 	{
 		return $this->partials;
 	}
+	//
+	// public function set_helper( $helper )
+	// {
+	// 	$this->helpers []= $helpers;
+	// }
+	//
+	// public function set_helpers( $helpers )
+	// {
+	// 	$this->helpers = array_merge( $this->helpers, $helpers );
+	// }
+	//
+	// public function get_helper( $name )
+	// {
+	// 	return $this->helpers[$name];
+	// }
+	//
+	// public function get_helpers()
+	// {
+	// 	return $this->helpers;
+	// }
 
 	public function set_layout( $layout )
 	{

@@ -11,6 +11,7 @@ class deployment_export extends pdo
 	protected $key = 'PREVIEW';
 	protected $export = [];
 	protected $verification = 'false';
+	protected $helpers = [];
 	protected $components = [];
 	protected $components_html = [];
 	protected $components_css = '';
@@ -159,7 +160,7 @@ class deployment_export extends pdo
 	{
 		if( empty($this->components) )
 		{
-			$sql = "SELECT * 
+			$sql = "SELECT *
 					FROM deployable_components
 					ORDER BY priority DESC";
 
@@ -186,7 +187,6 @@ class deployment_export extends pdo
 
 		return $this->select_one( $sql, $params );
 	}
-
 
 	#========================================================================
 	#
@@ -334,6 +334,8 @@ class deployment_export extends pdo
 	{
 		$this->hbs->set_partials( $this->format_components_html_for_compile() );
 
+		//$this->hbs->set_helpers( $this->format_helpers_for_compile() );
+
 		$this
 			->compiler
 			->run('js-head', $head_js)
@@ -350,6 +352,8 @@ class deployment_export extends pdo
 	public function build( $version_id = false )
 	{
 		$this->hbs->set_partials( $this->format_components_html_for_compile() );
+
+		//$this->hbs->set_helpers( $this->format_helpers_for_compile() );
 
 		$page = $this->get_version($version_id);
 
@@ -422,6 +426,29 @@ class deployment_export extends pdo
 		{
 			return $this->components_html;
 		}
+	}
+
+	public function format_helpers_for_compile()
+	{
+		if( empty($this->helpers) )
+		{
+			$helpers_model = new helper();
+
+			$helpers = $helpers_model->read();
+
+			$return = [];
+			foreach( $helpers as $helper )
+			{
+				$name = $helper['name'];
+				$func = $helper['content'];
+
+				$return[$name] = $func;
+			}
+
+			$this->helpers = $return;
+		}
+
+		return $this->helpers;
 	}
 
 	public function get_version( $id = false )
