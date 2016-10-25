@@ -85,7 +85,7 @@ class deployment_compiler extends pdo
 		{
 			$formatted['_site_'.$script['name']] = $script['content'];
 
-			if( $type == 'css' )
+			if( $type == 'scss' )
 			{
 				$formatted['init_script__'] 
 					.= "@import '_site_{$script['name']}';".PHP_EOL;

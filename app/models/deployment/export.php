@@ -74,7 +74,7 @@ class deployment_export extends pdo
 			->compiler
 			->run('js-head', $head_js)
 			->run('js-body', $body_js)
-			->run('css', $css);
+			->run('scss', $css);
 
 		$return = [
 			['name' => 'component.head.js', 'content' => $head_js ],
@@ -338,7 +338,7 @@ class deployment_export extends pdo
 			->compiler
 			->run('js-head', $head_js)
 			->run('js-body', $body_js)
-			->run('css', $css);
+			->run('scss', $css);
 
 		$page = $this->get_version_preview($version_id);
 
