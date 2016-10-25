@@ -156,6 +156,8 @@ class pages_controller extends puffin\controller\action
 				'title' => 'Failure!',
 				'message' => 'This page has not been deleted.'
 			]);
+
+			url::redirect('/pages');
 		}
 
 		message::add([
