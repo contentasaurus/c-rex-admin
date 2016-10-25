@@ -49,26 +49,6 @@ class handlebars
 	{
 		return $this->partials;
 	}
-	//
-	// public function set_helper( $helper )
-	// {
-	// 	$this->helpers []= $helpers;
-	// }
-	//
-	// public function set_helpers( $helpers )
-	// {
-	// 	$this->helpers = array_merge( $this->helpers, $helpers );
-	// }
-	//
-	// public function get_helper( $name )
-	// {
-	// 	return $this->helpers[$name];
-	// }
-	//
-	// public function get_helpers()
-	// {
-	// 	return $this->helpers;
-	// }
 
 	public function set_layout( $layout )
 	{
