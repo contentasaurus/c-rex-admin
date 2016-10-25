@@ -11,23 +11,14 @@ function JsonToJsFiles(rootPath, json, done) {
 		this.rootPath = rootPath;
 		this.json = json;
 
-		fs.stat(this.rootPath, this.onRootPathCheck);
+		fs.emptyDir(this.rootPath, this.onMkdir);
 	};
 
-	this.onRootPathCheck = (err, stats) => {
+	this.onMkdir = (err) => {
 		if(err) {
-			fs.mkdir(this.rootPath, this.onMkdir);
-			return;
+			console.log(err);
 		}
 
-		if(stats.isDirectory()) {
-			fs.remove(this.rootPath, () => {
-				fs.mkdir(this.rootPath, this.onMkdir);
-			});
-		}
-	};
-
-	this.onMkdir = () => {
 		this.processModules();
 	};
 
@@ -45,7 +36,7 @@ function JsonToJsFiles(rootPath, json, done) {
 				}
 				
 				if(err) {
-					throw err;
+					console.log(err);
 					return;
 				}
 			});
