@@ -395,7 +395,7 @@ class deployment_export extends pdo
 					.	'{{#*inline "meta"}}' . $layout['meta'] . '{{/inline}}'
 					.	'{{#*inline "title"}}'.$page['title'].'{{/inline}}'
 					.	'{{#*inline "js"}}' . $layout['js'] . $component_js .'{{/inline}}'
-					.	'{{#*inline "css"}}' . $layout['style'] . $component_css . '{{/inline}}'
+					.	'{{#*inline "css"}}' . $component_css . '{{/inline}}'
 					.	'{{#*inline "contents"}}' . $page['contents'] . '{{/inline}}'
 					.	'{{#*inline "nonblocking_js"}}' . $layout['nonblocking_js'] . $component_nonblocking_js .'{{/inline}}'
 					.'{{/__cms_layout}}';

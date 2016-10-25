@@ -43,12 +43,18 @@ class script extends pdo
 						pst.name AS type_name,
 						ps.name,
 						ps.html
-					FROM scripts ps
-						JOIN script_types pst ON ps.script_type_id = pst.id
+					FROM 
+						scripts ps
+					JOIN 
+						script_types pst 
+					ON 
+						ps.script_type_id = pst.id
 					WHERE
 						pst.id = :id
 					ORDER BY
-						pst.id, ps.name asc';
+						pst.id, 
+						ps.name 
+					ASC';
 
 			$params = [
 				':id' => $type['id']
