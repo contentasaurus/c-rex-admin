@@ -12,7 +12,7 @@ class handlebars
 
 	public function compile( $template )
 	{
-		$options = [
+		return LightnCandy::compile( $template, [
 			'flags' =>LightnCandy::FLAG_HANDLEBARS
 					| LightnCandy::FLAG_RENDER_DEBUG
 					| LightnCandy::FLAG_RUNTIMEPARTIAL
@@ -22,11 +22,8 @@ class handlebars
 			'partials' => $this->get_partials(),
 			'partialresolver' => function ($cx, $name) {
 				return "<div style='padding:1em; border:1px dashed yellow; background:red; color:yellow;'>Component \"$name\" not found</div>";
-			},
-			'helpers' => handlebars_helper::___show_helpers()
-		];
-
-		return LightnCandy::compile( $template, $options);
+			}
+		]);
 	}
 
 	public function render( $php, $data = [] )
