@@ -23,7 +23,7 @@ class script extends pdo
 					t.id = s.script_type_id
 				ORDER BY 
 					s.priority 
-				ASC";
+				DESC";
 
 		return  $this->select( $sql );
 	}

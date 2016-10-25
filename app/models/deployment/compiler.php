@@ -83,15 +83,16 @@ class deployment_compiler extends pdo
 
 		foreach ($this->scripts['site'][$type] as $script) 
 		{
-			$formatted['_site_'.$script['name']] = $script['content'];
 
 			if( $type == 'scss' )
 			{
+				$formatted['_site_'.$script['name']] = $script['content'];
 				$formatted['init_script__'] 
 					.= "@import '_site_{$script['name']}';".PHP_EOL;
 			}
 			else 
 			{
+				$formatted['site_'.$script['name']] = $script['content'];
 				$formatted['init_script__']
 					.= "require('site_{$script['name']}');".PHP_EOL;
 			}				
@@ -99,15 +100,16 @@ class deployment_compiler extends pdo
 
 		foreach ($this->scripts['comp'][$type] as $script) 
 		{
-			$formatted[$script['name']] = $script['content'];
 
 			if( $type == 'scss' )
 			{
+				$formatted['_'.$script['name']] = $script['content'];
 				$formatted['init_script__'] 
 					.= "@import '_{$script['name']}';".PHP_EOL;
 			}
 			else 
 			{
+				$formatted[$script['name']] = $script['content'];
 				$formatted['init_script__']
 					.= "require('{$script['name']}');".PHP_EOL;
 			}				
