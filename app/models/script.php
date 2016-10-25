@@ -21,8 +21,6 @@ class script extends pdo
 					script_types AS t 
 				ON 
 					t.id = s.script_type_id
-				GROUP BY
-					t.name
 				ORDER BY 
 					s.priority 
 				DESC";
