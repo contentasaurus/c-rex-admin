@@ -18,6 +18,7 @@
   "homepage": "https://github.com/contentasaurus/c-rex-admin#readme",
   "devDependencies": {
     "ace-builds": "^1.2.5",
+    "autoprefixer": "^6.5.1",
     "bootstrap": "^4.0.0-alpha.4",
     "browserify": "^13.1.0",
     "chosen-js": "git+https://github.com/harvesthq/chosen-package.git",
