@@ -89,6 +89,25 @@ class layouts_controller extends puffin\controller\action
 		url::redirect($_SERVER['HTTP_REFERER']);
 	}
 
+	public function do_copy( $id )
+	{
+		$original = $this->page_layout->read( $id );
+		unset( $original['id'] );
+		unset( $original['created_at'] );
+		unset( $original['updated_at'] );
+		$original['name'] = 'Copy of ' . $original['name'];
+
+		$result = $this->page_layout->create( $original );
+
+		message::add([
+			'class' => 'success',
+			'title' => 'Success!',
+			'message' => 'This layout has been cloned.'
+		]);
+
+		url::redirect($_SERVER['HTTP_REFERER']);
+	}
+
 	public function scripts( $id )
 	{
 		view::add_param( 'layout', $this->page_layout->read( $id ) );
