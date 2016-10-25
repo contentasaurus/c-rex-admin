@@ -20,3 +20,6 @@ require('chosen-js');
 require('handlebars');
 require('bootstrap');
 require('ace-builds/src-min/ace');
+require('ace-builds/src-min/mode-handlebars');
+require('ace-builds/src-min/mode-scss');
+require('ace-builds/src-min/mode-javascript');

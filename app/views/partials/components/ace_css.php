@@ -10,7 +10,7 @@
 		}
 
 		var css_editor = ace.edit("css_editor");
-		css_editor.session.setMode("ace/mode/css");
+		css_editor.session.setMode("ace/mode/scss");
 		set_options(css_editor);
 
 		$('form').on('submit', function(ev){
