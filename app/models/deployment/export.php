@@ -75,7 +75,7 @@ class deployment_export extends pdo
 			->compiler
 			->run('js-head', $head_js)
 			->run('js-body', $body_js)
-			->run('css', $css);
+			->run('scss', $css);
 
 		$return = [
 			['name' => 'component.head.js', 'content' => $head_js ],
@@ -340,7 +340,7 @@ class deployment_export extends pdo
 			->compiler
 			->run('js-head', $head_js)
 			->run('js-body', $body_js)
-			->run('css', $css);
+			->run('scss', $css);
 
 		$page = $this->get_version_preview($version_id);
 
@@ -399,7 +399,7 @@ class deployment_export extends pdo
 					.	'{{#*inline "meta"}}' . $layout['meta'] . '{{/inline}}'
 					.	'{{#*inline "title"}}'.$page['title'].'{{/inline}}'
 					.	'{{#*inline "js"}}' . $layout['js'] . $component_js .'{{/inline}}'
-					.	'{{#*inline "css"}}' . $layout['style'] . $component_css . '{{/inline}}'
+					.	'{{#*inline "css"}}' . $component_css . '{{/inline}}'
 					.	'{{#*inline "contents"}}' . $page['contents'] . '{{/inline}}'
 					.	'{{#*inline "nonblocking_js"}}' . $layout['nonblocking_js'] . $component_nonblocking_js .'{{/inline}}'
 					.'{{/__cms_layout}}';

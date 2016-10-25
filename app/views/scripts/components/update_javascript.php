@@ -10,8 +10,8 @@
 		<?= $this->partial('tabs', [ 'classes' => 'card-header-tabs pull-xs-left', 'tabs' => [
 			[ 'name'=> 'HTML', 'url' => "/components/update/{$this->component['id']}" ],
 			[ 'name'=> 'SCSS', 'url' => "/components/update/{$this->component['id']}/css" ],
-			[ 'name'=> 'JS', 'active' => 'active', 'url' => "/components/update/{$this->component['id']}/javascript" ],
-			[ 'name'=> 'Nonblocking JS', 'url' => "/components/update/{$this->component['id']}/nonblocking-javascript" ],
+			[ 'name'=> 'JS-Head', 'active' => 'active', 'url' => "/components/update/{$this->component['id']}/javascript" ],
+			[ 'name'=> 'JS-Body', 'url' => "/components/update/{$this->component['id']}/nonblocking-javascript" ],
 		]]); ?>
 	</div>
 	<div class="card-block">

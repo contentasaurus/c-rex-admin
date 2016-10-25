@@ -9,12 +9,12 @@ class deployment_compiler extends pdo
 		'site' => [
 			'js-head' => [],
 			'js-body' => [],
-			'css' => []
+			'scss' => []
 		],
 		'comp' => [
 			'js-head' => [],
 			'js-body' => [],
-			'css' => []
+			'scss' => []
 		]
 	];
 	private $components = [];
@@ -44,7 +44,7 @@ class deployment_compiler extends pdo
 	{
 		if( !empty($this->components) ) return;
 
-		$sql = "SELECT name, css, `js-head`, `js-body` 
+		$sql = "SELECT name, scss, `js-head`, `js-body` 
 				FROM deployable_components";
 
 		$this->components = $this->select( $sql );
@@ -52,7 +52,7 @@ class deployment_compiler extends pdo
 		$types = [
 			'js-head',
 			'js-body',
-			'css'
+			'scss'
 		];
 
 		foreach( $this->components as $component ) 
@@ -78,20 +78,21 @@ class deployment_compiler extends pdo
 	private function format( $type )
 	{
 		$formatted = [
-			'init_script__' => ''
+			'init_script__' => ''.PHP_EOL
 		];
 
 		foreach ($this->scripts['site'][$type] as $script) 
 		{
-			$formatted['site_'.$script['name']] = $script['content'];
 
-			if( $type == 'css' )
+			if( $type == 'scss' )
 			{
+				$formatted['_site_'.$script['name']] = $script['content'];
 				$formatted['init_script__'] 
-					.= "@import 'site_{$script['name']}';".PHP_EOL;
+					.= "@import '_site_{$script['name']}';".PHP_EOL;
 			}
 			else 
 			{
+				$formatted['site_'.$script['name']] = $script['content'];
 				$formatted['init_script__']
 					.= "require('site_{$script['name']}');".PHP_EOL;
 			}				
@@ -99,15 +100,16 @@ class deployment_compiler extends pdo
 
 		foreach ($this->scripts['comp'][$type] as $script) 
 		{
-			$formatted[$script['name']] = $script['content'];
 
-			if( $type == 'css' )
+			if( $type == 'scss' )
 			{
+				$formatted['_'.$script['name']] = $script['content'];
 				$formatted['init_script__'] 
-					.= "@import '{$script['name']}';".PHP_EOL;
+					.= "@import '_{$script['name']}';".PHP_EOL;
 			}
 			else 
 			{
+				$formatted[$script['name']] = $script['content'];
 				$formatted['init_script__']
 					.= "require('{$script['name']}');".PHP_EOL;
 			}				
@@ -130,7 +132,7 @@ class deployment_compiler extends pdo
 			->script_path( NODE_PATH )
 			->content( $formatted_components );
 
-		if( $type == 'css')
+		if( $type == 'scss')
 		{
 			$process->run( 'scss_compiler' );
 		}

@@ -21,9 +21,11 @@ class script extends pdo
 					script_types AS t 
 				ON 
 					t.id = s.script_type_id
+				GROUP BY
+					t.name
 				ORDER BY 
 					s.priority 
-				ASC";
+				DESC";
 
 		return  $this->select( $sql );
 	}
@@ -43,12 +45,18 @@ class script extends pdo
 						pst.name AS type_name,
 						ps.name,
 						ps.html
-					FROM scripts ps
-						JOIN script_types pst ON ps.script_type_id = pst.id
+					FROM 
+						scripts ps
+					JOIN 
+						script_types pst 
+					ON 
+						ps.script_type_id = pst.id
 					WHERE
 						pst.id = :id
 					ORDER BY
-						pst.id, ps.name asc';
+						pst.id, 
+						ps.name 
+					ASC';
 
 			$params = [
 				':id' => $type['id']

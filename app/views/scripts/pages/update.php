@@ -14,7 +14,7 @@
 
 			<div class="form-group">
 				<label>Page Name</label>
-				<input placeholder="Name" class="form-control required" name="page_name" type="text" value="<?= $this->page['name'] ?>">
+				<input placeholder="Name" class="form-control required" name="name" type="text" value="<?= $this->page['name'] ?>">
 			</div>
 
 			<div class="form-group">
