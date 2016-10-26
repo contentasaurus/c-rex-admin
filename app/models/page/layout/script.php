@@ -49,7 +49,7 @@ class page_layout_script extends pdo
 						JOIN script_types pst ON pst.id = ps.script_type_id and pst.id = :id
 
 					WHERE page_layout_id = :layout_id
-					ORDER BY psl.load_order';
+					ORDER BY psl.load_order asc';
 
 			$params = [
 				':id' => $type['id'],

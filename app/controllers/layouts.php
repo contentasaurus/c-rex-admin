@@ -126,21 +126,17 @@ class layouts_controller extends puffin\controller\action
 
 		foreach( $params['script'] as $script_category )
 		{
-			$i = count($script_category);
-			for( $i; $i > 0; $i-- )
+			for( $i = 0; $i < count($script_category); $i++ )
 			{
 				$records []= [
 					'page_layout_id' => $page_layout_id,
-					'script_id' => $script_category[$i - 1],
-					'load_order' => $i - 1
+					'script_id' => $script_category[$i],
+					'load_order' => $i + 1
 				];
 			}
 		}
 
-		debug($records); exit;
-
 		$this->page_layout_script->recreate( $page_layout_id, $records );
-
 
 		message::add([
 			'class' => 'success',
@@ -148,7 +144,7 @@ class layouts_controller extends puffin\controller\action
 			'message' => 'Update was successful.'
 		]);
 
-		url::redirect($_SESSION['HTTP_REFERER']);
+		url::redirect($_SERVER['HTTP_REFERER']);
 
 	}
 

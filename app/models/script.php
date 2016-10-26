@@ -8,21 +8,21 @@ class script extends pdo
 
 	public function get()
 	{
-		$sql = "SELECT 
+		$sql = "SELECT
 					s.id,
-					s.name, 
+					s.name,
 					t.name AS type,
 					s.created_at,
 					s.updated_at,
 					s.priority
-				FROM 
+				FROM
 					scripts AS s
-				LEFT JOIN 
-					script_types AS t 
-				ON 
+				LEFT JOIN
+					script_types AS t
+				ON
 					t.id = s.script_type_id
-				ORDER BY 
-					s.priority 
+				ORDER BY
+					s.priority
 				DESC";
 
 		return  $this->select( $sql );
@@ -42,19 +42,19 @@ class script extends pdo
 						ps.id,
 						pst.name AS type_name,
 						ps.name,
-						ps.html
-					FROM 
-						scripts ps
-					JOIN 
-						script_types pst 
-					ON 
-						ps.script_type_id = pst.id
+						ps.html,
+						ifnull(pls.load_order, "null") AS load_order
+
+					FROM  scripts ps
+						JOIN script_types pst ON ps.script_type_id = pst.id
+						LEFT JOIN page_layout_scripts pls ON pls.script_id = ps.id
+
 					WHERE
 						pst.id = :id
+
 					ORDER BY
-						pst.id, 
-						ps.name 
-					ASC';
+						load_order ASC';
+
 
 			$params = [
 				':id' => $type['id']
@@ -66,22 +66,22 @@ class script extends pdo
 		return $return;
 	}
 
-	public function get_by_type( $type ) 
+	public function get_by_type( $type )
 	{
 		$type_id = $this->id_by_type($type);
 
-		$sql = "SELECT 
-					s.name, 
+		$sql = "SELECT
+					s.name,
 					s.html AS content
-				FROM 
+				FROM
 					scripts AS s,
 					script_types AS t
-				WHERE 
+				WHERE
 					t.id = :type_id
-				AND 
+				AND
 					s.script_type_id = t.id
-				ORDER BY 
-					s.priority 
+				ORDER BY
+					s.priority
 				DESC";
 
 		$params = [
@@ -91,14 +91,14 @@ class script extends pdo
 		return $this->select( $sql, $params );
 	}
 
-	private function id_by_type( $type ) 
+	private function id_by_type( $type )
 	{
 		$types_model = new script_type();
 		$types = $types_model->read();
 
-		foreach ($types as $key => $value) 
+		foreach ($types as $key => $value)
 		{
-			if($value['name'] == $type) 
+			if($value['name'] == $type)
 			{
 				return $value['id'];
 			}

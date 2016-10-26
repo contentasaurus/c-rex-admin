@@ -31,7 +31,13 @@
 								<ul id="sortable-<?= $group ?>" class="sortable list-group">
 									<?php foreach( $scripts as $script ): ?>
 										<li class="list-group-item form-check">
+											<?php if( $script['load_order'] != "null" ): ?>
+												<h3 class="tag tag-pill tag-default"><?= $script['load_order'] ?></h3>
+											<?php else: ?>
+												<h3 class="tag tag-pill tag-default" style="visibility:hidden">0</h3>
+											<?php endif; ?>
 											<label class="form-check-label">
+												&nbsp;
 												<input
 													<?php if( in_array($script['id'], $this->layout_script_ids )): ?>checked="checked"<?php endif; ?>
 													class="form-check-input"
@@ -69,7 +75,8 @@
 				handle: '.sortable-handle',
 				ghostClass: 'list-group-item-info',
 				chosenClass: "active",
-				fallbackClass: "list-group-item"
+				fallbackClass: "list-group-item",
+				scroll: true
 			});
 		<?php endforeach; ?>
 	});
