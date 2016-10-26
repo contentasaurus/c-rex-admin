@@ -396,12 +396,11 @@ class deployment_export extends pdo
 		$this->hbs->set_layout( $layout['content'] );
 
 		$template = '{{#>__cms_layout}}'
-					.	'{{#*inline "meta"}}' . $layout['meta'] . '{{/inline}}'
 					.	'{{#*inline "title"}}'.$page['title'].'{{/inline}}'
-					.	'{{#*inline "js"}}' . $layout['js'] . $component_js .'{{/inline}}'
+					.	'{{#*inline "js"}}' . $layout['js-head'] . $component_js .'{{/inline}}'
 					.	'{{#*inline "css"}}' . $component_css . '{{/inline}}'
 					.	'{{#*inline "contents"}}' . $page['contents'] . '{{/inline}}'
-					.	'{{#*inline "nonblocking_js"}}' . $layout['nonblocking_js'] . $component_nonblocking_js .'{{/inline}}'
+					.	'{{#*inline "nonblocking_js"}}' . $layout['js-body'] . $component_nonblocking_js .'{{/inline}}'
 					.'{{/__cms_layout}}';
 
 		return $this->hbs->compile( $template );
@@ -478,7 +477,7 @@ class deployment_export extends pdo
 	public function get_layout( $layout_name = false )
 	{
 		$sql = "SELECT *
-				FROM deployable_layouts
+				FROM previewable_layouts
 				WHERE layout_name = :layout_name";
 		$params = [
 			':layout_name' => $layout_name
