@@ -120,65 +120,24 @@ class layouts_controller extends puffin\controller\action
 	{
 		$params = $this->post->params( $unsanitized = true );
 
-		switch( $params['action'] )
-		{
-			case 'script_order':
-				$this->update_scripts_order( $params );
-				break;
-
-			case 'script_add':
-				$this->add_scripts_order( $params );
-				break;
-		}
-	}
-
-
-	public function add_scripts_order( $params )
-	{
-		$records = [];
-
-		$page_layout_id = $params['page_layout_id'];
-
-		foreach( $params['page_script_ids'] as $page_script_id )
-		{
-			$records []= [
-				'page_layout_id' => $page_layout_id,
-				'script_id' => $page_script_id,
-				'load_order' => '0'
-			];
-		}
-
-		foreach( $records as $record )
-		{
-			$this->page_layout_script->create( $record );
-		}
-
-		message::add([
-			'class' => 'success',
-			'title' => 'Success!',
-			'message' => 'This layout has been updated.'
-		]);
-
-		url::redirect("/layouts/update/$page_layout_id/scripts");
-	}
-
-	public function update_scripts_order( $params )
-	{
 		$records = [];
 
 		$page_layout_id = $params['page_layout_id'];
 
 		foreach( $params['script'] as $script_category )
 		{
-			for( $i=0; $i < count($script_category); $i++ )
+			$i = count($script_category);
+			for( $i; $i > 0; $i-- )
 			{
 				$records []= [
 					'page_layout_id' => $page_layout_id,
-					'script_id' => $script_category[$i],
-					'load_order' => $i + 1
+					'script_id' => $script_category[$i - 1],
+					'load_order' => $i - 1
 				];
 			}
 		}
+
+		debug($records); exit;
 
 		$this->page_layout_script->recreate( $page_layout_id, $records );
 
@@ -186,11 +145,10 @@ class layouts_controller extends puffin\controller\action
 		message::add([
 			'class' => 'success',
 			'title' => 'Success!',
-			'message' => 'This layout has been updated.'
+			'message' => 'Update was successful.'
 		]);
 
-		url::redirect("/layouts/update/$page_layout_id/scripts");
-
+		url::redirect($_SESSION['HTTP_REFERER']);
 
 	}
 

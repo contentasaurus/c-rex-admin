@@ -29,13 +29,13 @@
 			</div>
 			<div class="form-group">
 				<label>Priority</label>
-				<input placeholder="0" class="form-control required input-lg" 
-					name="priority" type="number" min="0" max="255" 
+				<input placeholder="0" class="form-control required input-lg"
+					name="priority" type="number" min="0" max="255"
 					value="<?= $this->script['priority'] ?>">
 			</div>
 			<div class="form-group">
 				<label>Content</label>
-				<div id="editor" class="form-control"></div>
+				<div id="editor" class="form-control"><?= htmlentities($this->script['html']) ?></div>
 				<input type="hidden" name="html" id="content">
 			</div>
 			<div class="form-group">

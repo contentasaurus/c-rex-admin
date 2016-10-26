@@ -15,18 +15,6 @@ var cleanCss = require('gulp-clean-css');
 var runSequence = require('run-sequence');
 var source = require('vinyl-source-stream');
 
-// Files
-//
-var files = {
-	sass: {
-		src: [
-				'src/css/**/*.scss',
-				'../node_modules/formBuilder/dist/form-builder.css',
-				'../node_modules/formBuilder/dist/form-render.css'
-			 ],
-		},
-};
-
 // High Level Tasks
 //
 gulp.task('default', ['js', 'css']);
@@ -111,8 +99,6 @@ gulp.task('css:all', function(done) {
 				getCssPath('chosen-js'),
 				getCssPath('tether', '/../css'),
 				getCssPath('bootstrap', '/../css')
-				// '../node_modules/formBuilder/dist/form-builder.css',
-				// '../node_modules/formBuilder/dist/form-render.css'
 			]
 		}),
 		gulp.dest('dist/css')

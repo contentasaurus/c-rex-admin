@@ -10,7 +10,7 @@ class compiled_assets extends  puffin\controller\plugin
 		#view::add_css("/dist/css/form-builder.min.css");
 		#view::add_css("/dist/css/form-render.min.css");
 		view::add_js("/dist/js/high-dom/admin.min.js", $nonblocking = false);
-		view::add_js("/dist/js/low-dom/admin.min.js", $nonblocking = true);
+		view::add_js("/dist/js/low-dom/admin.js", $nonblocking = true);
 	}
 
 	public function __before_call()
