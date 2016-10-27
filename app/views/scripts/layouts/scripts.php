@@ -22,7 +22,7 @@
 			<input type="hidden" name="page_layout_id" value="<?= $this->layout['id'] ?>">
 			<div class="card-deck-wrapper">
 				<div class="card-deck">
-					<?php foreach($this->scripts as $group => $scripts): ?>
+					<?php foreach($this->layout_scripts as $group => $scripts): ?>
 						<div class="card">
 							<div class="card-header">
 								<div class="card-title"><?= $group ?></div>
@@ -39,10 +39,10 @@
 											<label class="form-check-label">
 												&nbsp;
 												<input
-													<?php if( in_array($script['id'], $this->layout_script_ids )): ?>checked="checked"<?php endif; ?>
+													<?php if( in_array($script['script_id'], $this->layout_script_ids )): ?>checked="checked"<?php endif; ?>
 													class="form-check-input"
 													type="checkbox" name="script[<?= $script['type_name'] ?>][]"
-													value="<?= $script['id'] ?>" />
+													value="<?= $script['script_id'] ?>" />
 												<?= $script['name'] ?>
 											</label>
 											<i class="float-xs-right text-muted fa fa-bars sortable-handle"></i>

@@ -35,21 +35,20 @@ class page_layout_script extends pdo
 		foreach( $types as $type )
 		{
 			$sql = 'SELECT
-						psl.id,
-						psl.page_layout_id AS layout_id,
-						pst.name AS type_name,
-						ps.id AS script_id,
-						ps.script_type_id,
-						ps.name,
-						trim(ps.html) as html,
-						psl.load_order
+						st.name AS type_name,
+						s.id AS script_id,
+						s.script_type_id,
+						s.name,
+						ifnull((SELECT pls.load_order FROM page_layout_scripts pls WHERE pls.page_layout_id = :layout_id AND pls.script_id = s.id), "null") AS load_order
 
-					FROM page_layout_scripts psl
-						JOIN scripts ps ON ps.id = psl.script_id
-						JOIN script_types pst ON pst.id = ps.script_type_id and pst.id = :id
+					FROM scripts s
+						JOIN script_types st ON st.id = s.script_type_id
 
-					WHERE page_layout_id = :layout_id
-					ORDER BY psl.load_order asc';
+					WHERE
+						s.script_type_id = :id
+
+					ORDER BY load_order ASC, s.name';
+
 
 			$params = [
 				':id' => $type['id'],

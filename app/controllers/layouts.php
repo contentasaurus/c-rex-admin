@@ -111,7 +111,7 @@ class layouts_controller extends puffin\controller\action
 	public function scripts( $id )
 	{
 		view::add_param( 'layout', $this->page_layout->read( $id ) );
-		view::add_param( 'scripts', $this->script->get_all_groups() );
+		view::add_param( 'scripts', $this->script->get_all_groups( $id ) );
 		view::add_param( 'layout_scripts', $this->page_layout_script->get_layout_scripts( $id ) );
 		view::add_param( 'layout_script_ids', $this->page_layout_script->get_layout_script_ids( $id ) );
 	}

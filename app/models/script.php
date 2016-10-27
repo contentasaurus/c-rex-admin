@@ -28,7 +28,7 @@ class script extends pdo
 		return  $this->select( $sql );
 	}
 
-	public function get_all_groups()
+	public function get_all_groups( $page_layout_id )
 	{
 		$types_model = new script_type();
 
@@ -51,13 +51,15 @@ class script extends pdo
 
 					WHERE
 						pst.id = :id
+						and pls.page_layout_id = :page_layout_id
 
 					ORDER BY
 						load_order ASC';
 
 
 			$params = [
-				':id' => $type['id']
+				':id' => $type['id'],
+				':page_layout_id' => $page_layout_id
 			];
 
 			$return[$type['name']] = $this->select( $sql, $params );
