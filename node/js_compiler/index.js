@@ -30,11 +30,17 @@ function onJsonToFilesDone() {
 		paths:  [
 			'node_modules', 
 			compile_folder
+		],
+		noParse: [
+			'jquery'
 		]
 	};
 
-	browserify(options)
-		.add(full_script_path)
-		.bundle()
+	browserify(options);
+		.add(full_script_path);
+		.bundle(function(err, done){
+			console.log(err);
+			done();
+		})
 		.pipe(process.stdout);
 };

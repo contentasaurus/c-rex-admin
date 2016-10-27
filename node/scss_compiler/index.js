@@ -3,7 +3,7 @@
 // SCSS Compiler
 //
 
-var sass = require('node-sass');
+const sass = require('node-sass');
 const postcss = require('postcss');
 const autoprefixer = require('autoprefixer');
 const NodePhpProcess = require('node-php-process');
@@ -32,7 +32,6 @@ function onProcessHandle(data) {
 	options = Object.assign(options, data.options);
 	compile_folder = `${options.compile_path}/scss_compiler/${options.compile_folder}`;
 	full_script_path =`${compile_folder}/${options.init_script_name}.scss`;
-
 	jsonToFiles(compile_folder, data.modules, onJsonToFilesDone);
 }
 
@@ -59,5 +58,8 @@ function onSassRenderDone(err, result) {
 			.then(function (result) {
 				process.stdout.write(result.css);
 			});
+	}
+	else {
+		console.log(err);
 	}
 }
