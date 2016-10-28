@@ -22,7 +22,9 @@
     "bootstrap": "^4.0.0-alpha.4",
     "browserify": "^13.1.0",
     "chosen-js": "git+https://github.com/harvesthq/chosen-package.git",
+    "clean-css": "^3.4.20",
     "clipboard": "^1.5.12",
+    "cssnano": "^3.8.0",
     "d3": "^4.2.6",
     "form-builder": "git+https://github.com/kevinchappell/formBuilder.git",
     "fs-extra": "^0.30.0",
@@ -37,11 +39,14 @@
     "jquery-treetable": "git://github.com/contentasaurus/jquery-treetable.git",
     "jquery-ui": "^1.12.1",
     "node-php-process": "git://github.com/contentasaurus/node-php-process.git",
+    "parado-components": "git+ssh://git@bitbucket.org/paradowskicreative/parado-components.git",
     "postcss": "^5.2.5",
     "pump": "^1.0.1",
     "run-sequence": "^1.2.2",
+    "sortablejs": "^1.4.2",
     "tether": "^1.3.7",
-    "vinyl-source-stream": "^1.1.0",
-	"sortablejs": "^1.4.2"
+    "uglify-js": "^2.7.4",
+    "uglify-stream": "^1.1.0",
+    "vinyl-source-stream": "^1.1.0"
   }
 }

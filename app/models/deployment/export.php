@@ -332,21 +332,25 @@ class deployment_export extends pdo
 
 	public function preview( $version_id = false )
 	{
-		$this->hbs->set_partials( $this->format_components_html_for_compile() );
+		$partials = $this->format_components_html_for_compile();
+
+		$this->hbs->set_partials( $partials );
 
 		//$this->hbs->set_helpers( $this->format_helpers_for_compile() );
 
 		$this
 			->compiler
-			->run('js-head', $head_js)
-			->run('js-body', $body_js)
-			->run('scss', $css);
+			->version_id( intval($version_id) )
+			->run('scss')
+			->run('js-head')
+			->run('js-body');
 
 		$page = $this->get_version_preview($version_id);
+		$compiled_template = $this->compile_lightncandy( $page, 'preview', 'preview', 'preview' );
+		
+		$html = $this->hbs->render( $compiled_template, $this->get_data_for_preview($page['page_id']) );
 
-		$compiled_template = $this->compile_lightncandy( $page, $head_js, $css, $body_js );
-
-		return $this->hbs->render( $compiled_template, $this->get_data_for_preview($page['page_id']) );
+		return $html;
 	}
 
 	public function build( $version_id = false )
@@ -360,35 +364,35 @@ class deployment_export extends pdo
 		return $this->compile_lightncandy( $page );
 	}
 
-	private function compile_lightncandy( $page, $component_js = '', $component_css = '', $component_nonblocking_js = ''  )
+	private function compile_lightncandy( $page, $head_js = '', $css = '', $body_js = ''  )
 	{
 		$key = $this->get_key();
 
-		if( empty($component_js) )
+		if( $head_js != 'preview' )
 		{
-			$component_js = "<script type=\"text/javascript\" src=\"/runtime/$key/component.head.js\"></script>";
+			$head_js = "<script type=\"text/javascript\" src=\"/runtime/$key/component.head.js\"></script>";
 		}
 		else
 		{
-			$component_js = '<script type="text/javascript">' . $component_js . '</script>';
+			$head_js = "<script type=\"text/javascript\" src=\"/preview/js-head.min.js\"></script>";
 		}
 
-		if( empty($component_css) )
+		if( $css != 'preview' )
 		{
-			$component_css = "<link rel=\"stylesheet\" type=\"text/css\" href=\"/runtime/$key/component.css\">";
+			$css = "<link rel=\"stylesheet\" type=\"text/css\" href=\"/runtime/$key/component.css\">";
 		}
 		else
 		{
-			$component_css = '<style type="text/css">' . $component_css . '</style>';
+			$css = "<link rel=\"stylesheet\" type=\"text/css\" href=\"/preview/scss.min.css\">";
 		}
 
-		if( empty($component_nonblocking_js) )
+		if( $body_js != 'preview' )
 		{
-			$component_nonblocking_js = "<script type=\"text/javascript\" src=\"/runtime/$key/component.body.js\"></script>";
+			$body_js = "<script type=\"text/javascript\" src=\"/runtime/$key/component.body.js\"></script>";
 		}
 		else
 		{
-			$component_nonblocking_js = '<script type="text/javascript">' . $component_nonblocking_js . '</script>';
+			$body_js = "<script type=\"text/javascript\" src=\"/preview/js-body.min.js\"></script>";
 		}
 
 		$layout = $this->get_layout( $page['layout'] );
@@ -397,10 +401,10 @@ class deployment_export extends pdo
 
 		$template = '{{#>__cms_layout}}'
 					.	'{{#*inline "title"}}'.$page['title'].'{{/inline}}'
-					.	'{{#*inline "js"}}' . $layout['js-head'] . $component_js .'{{/inline}}'
-					.	'{{#*inline "css"}}' . $component_css . '{{/inline}}'
+					.	'{{#*inline "js"}}' . $head_js .'{{/inline}}'
+					.	'{{#*inline "css"}}' . $css . '{{/inline}}'
 					.	'{{#*inline "contents"}}' . $page['contents'] . '{{/inline}}'
-					.	'{{#*inline "nonblocking_js"}}' . $layout['js-body'] . $component_nonblocking_js .'{{/inline}}'
+					.	'{{#*inline "nonblocking_js"}}' . $body_js .'{{/inline}}'
 					.'{{/__cms_layout}}';
 
 		return $this->hbs->compile( $template );

@@ -1,0 +1,26 @@
+.cf6225428-842e-11e6-9506-04019a288d01 {
+  border: 1px solid orange; }
+
+.cf62254d3-842e-11e6-9506-04019a288d01 {
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex; }
+  .cf62254d3-842e-11e6-9506-04019a288d01 a {
+    font-size: 4em;
+    color: red;
+    border: 1px solid red;
+    margin: 4px;
+    padding: 4px; }
+
+.cc362d8d1-9c5c-11e6-9506-04019a288d01 h2 {
+  font-family: Arial;
+  font-size: 18px;
+  color: maroon;
+  text-transform: uppercase; }
+
+.cc362d8d1-9c5c-11e6-9506-04019a288d01 button {
+  border: 3px solid #f09;
+  background-color: #4f9;
+  padding: 10px;
+  font-weight: bold;
+  margin-bottom: 10px; }

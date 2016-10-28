@@ -20,6 +20,8 @@ class deployment_compiler extends pdo
 	private $components = [];
 	private $formatted = [];
 	private $output = '';
+	private $layout_name = '';
+	private $version_id = -1;
 
 	public function run( $type, &$output = false )
 	{
@@ -27,7 +29,37 @@ class deployment_compiler extends pdo
 		$this->get_components();
 		$this->format( $type );
 		$this->process( $type );
+		
 		$output = $this->output;
+
+		return $this;
+	}
+
+	public function layout_name( $layout_name )
+	{
+		if( is_string($layout_name) )
+		{
+			$this->layout_name = $layout_name;
+		}
+		else
+		{
+			trigger_error("must be a string", E_USER_ERROR);
+		}
+
+		return $this;
+	}
+
+	public function version_id( $version_id )
+	{
+		if( is_int($version_id) )
+		{
+			$this->version_id = $version_id;
+		}
+		else
+		{
+			trigger_error("must be an integer", E_USER_ERROR);
+		}
+
 		return $this;
 	}
 
@@ -35,9 +67,64 @@ class deployment_compiler extends pdo
 	{
 		if( !empty($this->scripts['site'][$type]) ) return;
 
-		$script = new script();
-		$scripts = $script->get_by_type( $type );
-		$this->scripts['site'][$type] = $scripts;
+		$sql = '';
+
+		if($this->version_id > 0)
+		{
+			$sql = "SELECT
+						ds.name AS name,
+						ds.html AS content
+					FROM 
+						deployable_scripts ds
+					JOIN 
+						page_versions pv 
+						ON 
+							pv.page_layout_id = ds.layout_id 
+						AND 
+							pv.id = :version_id
+						AND 
+							ds.script_type = :type
+					ORDER BY
+						ds.load_order 
+						ASC";
+
+			$params = [
+				'version_id' => $this->version_id,
+				'type' => $type
+			];
+		}
+
+		else if(!empty($this->layout_name))
+		{
+			$sql = "SELECT
+						ds.name AS name,
+						ds.html AS content
+					FROM
+						deployable_scripts ds
+					WHERE
+						ds.layout_name = :layout_name
+						AND
+							ds.script_type = :type
+					ORDER BY
+						ds.load_order 
+						ASC";
+
+			$params = [
+				'layout_name' => $this->layout_name,
+				'type' => $type
+			];
+		}
+
+		if(count($sql)) 
+		{
+			$this->scripts['site'][$type] = $this->select( $sql, $params );
+		}
+		else
+		{
+			trigger_error("No layout_name or version_id defined", E_USER_ERROR);
+		}
+
+		return $this;
 	}
 
 	private function get_components()
@@ -122,7 +209,9 @@ class deployment_compiler extends pdo
 	{
 		$formatted_components = [
 			'options' => [
-				'compile_path' => NODE_PATH
+				'compile_path' => NODE_PATH,
+				'output_path' => PUBLIC_PATH.'/preview',
+				'filename' => $type
 			],
 			'modules' => $this->formatted
 		];
@@ -140,9 +229,8 @@ class deployment_compiler extends pdo
 		{
 			$process->run( 'js_compiler' );
 		}
-
 		$process->output( $output );
-
+		// vd($output);
 		$this->output = $output;
 	}
 }
