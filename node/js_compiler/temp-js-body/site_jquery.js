@@ -1,1 +1,0 @@
-global.$ = global.jQuery = require('jquery/dist/jquery.min.js');
