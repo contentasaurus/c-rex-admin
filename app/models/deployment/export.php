@@ -102,11 +102,12 @@ class deployment_export extends pdo
 
 		return [
 			'Get' => $param->sanitize($_GET),
-			'Page' => $param->sanitize( $this->get_page_data_for_preview($page_id) ),
+			'Page' => $this->get_page_data_for_preview($page_id),
 			'Post' => $param->sanitize($_POST),
 			'Server' => $_SERVER,
 			'Session' => $_SESSION,
-			'Site' => $param->sanitize( $this->get_site_data_for_preview() )
+			'Site' => $this->get_site_data_for_preview(),
+			'Cookie' => $_COOKIE
 		];
 	}
 

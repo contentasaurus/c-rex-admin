@@ -16,12 +16,12 @@ switch( $this->tag['type'] )
 		#can't nest repeaters right now
 		break;
 	case 'select':
-		echo $this->partial('form/repeater/select', [ 'tag' => $this->tag ] );
+		echo $this->partial('form/repeater_vertical/select', [ 'tag' => $this->tag ] );
 		break;
 	case 'textarea':
-		echo $this->partial('form/repeater/textarea', [ 'tag' => $this->tag ] );
+		echo $this->partial('form/repeater_vertical/textarea', [ 'tag' => $this->tag ] );
 		break;
 	default:
-		echo $this->partial('form/repeater/input', [ 'tag' => $this->tag ] );
+		echo $this->partial('form/repeater_vertical/input', [ 'tag' => $this->tag ] );
 		break;
 }
