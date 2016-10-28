@@ -10,4 +10,4 @@ composer.lock
 temp
 temp-js-body
 temp-js-head
-./public/preview/*
+public/preview/*.*
