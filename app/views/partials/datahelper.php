@@ -20,6 +20,11 @@
 					</thead>
 					<tbody>
 						<tr>
+							<td>Cookie</td>
+							<td>$_COOKIE data</td>
+							<td>{{ Cookie.sugar }}</td>
+						</tr>
+						<tr>
 							<td>Get</td>
 							<td>$_GET data</td>
 							<td>{{ Get.name }}</td>
@@ -42,7 +47,7 @@
 						<tr>
 							<td>Server</td>
 							<td>$_SERVER data</td>
-							<td>{{ Session.SERVER_NAME }}</td>
+							<td>{{ Server.SERVER_NAME }}</td>
 						</tr>
 						<tr>
 							<td>Site</td>

@@ -18,13 +18,13 @@ switch( $type )
 	case 'time':
 	case 'url':
 	case 'week':
-		echo $this->partial('form/repeater/input/basic', [ 'tag' => $this->tag ] );
+		echo $this->partial('form/repeater_horizontal/input/basic', [ 'tag' => $this->tag ] );
 		break;
 	case 'checkbox':
 	case 'radio':
-		echo $this->partial('form/repeater/input/checkbox_radio', [ 'tag' => $this->tag ] );
+		echo $this->partial('form/repeater_horizontal/input/checkbox_radio', [ 'tag' => $this->tag ] );
 		break;
 	default:
-		echo $this->partial("form/repeater/input/basic", [ 'tag' => $this->tag ] );
+		echo $this->partial("form/repeater_horizontal/input/basic", [ 'tag' => $this->tag ] );
 		break;
 }

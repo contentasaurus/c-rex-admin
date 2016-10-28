@@ -123,6 +123,8 @@ class datatypes_controller extends puffin\controller\action
 				'title' => 'Failure!',
 				'message' => 'This datatype has not been deleted.'
 			]);
+
+			url::redirect($_SERVER['HTTP_REFERER']);
 		}
 
 		message::add([

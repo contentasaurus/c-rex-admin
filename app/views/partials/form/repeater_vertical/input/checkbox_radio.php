@@ -6,8 +6,6 @@
 	}
 ?>
 
-<label><?= $this->tag['label'] ?></label>
-
 <?php foreach( $this->tag['options'] as $key => $option ): ?>
 
 	<?php
@@ -24,10 +22,12 @@
 		<label for="content_<?= $this->tag['name'] ?>_<?= $option['value'] ?>_<?= date('U') ?>" class="form-check-label" for="content_<?= $this->tag['name'] ?>">
 			<input
 				type="<?= $this->tag['type'] ?>"
-				name="content[<?= $this->tag['name'] ?>][]"
-				id="content_<?= $this->tag['name'] ?>_<?= $option['value'] ?>_<?= date('U') ?>" 
+				name="content[<?= $this->tag['repeater_name'] ?>][<?= $this->tag['name'] ?>][][]"
+				id="content_<?= $this->tag['name'] ?>_<?= $option['value'] ?>_<?= date('U') ?>"
 				class="form-check-input <?= $required ?>"
-				value="<?= $option['value'] ?>" <?= $checked ?> <?= $required ?> >
+				value="<?= $option['value'] ?>"
+				<?= $checked ?>
+				<?= $required ?> >
 			<?= $option['label'] ?>
 		</label>
 	</div>

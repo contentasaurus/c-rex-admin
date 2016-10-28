@@ -25,14 +25,11 @@
 	}
 
 ?>
-
-<label for="content_<?= $this->tag['name'] ?>">
-	<?= $this->tag['label'] ?>
-</label>
-<textarea
-	name="content[<?= $this->tag['name'] ?>]"
-	id="content_<?= $this->tag['name'] ?>"
+<label for="content_<?= $this->tag['name'] ?>"><?= $this->tag['label'] ?></label>
+<input
+	type="<?= $this->tag['type'] ?>"
+	name="content[<?= $this->tag['repeater_name'] ?>][<?= $this->tag['name'] ?>][]"
+	id="content_<?= $this->tag['repeater_name'] ?>_<?= $this->tag['name'] ?>_<?= date('U') ?>"
 	class="form-control <?= $required ?>"
 	placeholder="<?= @$this->tag['placeholder'] ?>"
-	rows="<?= @$this->tag['rows'] ?>"
-	><?= $value ?></textarea>
+	value="<?= $value ?>" <?= $required ?> >

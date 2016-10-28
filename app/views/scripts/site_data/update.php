@@ -6,15 +6,27 @@
 ]]); ?>
 
 <form method="POST" accept-charset="UTF-8" datatypes-form-ajax="">
+	<input type="hidden" name="datatype_id" value="<?= $this->datatype['id'] ?>" />
 	<div class="card">
 		<div class="card-header">
-			Site.<?= $this->datatype['name'] ?> Inputs
+			Site.<?= $this->site_data['reference_name'] ?>
 		</div>
 		<div class="card-block">
 
-			<input name="id" type="hidden" value="<?= $this->site_data['id'] ?>">
-
-			<div id="form-render"></div>
+			<?php
+				foreach( $this->datatype['content'] as $name => $tag )
+				{
+					if( isset($this->site_data['content'][$name]) && !empty($this->site_data['content'][$name]) )
+					{
+						$user_value = $this->site_data['content'][$name];
+					}
+					else
+					{
+						$user_value = NULL;
+					}
+					echo $this->partial("form/element", [ 'name' => $name, 'tag' => $tag, 'user_value' => $user_value ] );
+				}
+			?>
 
 			<div class="form-group">
 				<button class="btn btn-primary" type="submit">Save</button>
@@ -24,23 +36,3 @@
 		</div>
 	</div>
 </form>
-
-<script>
-	$(function(){
-		var container = document.getElementById('form-render');
-		$(container).formRender({
-			dataType: "json",
-			container: container,
-			formData: '<?= $this->datatype['content'] ?>'
-		});
-
-		function fill(a)
-		{
-			for(var k in a){
-				$('[name="'+k+'"]').val(a[k]);
-			}
-		}
-
-		fill(<?= $this->site_data['content'] ?>);
-	});
-</script>
