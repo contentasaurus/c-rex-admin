@@ -19,7 +19,7 @@
 		}
 	?>
 	<div class="form-check">
-		<label class="form-check-label" for="content_<?= $this->tag['name'] ?>">
+		<label for="content_<?= $this->tag['name'] ?>_<?= $option['value'] ?>_<?= date('U') ?>" class="form-check-label" for="content_<?= $this->tag['name'] ?>">
 			<input
 				type="<?= $this->tag['type'] ?>"
 				name="content[<?= $this->tag['repeater_name'] ?>][<?= $this->tag['name'] ?>][][]"

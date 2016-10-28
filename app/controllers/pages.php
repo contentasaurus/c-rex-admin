@@ -264,7 +264,25 @@ class pages_controller extends puffin\controller\action
 	{
 		$params = $this->post->params( $unsanitized = true );
 		$result = $this->page_data->create( $params );
-		url::redirect($_SERVER['HTTP_REFERER']);
+
+		if( $result )
+		{
+			message::add([
+				'class' => 'success',
+				'title' => 'Success!',
+				'message' => 'This datatype has been added.'
+			]);
+		}
+		else
+		{
+			message::add([
+				'class' => 'danger',
+				'title' => 'Failure!',
+				'message' => 'This datatype has not been added.'
+			]);
+		}
+
+		url::redirect("/pages/update/$id/data-update/$result");
 	}
 
 	public function data_update( $id, $data_id )

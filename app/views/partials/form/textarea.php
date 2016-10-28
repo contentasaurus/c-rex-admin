@@ -33,5 +33,6 @@
 	name="content[<?= $this->tag['name'] ?>]"
 	id="content_<?= $this->tag['name'] ?>"
 	class="form-control <?= $required ?>"
-	placeholder="<?= $this->tag['placeholder'] ?>"
+	placeholder="<?= @$this->tag['placeholder'] ?>"
+	rows="<?= @$this->tag['rows'] ?>"
 	><?= $value ?></textarea>

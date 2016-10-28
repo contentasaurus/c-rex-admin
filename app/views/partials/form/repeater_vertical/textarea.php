@@ -32,4 +32,6 @@
 	name="content[<?= $this->tag['repeater_name'] ?>][<?= $this->tag['name'] ?>][]"
 	id="content_<?= $this->tag['name'] ?>_<?= date('U') ?>"
 	class="form-control <?= $required ?>"
-	placeholder="<?= $this->tag['placeholder'] ?>"><?= $value ?></textarea>
+	placeholder="<?= @$this->tag['placeholder'] ?>"
+	rows="<?= @$this->tag['rows'] ?>"
+	><?= $value ?></textarea>

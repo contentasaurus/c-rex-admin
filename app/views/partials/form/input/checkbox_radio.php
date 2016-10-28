@@ -21,8 +21,13 @@
 		}
 	?>
 	<div class="form-check">
-		<label class="form-check-label" for="content_<?= $this->tag['name'] ?>">
-			<input type="<?= $this->tag['type'] ?>" name="content[<?= $this->tag['name'] ?>][]" id="content_<?= $this->tag['name'] ?>_<?= $option ?>" class="form-check-input <?= $required ?>" value="<?= $option['value'] ?>" <?= $checked ?> <?= $required ?> >
+		<label for="content_<?= $this->tag['name'] ?>_<?= $option['value'] ?>_<?= date('U') ?>" class="form-check-label" for="content_<?= $this->tag['name'] ?>">
+			<input
+				type="<?= $this->tag['type'] ?>"
+				name="content[<?= $this->tag['name'] ?>][]"
+				id="content_<?= $this->tag['name'] ?>_<?= $option['value'] ?>_<?= date('U') ?>" 
+				class="form-check-input <?= $required ?>"
+				value="<?= $option['value'] ?>" <?= $checked ?> <?= $required ?> >
 			<?= $option['label'] ?>
 		</label>
 	</div>
