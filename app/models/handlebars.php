@@ -22,7 +22,17 @@ class handlebars
 			'partials' => $this->get_partials(),
 			'partialresolver' => function ($cx, $name) {
 				return "<div style='padding:1em; border:1px dashed yellow; background:red; color:yellow;'>Component \"$name\" not found</div>";
-			}
+			},
+			'helpers' => [
+				'concat' => function(){
+					$args = func_get_args();
+					$context = array_pop($args);
+					return implode('', $args);
+				},
+				'debug' => function( $x, $context ){
+					return json_encode($x);
+				}
+			]
 		]);
 	}
 
