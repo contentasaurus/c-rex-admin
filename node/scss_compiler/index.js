@@ -81,12 +81,12 @@ function onSassRenderDone(err, result) {
 		;
 	}
 	else {
-		console.log(err);
+		fs.writeFile(output_min_path, err, 'utf8', onFileWriteDone);
 	}
 }
 
 function onFileWriteDone(err) {
 	if(err) {
-		console.log(err);
+		fs.writeFile(output_min_path, err, 'utf8', onFileWriteDone);
 	}
 }
