@@ -5,8 +5,8 @@ use \puffin\view as view;
 use \puffin\session as session;
 use \puffin\autoload as autoload;
 use \puffin\controller as controller;
-// use Whoops\Handler\PrettyPageHandler;
-// use Whoops\Handler\JsonResponseHandler;
+use Whoops\Handler\PrettyPageHandler;
+use Whoops\Handler\JsonResponseHandler;
 
 define('SERVER_URL', 'http://localhost:8000');
 
@@ -52,23 +52,23 @@ require 'app/app.php';
 $app->route();
 
 ############################################
-// $run     = new Whoops\Run;
-// $handler = new PrettyPageHandler;
-//
-// $handler->addDataTable('Contentasaurus Details', array(
-// 	"Controller" => controller::$controller,
-// 	"Action" => controller::$action
-// ));
-//
-// // Set the title of the error page:
-// $handler->setPageTitle("Whoops! There was a problem.");
-// $run->pushHandler($handler);
-//
-// if (Whoops\Util\Misc::isAjaxRequest()) {
-// 	$run->pushHandler(new JsonResponseHandler);
-// }
-//
-// $run->register();
+$run     = new Whoops\Run;
+$handler = new PrettyPageHandler;
+
+$handler->addDataTable('Contentasaurus Details', array(
+	"Controller" => controller::$controller,
+	"Action" => controller::$action
+));
+
+// Set the title of the error page:
+$handler->setPageTitle("Whoops! There was a problem.");
+$run->pushHandler($handler);
+
+if (Whoops\Util\Misc::isAjaxRequest()) {
+	$run->pushHandler(new JsonResponseHandler);
+}
+
+$run->register();
 ############################################
 
 echo $app->render();
