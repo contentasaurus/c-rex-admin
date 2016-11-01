@@ -98,12 +98,10 @@ class deployment_export extends pdo
 
 	public function get_data_for_preview( $page_id )
 	{
-		$param = new param([]); #need a blank and empty object
-
 		return [
-			'Get' => $param->sanitize($_GET),
+			'Get' => $_GET,
 			'Page' => $this->get_page_data_for_preview($page_id),
-			'Post' => $param->sanitize($_POST),
+			'Post' => $_POST,
 			'Server' => $_SERVER,
 			'Session' => $_SESSION,
 			'Site' => $this->get_site_data_for_preview(),
@@ -348,7 +346,7 @@ class deployment_export extends pdo
 
 		$page = $this->get_version_preview($version_id);
 		$compiled_template = $this->compile_lightncandy( $page, 'preview', 'preview', 'preview' );
-		
+
 		$html = $this->hbs->render( $compiled_template, $this->get_data_for_preview($page['page_id']) );
 
 		return $html;

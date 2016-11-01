@@ -31,13 +31,17 @@
 			</div>
 			<div class="form-group">
 				<label>Split Percentage</label>
-				<p class="form-control form-control-static"><?= $this->page_version['percentage'] ?></p>
+				<p class="form-control"><?= $this->page_version['percentage'] ?></p>
 			</div>
 			<div class="form-group">
 				<label>Comments</label>
 				<input class="form-control required" name="comments" type="text" value="<?= $this->page_version['comments'] ?>">
 			</div>
-			<label>Content</label> <?= $this->partial('datahelper') ?>
+
+			<label class="float-xs-left">Content <?= $this->partial('datahelper') ?></label>
+			<a target="_blank" href="/page-preview/<?= $this->page_version['id'] ?>" class="btn btn-sm btn-secondary float-xs-right">
+				<i class="fa fa-eye"></i> Preview
+			</a>
 			<div id="editor" class="form-control"><?= htmlentities($this->page_version['contents']) ?></div>
 			<input type="hidden" name="contents" id="content">
 			<br />

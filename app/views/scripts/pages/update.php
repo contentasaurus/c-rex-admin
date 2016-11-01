@@ -116,7 +116,7 @@
 									<a href="/pages/update/<?= $this->page['id'] ?>/version-copy/<?= $version['id'] ?>" class="btn btn-sm btn-secondary">
 										<i class="fa fa-copy"></i>
 									</a>
-									<a target="_blank" href="/preview/<?= $version['id'] ?>" class="btn btn-sm btn-secondary">
+									<a target="_blank" href="/page-preview/<?= $version['id'] ?>" class="btn btn-sm btn-secondary">
 										<i class="fa fa-eye"></i>
 									</a>
 								</div>
