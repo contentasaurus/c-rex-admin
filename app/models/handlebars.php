@@ -64,6 +64,12 @@ class handlebars
 						$return .= $options['fn']();
 					}
 					return $return;
+				},
+				'if_empty' => function( $a, $b ){
+					if( empty($a) ){
+						return $b;
+					}
+					return $a;
 				}
 			]
 		]);
