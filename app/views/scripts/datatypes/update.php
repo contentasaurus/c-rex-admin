@@ -21,7 +21,7 @@
 				<input placeholder="Name" class="form-control required" id="name" name="name" type="text" value="<?= $this->datatype['name'] ?>">
 			</div>
 
-			<?php /* echo $this->partial('form/builder'); */ ?>
+			<?php #echo $this->partial('form/builder'); ?>
 
 			<div class="form-group">
 				<label class="control-label">Content</label>

@@ -56,6 +56,14 @@ class handlebars
 				},
 				'lte' => function( $a, $b ){
 					return $a <= $b;
+				},
+				'times' => function( $times, $options ){
+					$return = '';
+					for( $i = 0; $i < $times; $i++ )
+					{
+						$return .= $options['fn']();
+					}
+					return $return;
 				}
 			]
 		]);
