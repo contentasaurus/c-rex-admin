@@ -16,7 +16,9 @@ const cleaner = postcss([ autoprefixer({
 	add: false, 
 	browsers: [
 		'last 2 versions',
-		'iOS 8'
+		'iOS 8',
+		'IE 10',
+		'IE 11'
 	] }) 
 ]);
 const prefixer = postcss([ autoprefixer ]);
