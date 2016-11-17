@@ -8,6 +8,8 @@ npm-debug.log
 dsn.json
 composer.lock
 temp
-temp-js-body
-temp-js-head
-public/preview/*.*
+temp-js_body
+temp-js_head
+public/preview
+public/export
+public/dist

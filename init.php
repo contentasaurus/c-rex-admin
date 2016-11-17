@@ -45,7 +45,6 @@ require VENDOR_PATH . '/autoload.php';
 session::start();
 autoload::init();
 view::init('php');
-
 $app = new app();
 $app->router();
 require 'app/app.php';

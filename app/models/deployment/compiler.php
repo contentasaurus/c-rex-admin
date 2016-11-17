@@ -7,13 +7,13 @@ class deployment_compiler extends pdo
 {
 	private $scripts = [
 		'site' => [
-			'js-head' => [],
-			'js-body' => [],
+			'js_head' => [],
+			'js_body' => [],
 			'scss' => []
 		],
 		'comp' => [
-			'js-head' => [],
-			'js-body' => [],
+			'js_head' => [],
+			'js_body' => [],
 			'scss' => []
 		]
 	];
@@ -22,6 +22,7 @@ class deployment_compiler extends pdo
 	private $output = '';
 	private $layout_name = '';
 	private $version_id = -1;
+	private $output_path = PUBLIC_PATH.'/preview';
 
 	public function run( $type, &$output = false )
 	{
@@ -49,15 +50,15 @@ class deployment_compiler extends pdo
 		return $this;
 	}
 
-	public function version_id( $version_id )
+	public function output_path( $path )
 	{
-		if( is_int($version_id) )
+		if( is_string($path) )
 		{
-			$this->version_id = $version_id;
+			$this->output_path = $path;
 		}
 		else
 		{
-			trigger_error("must be an integer", E_USER_ERROR);
+			trigger_error("must be a string", E_USER_ERROR);
 		}
 
 		return $this;
@@ -65,44 +66,18 @@ class deployment_compiler extends pdo
 
 	private function get_site_scripts( $type ) 
 	{
-		if( !empty($this->scripts['site'][$type]) ) return;
-
 		$sql = '';
+		$params = [];
 
-		if($this->version_id > 0)
-		{
-			$sql = "SELECT
-						ds.name AS name,
-						ds.html AS content
-					FROM 
-						deployable_scripts ds
-					JOIN 
-						page_versions pv 
-						ON 
-							pv.page_layout_id = ds.layout_id 
-						AND 
-							pv.id = :version_id
-						AND 
-							ds.script_type = :type
-					ORDER BY
-						ds.load_order 
-						ASC";
-
-			$params = [
-				'version_id' => $this->version_id,
-				'type' => $type
-			];
-		}
-
-		else if(!empty($this->layout_name))
+		if(!empty($this->layout_name))
 		{
 			$sql = "SELECT
 						ds.name AS name,
 						ds.html AS content
 					FROM
-						deployable_scripts ds
-					WHERE
-						ds.layout_name = :layout_name
+						deployable_scripts AS ds
+						WHERE
+							ds.layout_name = :layout_name
 						AND
 							ds.script_type = :type
 					ORDER BY
@@ -115,13 +90,13 @@ class deployment_compiler extends pdo
 			];
 		}
 
-		if(count($sql)) 
+		if(count($sql))
 		{
 			$this->scripts['site'][$type] = $this->select( $sql, $params );
 		}
 		else
 		{
-			trigger_error("No layout_name or version_id defined", E_USER_ERROR);
+			trigger_error("No layout_name defined", E_USER_ERROR);
 		}
 
 		return $this;
@@ -131,14 +106,14 @@ class deployment_compiler extends pdo
 	{
 		if( !empty($this->components) ) return;
 
-		$sql = "SELECT name, scss, `js-head`, `js-body` 
+		$sql = "SELECT name, scss, js_head, js_body 
 				FROM deployable_components";
 
 		$this->components = $this->select( $sql );
 
 		$types = [
-			'js-head',
-			'js-body',
+			'js_head',
+			'js_body',
 			'scss'
 		];
 
@@ -209,8 +184,8 @@ class deployment_compiler extends pdo
 	{
 		$formatted_components = [
 			'options' => [
-				'compile_path' => NODE_PATH,
-				'output_path' => PUBLIC_PATH.'/preview',
+				'compiler_path' => NODE_PATH,
+				'output_path' => $this->output_path,
 				'filename' => $type
 			],
 			'modules' => $this->formatted
@@ -229,8 +204,10 @@ class deployment_compiler extends pdo
 		{
 			$process->run( 'js_compiler' );
 		}
+
 		$process->output( $output );
-		// vd($output);
+		$output = json_decode($output);
 		$this->output = $output;
+		// debug($output);
 	}
 }

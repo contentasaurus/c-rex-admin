@@ -6,7 +6,7 @@
 const fs = require('fs-extra');
 const path = require('path');
 
-function JsonToJsFiles(rootPath, json, done) {
+function JsonToScssFiles(rootPath, json, done) {
 	this.init = () => {
 		this.rootPath = rootPath;
 		this.json = json;
@@ -16,7 +16,8 @@ function JsonToJsFiles(rootPath, json, done) {
 
 	this.onMkdir = (err) => {
 		if(err) {
-			console.log(err);
+			done(err);
+			return;
 		}
 
 		this.processModules();
@@ -31,13 +32,10 @@ function JsonToJsFiles(rootPath, json, done) {
 			fs.writeFile(this.rootPath+'/'+key+'.scss', modules[key], (err) => {
 				writeCount++;
 
-				if(writeCount >= keys.length) {
-					done();
-				}
-				
-				if(err) {
-					console.log(err);
-					return;
+				if(writeCount == keys.length) {
+					done(err, {
+						'writeCount' : writeCount
+					});
 				}
 			});
 		});
@@ -46,4 +44,4 @@ function JsonToJsFiles(rootPath, json, done) {
 	this.init();
 }
 
-module.exports = JsonToJsFiles;
+module.exports = JsonToScssFiles;
