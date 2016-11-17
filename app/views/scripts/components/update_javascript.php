@@ -7,7 +7,7 @@
 
 <div class="card">
 	<div class="card-header">
-		<?= $this->partial('tabs', [ 'classes' => 'card-header-tabs pull-xs-left', 'tabs' => [
+		<?= $this->partial('tabs', [ 'classes' => 'card-header-tabs float-xs-left', 'tabs' => [
 			[ 'name'=> 'HTML', 'url' => "/components/update/{$this->component['id']}" ],
 			[ 'name'=> 'SCSS', 'url' => "/components/update/{$this->component['id']}/css" ],
 			[ 'name'=> 'JS-Head', 'active' => 'active', 'url' => "/components/update/{$this->component['id']}/javascript" ],
