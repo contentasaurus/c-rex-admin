@@ -47,7 +47,7 @@ class page_layout_script extends pdo
 					WHERE
 						s.script_type_id = :id
 
-					ORDER BY load_order ASC, s.name';
+ 					ORDER BY CAST(load_order as SIGNED INTEGER) ASC, s.name';
 
 
 			$params = [
