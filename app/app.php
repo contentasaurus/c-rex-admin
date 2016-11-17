@@ -11,7 +11,7 @@ use \puffin\dsn as dsn;
 function debug( $input ){ echo debug::printr($input); }
 function clog( $input ){ echo debug::clog($input); }
 function redirect( $location = false ){ url::redirect($location); }
-function vd ( $input ){
+function dump ( $input ){
 	ob_start();
 	var_dump($input);
 	$output = ob_get_clean();

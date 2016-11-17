@@ -16,7 +16,8 @@ function JsonToJsFiles(rootPath, json, done) {
 
 	this.onMkdir = (err) => {
 		if(err) {
-			console.log(err);
+			done(err);
+			return;
 		}
 
 		this.processModules();
@@ -28,16 +29,13 @@ function JsonToJsFiles(rootPath, json, done) {
 		var writeCount = 0;
 		
 		keys.forEach( (key) => {
-			fs.writeFile(this.rootPath+'/'+key+'.js', modules[key], (err) => {
+			fs.writeFile(this.rootPath+'/'+key+'.js', modules[key], function(err) {
 				writeCount++;
 
-				if(writeCount >= keys.length) {
-					done();
-				}
-				
-				if(err) {
-					console.log(err);
-					return;
+				if(writeCount == keys.length) {
+					done(err, {
+						'writeCount' : writeCount
+					});
 				}
 			});
 		});

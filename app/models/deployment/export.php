@@ -71,17 +71,40 @@ class deployment_export extends pdo
 
 	public function get_component_scripts()
 	{
-		$this
-			->compiler
-			->run('js-head', $head_js)
-			->run('js-body', $body_js)
-			->run('scss', $css);
+		$key = $this->get_key();
+		$layouts = $this->export[ $key ]['layouts'];
+		$public = PUBLIC_PATH;
+		$return = [];
 
-		$return = [
-			['name' => 'component.head.js', 'content' => $head_js ],
-			['name' => 'component.body.js', 'content' => $body_js ],
-			['name' => 'component.css', 'content' => $css ]
-		];
+		foreach ($layouts as $layout) {
+			$layout_name = $layout['layout_name'];
+			$folder = "${public}/export/${key}/${layout_name}";
+			$runtime_folder = "${key}/${layout_name}";
+
+			$scss_filepath = "${folder}/scss.min.css";
+			$head_js_filepath = "${folder}/js_head.js";
+			$body_js_filepath = "${folder}/js_body.js";
+
+			$scss_runtime_filepath = "${runtime_folder}/scss.min.css";
+			$head_js_runtime_filepath = "${runtime_folder}/js_head.js";
+			$body_js_runtime_filepath = "${runtime_folder}/js_body.js";
+
+			$this->compiler
+				->layout_name($layout_name)
+				->output_path($folder)
+				->run('scss')
+				->run('js_head')
+				->run('js_body')
+			;
+			
+			$scss    = file_get_contents($scss_filepath);
+			$head_js = file_get_contents($head_js_filepath);
+			$body_js = file_get_contents($body_js_filepath);
+
+			$return[] = ['name' => $scss_runtime_filepath,    'content' => $scss ];
+			$return[] = ['name' => $head_js_runtime_filepath, 'content' => $head_js ];
+			$return[] = ['name' => $body_js_runtime_filepath, 'content' => $body_js ];
+		}
 
 		return $return;
 	}
@@ -203,7 +226,10 @@ class deployment_export extends pdo
 			foreach( $table as $tablename => $resultset )
 			{
 				$sql = "CREATE TABLE IF NOT EXISTS {$key}_{$tablename} LIKE __{$tablename}_template";
-				$this->execute($sql, []);
+				$this->execute($sql);
+
+				$sql = "TRUNCATE TABLE {$key}_{$tablename}";
+				$this->execute($sql);
 
 				$this->table = "{$key}_{$tablename}";
 
@@ -278,6 +304,10 @@ class deployment_export extends pdo
 				'is_current' => 1
 			]);
 		}
+		else
+		{
+			trigger_error("Verification failed", E_USER_ERROR);
+		}
 
 		$this->connection = 'default';
 
@@ -331,30 +361,32 @@ class deployment_export extends pdo
 
 	public function preview( $version_id = false )
 	{
-		$partials = $this->format_components_html_for_compile();
+		$page = $this->get_version_preview($version_id);
+		$this->compiler
+			->layout_name($page['layout'])
+			->output_path(PUBLIC_PATH.'/preview/'.$page['layout'])
+			->run('scss')
+			->run('js_head')
+			->run('js_body')
+		;			
 
+		$partials = $this->format_components_html_for_compile();
 		$this->hbs->set_partials( $partials );
 
 		//$this->hbs->set_helpers( $this->format_helpers_for_compile() );
 
-		$this
-			->compiler
-			->version_id( intval($version_id) )
-			->run('scss')
-			->run('js-head')
-			->run('js-body');
+		$compiled_template = $this->preview_compile_lightncandy( $page );
 
-		$page = $this->get_version_preview($version_id);
-		$compiled_template = $this->compile_lightncandy( $page, 'preview', 'preview', 'preview' );
-
-		$html = $this->hbs->render( $compiled_template, $this->get_data_for_preview($page['page_id']) );
+		$data = $this->get_data_for_preview($page['page_id']);
+		$html = $this->hbs->render( $compiled_template, $data );
 
 		return $html;
 	}
 
 	public function build( $version_id = false )
 	{
-		$this->hbs->set_partials( $this->format_components_html_for_compile() );
+		$partials = $this->format_components_html_for_compile();
+		$this->hbs->set_partials( $partials );
 
 		//$this->hbs->set_helpers( $this->format_helpers_for_compile() );
 
@@ -363,37 +395,29 @@ class deployment_export extends pdo
 		return $this->compile_lightncandy( $page );
 	}
 
-	private function compile_lightncandy( $page, $head_js = '', $css = '', $body_js = ''  )
+	private function preview_compile_lightncandy( $page )
+	{
+		$path = "/preview/{$page['layout']}";
+		$css     = $this->get_tag('link'  , "$path/scss.min.css");
+		$head_js = $this->get_tag('script', "$path/js_head.js");
+		$body_js = $this->get_tag('script', "$path/js_body.js");
+
+		return $this->get_compiled_template($page, $head_js, $css, $body_js);
+	}
+
+	private function compile_lightncandy( $page )
 	{
 		$key = $this->get_key();
+		$path = "/runtime/$key/{$page['layout']}";
+		$css     = $this->get_tag('link'  , "$path/scss.min.css");
+		$head_js = $this->get_tag('script', "$path/js_head.js");
+		$body_js = $this->get_tag('script', "$path/js_body.js");
 
-		if( $head_js != 'preview' )
-		{
-			$head_js = "<script type=\"text/javascript\" src=\"/runtime/$key/component.head.js\"></script>";
-		}
-		else
-		{
-			$head_js = "<script type=\"text/javascript\" src=\"/preview/js-head.min.js\"></script>";
-		}
+		return $this->get_compiled_template($page, $head_js, $css, $body_js);
+	}
 
-		if( $css != 'preview' )
-		{
-			$css = "<link rel=\"stylesheet\" type=\"text/css\" href=\"/runtime/$key/component.css\">";
-		}
-		else
-		{
-			$css = "<link rel=\"stylesheet\" type=\"text/css\" href=\"/preview/scss.min.css\">";
-		}
-
-		if( $body_js != 'preview' )
-		{
-			$body_js = "<script type=\"text/javascript\" src=\"/runtime/$key/component.body.js\"></script>";
-		}
-		else
-		{
-			$body_js = "<script type=\"text/javascript\" src=\"/preview/js-body.min.js\"></script>";
-		}
-
+	public function get_compiled_template($page, $head_js, $css, $body_js)
+	{
 		$layout = $this->get_layout( $page['layout'] );
 
 		$this->hbs->set_layout( $layout['content'] );
@@ -407,6 +431,18 @@ class deployment_export extends pdo
 					.'{{/__cms_layout}}';
 
 		return $this->hbs->compile( $template );
+	}
+
+	public function get_tag($type, $url)
+	{
+		if($type == 'script') 
+		{
+			return "<script type='text/javascript' src='$url'></script>";
+		}
+		else 
+		{
+			return "<link rel='stylesheet' type='text/css' href='$url'>";
+		}
 	}
 
 	public function format_components_html_for_compile()

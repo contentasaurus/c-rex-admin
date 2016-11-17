@@ -3,71 +3,104 @@
 // JS Compiler
 //
 
-const fs = require('fs-extra');
-const uglify = require('uglify-js');
-const browserify = require('browserify');
-
-const jsonToFiles = require('./json-to-js-files');
-const NodePhpProcess = require('node-php-process');
-
-const defaults = {
-	compile_path : '.',
-	compile_folder : 'temp',
-	init_script_name : 'init_script__'
+var response = {
+	'errors' : [],
+	'messages' : []
 };
-var options = defaults;
-var script_path = '';
-var compile_folder = '';
-var output_path = '';
-var output_min_path = '';
+
+function respond() {
+	process.stdout.write(JSON.stringify(response));
+}
+
+function addMessage(msg) {
+	response.messages.push(msg);
+}
+
+function addError(err) {
+	if(err) response.errors.push(err);
+}
+
+// ====
+
+addMessage('started');
+
+var
+	// Promise = require('bluebird'),
+	fs = require('fs-extra'),
+	uglify = require('uglify-js'),
+	browserify = require('browserify'),
+	jsonToFiles = require('./json-to-js-files'),
+	NodePhpProcess = require('node-php-process'),
+	webpack = require('webpack')
+;
+addMessage('packages loaded');
+
+var 
+	defaults = {
+		compiler_path : '.',
+		init_script_name : 'init_script__'
+	}, 
+	options = defaults,
+	entryFile = '',
+	modulesPath = '',
+	outputPath = '',
+	outputFilename = '',
+
+	compiler_path = '',
+	output_path = '',
+	filename = '',
+	init_script_name = ''
+;
+addMessage('variables defined');
 
 var nodePhpProcess = new NodePhpProcess(onProcessHandle);
 
-function onProcessHandle(data) {
+function onProcessHandle(err, data) {
+	addError(err);
+	addMessage('onProcessHandle');
+
 	options = Object.assign(options, data.options);
-	compile_folder = `${options.compile_path}/js_compiler/${options.compile_folder}-${options.filename}`;
-	script_path =`${compile_folder}/${options.init_script_name}`;
-	output_path = `${options.output_path}/${options.filename}.js`;
-	output_min_path = `${options.output_path}/${options.filename}.min.js`;
-	jsonToFiles(compile_folder, data.modules, onJsonToFilesDone);
+
+	compiler_path = options.compiler_path;
+	output_path = options.output_path;
+	filename = options.filename;
+	init_script_name = options.init_script_name;
+
+	modulesPath = `${compiler_path}/js_compiler/temp-${filename}`;
+	outputPath = `${output_path}`;
+	entryFile = `${init_script_name}`;
+	outputFilename = `${filename}.js`;
+
+	addMessage('modulesPath: ' + modulesPath);
+	addMessage('outputPath: ' + outputPath);
+	addMessage('entryFile: ' + entryFile);
+	addMessage('outputFilename: ' + outputFilename);
+
+	jsonToFiles(modulesPath, data.modules, onJsonToFilesDone);
 }
 
-function onJsonToFilesDone() {
-	var opts = {
-		paths : [
-			'node_modules', 
-			compile_folder
-		]
-	};
+function onJsonToFilesDone(err, data) {
+	addError(err);
+	addMessage('onJsonToFilesDone');
+	addMessage(`writeCount: ${data.writeCount}`);
 
-	fs.ensureFile(output_path, function(err){
-		if(err) {
-			console.log(err);
+	webpack({
+		entry: entryFile,
+		output: {
+			path: outputPath,
+			filename: outputFilename
+		},
+		resolve: {
+			modulesDirectories: [
+				modulesPath,
+				'node_modules'
+			]
 		}
-		else {
-			fs.ensureFile(output_min_path, function(err){
-				if(err) {
-					console.log(err);
-				}
-				else {
-					var jsWriteStream = fs.createWriteStream(output_path);
-					var onBundle = function(err, done){
-						if(err){
-							console.log(err);
-						}
-					};
+	}, onJsPack);
+}
 
-					browserify(opts)
-						.add(script_path)
-						.bundle(onBundle)
-						.pipe(jsWriteStream)
-						.on('finish', function(){
-							var result = uglify.minify(output_path);
-							fs.writeFile(output_min_path, result.code, 'utf8');
-						})
-					;
-				}
-			});
-		}
-	});
-};
+function onJsPack(err, stats) {
+	addError(err);
+	addMessage('pack completed');
+	respond();
+}
