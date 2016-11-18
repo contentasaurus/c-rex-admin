@@ -1,5 +1,6 @@
 <?php
 
+use \puffin\transformer as transformer;
 use \puffin\message as message;
 use \puffin\model as model;
 use \puffin\view as view;
@@ -28,43 +29,32 @@ class blog_controller extends puffin\controller\action
 
 	public function do_create()
 	{
-		$required = ['name','author_user_id'];
-
 		$params = $this->post->params( $unsanitized = true );
 
-		#clean the array
-		$params = array_filter( $params );
+		$params['author'] = $_SESSION['user']['first_name'] . ' ' . $_SESSION['user']['last_name'];
 
-		$match = true;
-		foreach( $required as $r )
-		{
-			if( !in_array($r, array_keys($params) ) )
-			{
-				$match = false;
-				break;
-			}
-		}
+		$params['slug'] = $this->blog->check_slug_for_unique( transformer::safeslug($params['title']) );
 
-		if( $match )
+		if( $result = $this->blog->create( $params ) )
 		{
-			$result = $this->component->create( $params );
+			message::add([
+				'class' => 'success',
+				'title' => 'Success!',
+				'message' => 'This blog post has been added.'
+			]);
+
+			url::redirect("/blog/update/$result");
 		}
 		else
 		{
 			message::add([
 				'class' => 'danger',
 				'title' => 'Failure!',
-				'message' => 'This component has not been added.'
+				'message' => 'This blog post has not been added.'
 			]);
+
+			url::redirect("/blog/create");
 		}
-
-		message::add([
-			'class' => 'success',
-			'title' => 'Success!',
-			'message' => 'This component has been added.'
-		]);
-
-		url::redirect("/components/update/$result");
 
 	}
 
@@ -78,6 +68,10 @@ class blog_controller extends puffin\controller\action
 	public function do_update( $id )
 	{
 		$params = $this->post->params( $unsanitized = true );
+
+		$params['slug'] = $this->blog->recheck_slug_for_unique( $id, $params['slug'] );
+
+		unset($params['files']);
 
 		if( $params['id'] == $id )
 		{

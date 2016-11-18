@@ -46,6 +46,15 @@
 
 <script>
 	$(function(){
-		$('.wysiwyg').summernote();
+		$('.wysiwyg').summernote({
+			height: 300,
+			toolbar: [
+				['style', ['bold', 'italic', 'underline', 'clear']],
+				['font', ['strikethrough']],
+				['para', ['ul', 'ol', 'paragraph']]
+			]
+		});
+
+		 $('.note-popover').css({'display': 'none'});
 	});
 </script>

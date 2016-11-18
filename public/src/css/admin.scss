@@ -398,3 +398,33 @@ select.form-control + .chosen-container-multi .chosen-results li.result-selected
 	border:2px solid #ffffff;
 	transition: all 0.3s ease-in-out 0s;
 }
+
+.panel-heading {
+    @extend .card-header;
+}
+
+.note-btn-group {
+    .btn-default {
+        @extend .btn-secondary;
+    }
+
+    .dropdown-menu {
+        > li {
+            > a {
+                display: block;
+                padding: 3px 20px;
+                clear: both;
+                font-weight: normal;
+                line-height: 1.42857143;
+                color: #333;
+                white-space: nowrap;
+            }
+        }
+    }
+}
+
+.note-popover .popover-content .note-color .dropdown-toggle,
+.note-editor .panel-heading.note-toolbar .note-color .dropdown-toggle {
+    width: 20px;
+    padding-left: 1px;
+}
