@@ -111,34 +111,29 @@ class blog_controller extends puffin\controller\action
 
 	#---------------------------
 
-	public function delete( $id )
-	{
-		$component = $this->component->read($id);
-
-		view::add_param( 'component', $component );
-	}
-
 	public function do_delete( $id )
 	{
 		$params = $this->post->params();
 
 		if( $params['id'] == $id )
 		{
-			$this->component->delete( $id, $params );
+			$this->blog->delete( $id, $params );
 		}
 		else
 		{
 			message::add([
 				'class' => 'danger',
 				'title' => 'Failure!',
-				'message' => 'This component has not been deleted.'
+				'message' => 'This blog post has not been deleted.'
 			]);
+
+			url::redirect($_SERVER['HTTP_REFERER']);
 		}
 
 		message::add([
 			'class' => 'success',
 			'title' => 'Success!',
-			'message' => 'This component has been deleted.'
+			'message' => 'This blog post has been deleted.'
 		]);
 
 		url::redirect($_SERVER['HTTP_REFERER']);
