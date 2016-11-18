@@ -23,6 +23,7 @@
     "bootstrap": "^4.0.0-alpha.4",
     "browserify": "^13.1.0",
     "chosen-js": "git+https://github.com/harvesthq/chosen-package.git",
+	"summernote": "git+https://github.com/summernote/summernote.git",
     "clean-css": "^3.4.20",
     "clipboard": "^1.5.12",
     "cssnano": "^3.8.0",

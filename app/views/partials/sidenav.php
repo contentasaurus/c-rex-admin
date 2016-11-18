@@ -62,12 +62,18 @@
 				<i class="fa fa-database fa-2x"></i><br/><span class="nav-label">Datatypes</span>
 			</a>
 		</li>
+		<li>
+			<a href="/blog" <?php if( controller::$controller == 'blog' ): ?>class="active"<?php endif; ?> data-toggle="tooltip" data-placement="right" title="Blog">
+				<i class="fa fa-quote-right fa-2x"></i><br/><span class="nav-label">Blog</span>
+			</a>
+		</li>
+
 		<!-- <li>
 			<a href="/helpers" <?php if( controller::$controller == 'helpers' ): ?>class="active"<?php endif; ?> data-toggle="tooltip" data-placement="right" title="Helpers">
 				<i class="fa fa-thumbs-o-up fa-2x"></i><br/><span class="nav-label">Helpers</span>
 			</a>
 		</li> -->
-		
+
 		<?php if( permissions::is_admin() ): ?>
 			<li>
 				<hr />

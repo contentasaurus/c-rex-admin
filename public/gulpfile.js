@@ -17,7 +17,7 @@ var source = require('vinyl-source-stream');
 
 // High Level Tasks
 //
-gulp.task('default', ['js', 'css']);
+gulp.task('default', ['js', 'css', 'font:copy']);
 
 
 // JS Tasks
@@ -121,6 +121,16 @@ gulp.task('css:minify', function(done) {
 	], done);
 });
 
+gulp.task('font:copy', function(done) {
+	pump([
+		gulp.src([
+			'./src/font/summernote.eot',
+			'./src/font/summernote.ttf',
+			'./src/font/summernote.woff'
+		]),
+		gulp.dest('dist/font')
+	]);
+});
 
 // Helper Functions
 //

@@ -16,9 +16,6 @@ require('jquery-ui/ui/widgets/sortable');
 require('jquery-treetable');
 require('jquery-populate');
 
-require('formBuilder');
-require('formBuilder/dist/form-render.min.js');
-
 require('handlebars');
 require('bootstrap');
 require('ace-builds/src-min/ace');
