@@ -17,7 +17,7 @@ var source = require('vinyl-source-stream');
 
 // High Level Tasks
 //
-gulp.task('default', ['js', 'css', 'font:copy']);
+gulp.task('default', ['js', 'css', 'font']);
 
 
 // JS Tasks
@@ -95,10 +95,11 @@ gulp.task('css:all', function(done) {
 		gulp.src('src/css/**/*.scss'),
 		sass({
 			includePaths: [
-				getCssPath('jquery-treetable'),
-				getCssPath('chosen-js'),
-				getCssPath('tether', '/../css'),
-				getCssPath('bootstrap', '/../css')
+				getFilePath('jquery-treetable'),
+				getFilePath('chosen-js'),
+				getFilePath('tether', '/../css'),
+				getFilePath('bootstrap', '/../css'),
+				getFilePath('summernote', '/../src/less')
 			]
 		}),
 		gulp.dest('dist/css')
@@ -121,14 +122,38 @@ gulp.task('css:minify', function(done) {
 	], done);
 });
 
+
+// Font tasks
+//
+gulp.task('font', function() {
+	runSequence(
+		'font:copy',
+		'font:dist',
+		function() {
+			done();
+		}
+	);
+});
+
 gulp.task('font:copy', function(done) {
+	pump([
+		gulp.src([
+			getFilePath('summernote', 'font/summernote.eot'),
+			getFilePath('summernote', 'font/summernote.ttf'),
+			getFilePath('summernote', 'font/summernote.woff')
+		]),
+		gulp.dest('src/css/font')
+	], done);
+});
+
+gulp.task('font:dist', function(done) {
 	pump([
 		gulp.src([
 			'./src/font/summernote.eot',
 			'./src/font/summernote.ttf',
 			'./src/font/summernote.woff'
 		]),
-		gulp.dest('dist/font')
+		gulp.dest('dist/css/font')
 	]);
 });
 
@@ -140,7 +165,7 @@ function getModulePath(moduleName) {
 	return normalizeDir;
 }
 
-function getCssPath(moduleName, filePath) {
+function getFilePath(moduleName, filePath) {
 	filePath || (filePath = '');
 	var modulePath = getModulePath(moduleName);
 	return modulePath+filePath;
