@@ -70,6 +70,18 @@ class handlebars
 						return $b;
 					}
 					return $a;
+				},
+				'pick' => function( $options ) {
+					$from = $options['hash']['from'];
+					$select = $options['hash']['select'];
+					$where = $options['hash']['where'];
+					$equals = $options['hash']['equals'];
+
+					foreach ($from as $element) {
+						if($equals == $element[$where]) {
+							return $element[$select];
+						}
+					}
 				}
 			]
 		]);
