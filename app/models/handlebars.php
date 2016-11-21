@@ -82,6 +82,52 @@ class handlebars
 							return $element[$select];
 						}
 					}
+				},
+				'blog' => function( $options ) {
+					if(empty($options)) return '';
+					
+					if(empty($options['fn'])) return '';
+					else {
+						$fn = $options['fn'];
+					}
+					
+					if(empty($options['hash'])) return '';
+					else {
+						$vars = $options['hash'];
+					}
+
+					$_this = $options['_this'];
+
+					$num = '10';
+					if(!empty($vars['num'])) {
+						$num = $vars['num'];
+					}
+
+					$sql = '';
+					$params = [];
+					if(!empty($vars['get'])) {
+						switch($vars['get']) {
+							case 'latest':
+							default: 
+								$sql = "SELECT * FROM blogs
+										ORDER BY publication_date ASC
+										LIMIT ${num}";
+						}
+					}
+
+					if(empty($sql)) return '';
+
+					$blog = new blog();
+					$blogs = $blog->select($sql, $params);
+
+					$output = '';
+					foreach ($blogs as $blog) {
+						$output .= "<div class='blog-item'>";
+						$output .= $fn(array_merge($blog, $_this));
+						$output .= "</div>";
+					}
+
+					return $output;
 				}
 			]
 		]);
