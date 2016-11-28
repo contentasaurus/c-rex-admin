@@ -205,9 +205,23 @@ class deployment_compiler extends pdo
 			$process->run( 'js_compiler' );
 		}
 
+		$process->errors($errors);
+
+		if($errors) 
+		{
+			debug($errors);
+			trigger_error('Compiler process returned an error', E_USER_ERROR);
+		}
+
 		$process->output( $output );
 		$output = json_decode($output);
+
+		if($output->errors)
+		{
+			debug($output);
+			trigger_error('Compiler process returned a captured error', E_USER_ERROR);
+		}
+
 		$this->output = $output;
-		// debug($output);
 	}
 }
