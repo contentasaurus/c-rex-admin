@@ -96,21 +96,52 @@ class handlebars
 						$vars = $options['hash'];
 					}
 
-					$_this = $options['_this'];
+					$id = '';
+					if(!empty($vars['id'])) {
+						$id = "WHERE id = ${vars['id']}";
+					}
+
+					$date_format = 'F jS, Y';
+					if(!empty($vars['date_format'])) {
+						$date_format = $vars['date_format'];
+					}
+
+					$hide_after = 0; // 0 is no-hide
+					if(!empty($vars['hide_after'])) {
+						$hide_after = $vars['hide_after'];
+					}
+
+					$_this = [];
+					if(!empty($vars['_this'])) {
+						$_this = $vars['_this'];
+					}
 
 					$num = '10';
 					if(!empty($vars['num'])) {
 						$num = $vars['num'];
 					}
 
+					$order = 'DESC';
+					if(!empty($vars['order'])) {
+						$order = $vars['order'];
+					}
+
 					$sql = '';
 					$params = [];
 					if(!empty($vars['get'])) {
 						switch($vars['get']) {
+							case 'archive':
+								$sql = "SELECT
+											DATE_FORMAT(publication_date, '%M %Y') AS date,
+											count(0) AS count
+										FROM blogs
+										GROUP BY date";
+								break;
 							case 'latest':
 							default: 
 								$sql = "SELECT * FROM blogs
-										ORDER BY publication_date ASC
+										${id}
+										ORDER BY publication_date ${order}
 										LIMIT ${num}";
 						}
 					}
@@ -120,11 +151,33 @@ class handlebars
 					$blog = new blog();
 					$blogs = $blog->select($sql, $params);
 
+					$index = 0;
 					$output = '';
-					foreach ($blogs as $blog) {
-						$output .= "<div class='blog-item'>";
-						$output .= $fn(array_merge($blog, $_this));
-						$output .= "</div>";
+					foreach ($blogs as $key => $blog) {
+						if($vars['get'] == 'latest') {
+							$pub = date_create($blog['publication_date']);
+							$pub = date_format($pub, $date_format);
+							$blog['publication_date'] = $pub;
+							$blog['link'] = "/newsroom/${blog['id']}/${blog['slug']}";
+
+							if(!$hide_after 
+							|| ($hide_after && $index < $hide_after)) {
+								$output .= "<div class='blog-item'>";
+							}
+							else {
+								$output .= "<div class='blog-item hide'>";
+							}
+
+							$output .= $fn(array_merge($blog, $_this));
+							$output .= "</div>";
+						}
+
+						if($vars['get'] == 'archive') {
+							$output .= "<div class='blog-item'>";
+							$output .= $fn(array_merge($blog, $_this));
+							$output .= "</div>";
+						}
+						$index++;
 					}
 
 					return $output;
