@@ -23,6 +23,10 @@
 				<input placeholder="Slug" max="250" class="form-control required" name="slug" type="text" value="<?= $this->blog['slug'] ?>">
 			</div>
 			<div class="form-group">
+				<label>Author</label>
+				<input placeholder="Author" max="100" class="form-control required" name="author" type="text" value="<?= $this->blog['author'] ?>">
+			</div>
+			<div class="form-group">
 				<label>Publication Date</label>
 				<input class="form-control required" name="publication_date" type="date" value="<?= date( 'Y-m-d', strtotime($this->blog['publication_date']) ) ?>">
 			</div>

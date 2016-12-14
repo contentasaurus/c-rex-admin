@@ -6,6 +6,19 @@ class blog extends pdo
 {
 	protected $table = 'blogs';
 
+	public function get_by_slug( $slug )
+	{
+		$sql = 'SELECT *
+				FROM blogs
+				WHERE slug = :slug';
+
+		$params = [
+			':slug' => $slug
+		];
+
+		return $this->select_row( $sql, $params );
+	}
+
 	public function check_slug_for_unique( $slug )
 	{
 		$suffix = '';
